@@ -1,20 +1,16 @@
 from agent.base_agent import Agent
-from core.state import InternalState
 from core.mood.basic_mood import BasicMoodStrategy
-from core.motivation import MotivationEngine
+from environment.world import World
+
 
 def run_simulation(steps = 10):
     mood_strategy = BasicMoodStrategy()
     agent = Agent(name = "SimBot", mood_strategy = mood_strategy)
 
-    for step in range(steps):
-        print(f"\n--- Step {step + 1} ---")
-        agent.log_status()
+    world = World()
+    world.add_agent(agent)
 
-        action = agent.think()
-        print(f"Action: {action}")
-
-        agent.act(action)
+    world.run(steps = 15)
 
 if __name__ == "__main__":
     run_simulation()

@@ -7,23 +7,37 @@ class Agent:
         self.name = name
         self.state = InternalState(mood_strategy)
         self.motivation = MotivationEngine(self.state)
+        self.perception = {
+            "food_available": False,
+            "time_of_day": "day"
+        }
+        self.environment = None #Reference to the World
+
+    def set_environment(self, env):
+        self.environment = env
 
     def sense(self):
-        """ Detect the environment """
-        pass
+        """ Sense food availability and time of day. """
+        if self.environment:
+            self.perception["food_available"] = self.environment.food_available
+            self.perception["time_of_day"] = self.environment.time_of_day
 
     def think(self):
-        """ Update the situation and decide """
-        self.state.update()
+        """ Update internal state and decide what to do."""
+        delta = 1.5 if self.perception["time_of_day"] == "night" else 1.0
+        self.state.update(delta_time = delta)
         return self.motivation.decide_action()
 
     def act(self, action: str):
-        """ Take action """
-        if action == "seek_food":
+        """ Perform the chosen action."""
+        if action == "seek_food" and self.perception["food_available"]:
+            print(f"{self.name} eats food")
             self.state.hunger = max(0.0, self.state.hunger - 0.4)
+        elif action == "seek_food":
+            print(f"{self.name} found no food.")
         elif action == "rest":
+            print(f"{self.name} takes a rest.")
             self.state.fatigue = max(0.0, self.state.fatigue - 0.3)
-            # TODO add explore
 
     def log_status(self):
         print(f"{self.name} -> {self.state}")
