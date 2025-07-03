@@ -2,6 +2,7 @@ from core.state import InternalState
 from core.motivation import MotivationEngine
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
+from core.learning.reward_learner import RewardLearner
 
 class Agent:
     def __init__(self, name: str, mood_strategy: MoodStrategy):
@@ -18,6 +19,8 @@ class Agent:
         self.environment = None #Reference to the World
         self.current_step = 0
         self.episodic_memory = EpisodicMemory(capacity = 5)
+        self.learner = RewardLearner()
+        self._prev_state_snapshot = None
 
     def set_environment(self, env):
         self.environment = env
@@ -36,8 +39,19 @@ class Agent:
     def think(self):
         """ Update internal state and decide what to do."""
         delta = 1.5 if self.perception["time_of_day"] == "night" else 1.0
-        self.state.update(delta_time = delta)
-        return self.motivation.decide_action(perception = self.perception, memory = self.memory)
+        self.state.update(delta_time=delta)
+
+        self._prev_state_snapshot = self.state.snapshot()  # store before acting
+        learned_action = self.learner.get_best_action(
+            self.state.hunger, self.state.fatigue
+        )
+
+        if learned_action:
+            return learned_action
+
+        return self.motivation.decide_action(
+            perception=self.perception, memory=self.memory
+        )
 
     def act(self, action: str):
         """Perform the selected action."""
@@ -51,7 +65,10 @@ class Agent:
             print(f"{self.name} takes a rest.")
             self.state.fatigue = max(0.0, self.state.fatigue - 0.3)
 
-        # Store the episode
+        # Update reward learner
+        if self._prev_state_snapshot:
+            self.learner.update(self._prev_state_snapshot, self.state, action)
+
         self.episodic_memory.add(
             step=self.current_step,
             perception=self.perception,

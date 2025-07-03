@@ -14,5 +14,17 @@ class InternalState:
         self.fatigue = min(1.0, self.fatigue + DEFAULT_FATIGUE_INCREASE * delta_time)
         self.mood = self.mood_strategy.calculate_mood(self.hunger, self.fatigue)
 
+    # inside InternalState
+    def snapshot(self):
+        return type(self)(
+            self.mood_strategy
+        )._copy_values_from(self)
+
+    def _copy_values_from(self, other):
+        self.hunger = other.hunger
+        self.fatigue = other.fatigue
+        self.mood = other.mood
+        return self
+
     def __str__(self):
         return f"Hunger: {self.hunger:.2f}, Fatigue: {self.fatigue:.2f}, Mood: {self.mood}"
