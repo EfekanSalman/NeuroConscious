@@ -1,6 +1,7 @@
 from core.state import InternalState
 from core.motivation import MotivationEngine
 from core.mood.base import MoodStrategy
+from core.memory.episodic import EpisodicMemory
 
 class Agent:
     def __init__(self, name: str, mood_strategy: MoodStrategy):
@@ -16,6 +17,7 @@ class Agent:
         }
         self.environment = None #Reference to the World
         self.current_step = 0
+        self.episodic_memory = EpisodicMemory(capacity = 5)
 
     def set_environment(self, env):
         self.environment = env
@@ -38,15 +40,24 @@ class Agent:
         return self.motivation.decide_action(perception = self.perception, memory = self.memory)
 
     def act(self, action: str):
-        """ Perform the chosen action."""
+        """Perform the selected action."""
+        # Perform effects
         if action == "seek_food" and self.perception["food_available"]:
-            print(f"{self.name} eats food")
+            print(f"{self.name} eats food.")
             self.state.hunger = max(0.0, self.state.hunger - 0.4)
         elif action == "seek_food":
             print(f"{self.name} searches for food but finds none.")
         elif action == "rest":
             print(f"{self.name} takes a rest.")
             self.state.fatigue = max(0.0, self.state.fatigue - 0.3)
+
+        # Store the episode
+        self.episodic_memory.add(
+            step=self.current_step,
+            perception=self.perception,
+            state=self.state,
+            action=action
+        )
 
     def log_status(self):
         print(f"{self.name} -> {self.state} | Memory: {self.memory}")
