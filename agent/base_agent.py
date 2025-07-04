@@ -1,11 +1,13 @@
 from core.state import InternalState
-from core.motivation import MotivationEngine
+from core.motivation.motivation import MotivationEngine
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
 from core.learning.reward_learner import RewardLearner
 from core.learning.q_table_learner import QTableLearner
 from core.emotion.emotion_state import EmotionState
 from core.emotion.basic_emotion import BasicEmotionStrategy
+from core.motivation.basic_motivation import BasicMotivationEngine
+
 
 class Agent:
     def __init__(self, name: str, mood_strategy: MoodStrategy):
@@ -29,6 +31,7 @@ class Agent:
         self._last_action = None
         self.emotion_state = EmotionState()
         self.emotion = BasicEmotionStrategy(self.emotion_state)
+        self.motivation = BasicMotivationEngine(agent=self)
 
     def set_environment(self, env):
         self.environment = env
@@ -46,27 +49,35 @@ class Agent:
 
     def think(self):
         """
-        Decide on an action using Q-learning, influenced by internal state and emotion.
-        Also updates internal state and emotion state each step.
+        Decide on an action using emotion-influenced motivation and Q-learning.
+        Updates internal state, emotional state, and stores learning references.
         """
 
-        # 1. Update internal physiological state (hunger, fatigue)
+        # 1. Update physiological state (hunger, fatigue)
         delta = 1.5 if self.perception["time_of_day"] == "night" else 1.0
         self.state.update(delta_time=delta)
 
-        # 2. Update emotional state based on perception and internal state
+        # 2. Update emotional state based on environment and internal state
         self.emotion.update_emotions(self.perception, self.state)
 
-        # 3. Save current hunger/fatigue for Q-learning update
+        # 3. Store current state before acting (for learning)
         self._prev_state_vals = (self.state.hunger, self.state.fatigue)
 
-        # 4. Select an action using Q-learning with epsilon-greedy policy
+        # 4. Emotion-driven motivation engine decides preferred action
+        emotion_driven_action = self.motivation.decide_action(
+            perception=self.perception,
+            memory=self.memory,
+            emotions=self.emotion_state
+        )
+
+        # 5. Q-learner may override or agree with motivation-based action
+        #    (for now: Q-learning takes full control)
         action = self.q_learner.choose_action(
             hunger=self.state.hunger,
             fatigue=self.state.fatigue
         )
 
-        # 5. Save chosen action for learning
+        # You could mix Q-learning with emotion preference later
         self._last_action = action
         return action
 

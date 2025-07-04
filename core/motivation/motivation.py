@@ -2,7 +2,7 @@ class MotivationEngine:
     def __init__(self, state):
         self.state = state
 
-    def decide_action(self, perception = None, memory = None) -> str:
+    def decide_action(self, perception=None, memory=None):
         hunger = self.state.hunger
         fatigue = self.state.fatigue
 
