@@ -4,6 +4,8 @@ from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
 from core.learning.reward_learner import RewardLearner
 from core.learning.q_table_learner import QTableLearner
+from core.emotion.emotion_state import EmotionState
+from core.emotion.basic_emotion import BasicEmotionStrategy
 
 class Agent:
     def __init__(self, name: str, mood_strategy: MoodStrategy):
@@ -25,6 +27,8 @@ class Agent:
         self.q_learner = QTableLearner(actions=["seek_food", "rest", "explore"])
         self._prev_state_vals = None # Hunger/fatigue before action
         self._last_action = None
+        self.emotion_state = EmotionState()
+        self.emotion = BasicEmotionStrategy(self.emotion_state)
 
     def set_environment(self, env):
         self.environment = env
@@ -42,23 +46,27 @@ class Agent:
 
     def think(self):
         """
-        Decide on an action using Q-learning.
-        Also stores the current state for learning after action
+        Decide on an action using Q-learning, influenced by internal state and emotion.
+        Also updates internal state and emotion state each step.
         """
-        # Update internal state based on time of day"
+
+        # 1. Update internal physiological state (hunger, fatigue)
         delta = 1.5 if self.perception["time_of_day"] == "night" else 1.0
         self.state.update(delta_time=delta)
 
-        # Save current hunger and fatigue before action (for Q-learning)
+        # 2. Update emotional state based on perception and internal state
+        self.emotion.update_emotions(self.perception, self.state)
+
+        # 3. Save current hunger/fatigue for Q-learning update
         self._prev_state_vals = (self.state.hunger, self.state.fatigue)
 
-        # Choose an action using the Q-table with epsilon-greedy policy
+        # 4. Select an action using Q-learning with epsilon-greedy policy
         action = self.q_learner.choose_action(
-            hunger = self.state.hunger,
-            fatigue = self.state.fatigue
+            hunger=self.state.hunger,
+            fatigue=self.state.fatigue
         )
 
-        # Store chosen action for reward update
+        # 5. Save chosen action for learning
         self._last_action = action
         return action
 
@@ -111,7 +119,6 @@ class Agent:
 
     def log_status(self):
         print(f"{self.name} → {self.state}")
-        print("Recent episodes:")
-        print(self.episodic_memory)
+        print("Emotions:", self.emotion_state)
         print("Q-table (sample):")
         print(self.q_learner)
