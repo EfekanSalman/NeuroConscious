@@ -1,5 +1,3 @@
-# visualization/plotter.py
-
 import matplotlib.pyplot as plt
 
 class AgentLogger:
