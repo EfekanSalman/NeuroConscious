@@ -32,8 +32,8 @@ def main():
             print(f"\n--- Step {step} ---")
             agent.log_status()
 
-    print("\n✅ Simulation complete.")
-    print("🔢 Action Counts after 1000 steps:")
+    print("\n Simulation complete.")
+    print("Action Counts after 1000 steps:")
     for action, count in action_counter.items():
         print(f"{action}: {count}")
 
