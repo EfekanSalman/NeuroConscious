@@ -1,4 +1,5 @@
 from collections import deque
+from core.emotion.emotion_state import EmotionState
 
 class EpisodicMemory:
     """
@@ -7,6 +8,7 @@ class EpisodicMemory:
     This class uses a deque (double-ended queue) to store a fixed number of
     recent experiences (episodes), providing the agent with a short-term
     recollection of past perceptions, internal states, and actions.
+    It now also incorporates emotional weighting to remember experiences more vividly.
     """
     def __init__(self, capacity: int = 5):
         """
@@ -22,31 +24,68 @@ class EpisodicMemory:
         # and 'maxlen' automatically handles capacity limits.
         self.memory: deque = deque(maxlen=capacity)
 
-    def add(self, step: int, perception: dict, state, action: str):
+    def _calculate_emotional_weight(self, emotions: EmotionState) -> float:
         """
-        Adds a new episode (experience) to the agent's episodic memory.
+        Calculates an emotional weight for an episode based on current emotion levels.
+
+        This simple heuristic assigns a higher weight to experiences associated
+        with strong positive (joy) or negative (fear, frustration) emotions.
+        The weight can be used to influence recall priority or memory consolidation.
+        A higher value indicates a more "memorable" or "impactful" experience.
+
+        Args:
+            emotions (EmotionState): The agent's current emotional state.
+
+        Returns:
+            float: A calculated emotional weight (typically between 0.0 and 1.0, but can exceed 1.0).
+        """
+        # Define how much each emotion contributes to the memory's weight.
+        # These coefficients can be tuned for different effects.
+        joy_contribution = emotions.get("joy") * 0.3
+        fear_contribution = emotions.get("fear") * 0.6  # Fear often leads to stronger, more salient memories.
+        frustration_contribution = emotions.get("frustration") * 0.4
+        curiosity_contribution = emotions.get("curiosity") * 0.1
+
+        # Sum of weighted emotional contributions.
+        total_weight = joy_contribution + fear_contribution + frustration_contribution + curiosity_contribution
+
+        # Optionally, clamp the weight to a maximum value (e.g., 1.0) or allow it to exceed 1.0
+        # for a broader range of memorability. Here, we clamp it for simplicity.
+        return min(1.0, total_weight)
+
+    def add(self, step: int, perception: dict, internal_state, action: str, emotions: EmotionState):
+        """
+        Adds a new episode (experience) to the agent's episodic memory,
+        including an emotional weight.
 
         Each episode captures a snapshot of the agent's situation at a specific
-        time step, including its perceptions, internal physiological state, and
-        the action it performed.
+        time step, including its perceptions, internal physiological state,
+        the action it performed, and a calculated emotional weight for that moment.
 
         Args:
             step (int): The current simulation time step.
             perception (dict): A dictionary representing the agent's sensory
                                input and environmental observations at this step.
-            state: The agent's internal state object (e.g., InternalState instance),
+            internal_state: The agent's internal state object (e.g., InternalState instance),
                    containing attributes like 'hunger', 'fatigue', and 'mood'.
+                   We use 'internal_state' here for clarity as per our earlier refactor.
             action (str): The action performed by the agent at this step.
+            emotions (EmotionState): The agent's emotional state at the time the episode occurred.
+                                     Used to calculate the emotional weight of this memory.
         """
+        # Calculate the emotional significance of this specific moment.
+        emotional_weight = self._calculate_emotional_weight(emotions)
+
         episode = {
             "step": step,
             "perception": perception.copy(), # Store a copy to prevent external modifications
-            "state": {
-                "hunger": round(state.hunger, 2),    # Rounded for cleaner memory representation
-                "fatigue": round(state.fatigue, 2),  # Rounded for cleaner memory representation
-                "mood": state.mood                   # Store current mood
+            "state": { # Snapshot of the internal physiological state at that time
+                "hunger": round(internal_state.hunger, 2),
+                "fatigue": round(internal_state.fatigue, 2),
+                "mood": internal_state.mood
             },
-            "action": action
+            "action": action,
+            "emotional_weight": round(emotional_weight, 2)
         }
         self.memory.append(episode)
 
@@ -65,11 +104,11 @@ class EpisodicMemory:
         Provides a human-readable string representation of the episodic memory content.
 
         This method is useful for quickly reviewing the agent's recent history
-        for logging or debugging purposes.
+        for logging or debugging purposes, now including the emotional weight.
 
         Returns:
             str: A multi-line string, with each line detailing a remembered episode's
-                 step, action, and mood.
+                 step, action, mood, and emotional weight.
         """
-        # Format each episode into a readable string and join them with newlines.
-        return "\n".join([f"Step {ep['step']}: {ep['action']}, Mood: {ep['state']['mood']:.2f}" for ep in self.memory])
+        return "\n".join([f"Step {ep['step']}: {ep['action']}, Mood: {ep['state']['mood']}, Weight: {ep['emotional_weight']:.2f}" for ep in self.memory])
+
