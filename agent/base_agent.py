@@ -1,5 +1,4 @@
 from core.state import InternalState
-from core.motivation.motivation import MotivationEngine
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
 from core.learning.reward_learner import RewardLearner
@@ -7,7 +6,6 @@ from core.learning.q_table_learner import QTableLearner
 from core.emotion.emotion_state import EmotionState
 from core.emotion.basic_emotion import BasicEmotionStrategy
 from core.motivation.basic_motivation import BasicMotivationEngine
-
 
 class Agent:
     """
@@ -17,6 +15,7 @@ class Agent:
     memory, and learning capabilities, allowing it to interact with an
     environment and make decisions.
     """
+
     def __init__(self, name: str, mood_strategy: MoodStrategy):
         """
         Initializes a new Agent instance.
@@ -28,9 +27,7 @@ class Agent:
         self.name: str = name
         # Manages physiological states like hunger and fatigue, and mood.
         self.internal_state: InternalState = InternalState(mood_strategy)
-        # Note: MotivationEngine is initialized twice. Consider if this is intentional.
-        # The second initialization with BasicMotivationEngine will override the first.
-        self.motivation_engine: MotivationEngine = MotivationEngine(self.internal_state)
+        self.motivation_engine: BasicMotivationEngine = BasicMotivationEngine(agent=self)
 
         # Perceptual data about the environment.
         self.perception: dict = {
@@ -51,22 +48,20 @@ class Agent:
         # Learner for generic reward-based learning (e.g., policy gradients - though not fully implemented here).
         self.reward_learner: RewardLearner = RewardLearner()
         # Snapshot of the agent's state before an action, used for learning.
-        self._previous_state_snapshot = None
+        self._previous_state_snapshot = None  # This might be redundant if previous_physiological_states is used
         # Q-learning component for action selection based on states.
         self.q_learner: QTableLearner = QTableLearner(actions=["seek_food", "rest", "explore"])
         # Physiological state values (hunger, fatigue) before the last action, for reward calculation.
         self._previous_physiological_states = None
         # The last action performed by the agent.
         self._last_performed_action = None
+        # The reward received from the last action.
+        self.last_action_reward: float = 0.0
 
         # Manages the agent's emotional state.
         self.emotion_state: EmotionState = EmotionState()
         # Strategy for updating the agent's emotions.
         self.emotion_strategy: BasicEmotionStrategy = BasicEmotionStrategy(self.emotion_state)
-        # Basic motivation engine that drives action selection based on internal needs.
-        # This re-initializes `self.motivation_engine` from above.
-        self.motivation_engine = BasicMotivationEngine(agent=self)
-
 
     def set_environment(self, env):
         """
@@ -110,21 +105,23 @@ class Agent:
         time_delta_factor = 1.5 if self.perception["time_of_day"] == "night" else 1.0
         self.internal_state.update(delta_time=time_delta_factor)
 
-        # 2. Update emotional state based on environmental perceptions and internal needs.
+        # 2. Update emotional state based on environmental perceptions and internal state.
         self.emotion_strategy.update_emotions(self.perception, self.internal_state)
 
-        # 3. Store current physiological state before deciding on an action, for later reward calculation.
+        # 3. Store current state before acting (for learning)
         self._previous_physiological_states = (self.internal_state.hunger, self.internal_state.fatigue)
 
-        # 4. The motivation engine proposes an action based on current needs and emotions.
-        motivation_driven_action = self.motivation_engine.decide_action(
+        # 4. Emotion-driven motivation engine decides preferred action
+        # This part is currently not used for the final action decision as Q-learning overrides it.
+        # It's kept here for potential future blending or debugging.
+        _ = self.motivation_engine.decide_action(
             perception=self.perception,
             memory=self.short_term_memory,
             emotions=self.emotion_state
         )
 
         # 5. Q-learner selects an action. Currently, Q-learning overrides motivation.
-        #    Future improvements could blend these two decision mechanisms.
+        #    Future improvements could mix Q-learning with emotion preference later.
         selected_action = self.q_learner.choose_action(
             hunger=self.internal_state.hunger,
             fatigue=self.internal_state.fatigue
@@ -135,57 +132,70 @@ class Agent:
 
     def act(self, action: str):
         """
-        Executes the chosen action and updates the agent's internal state
-        and Q-learning table based on the outcome.
+        Executes the chosen action, updates the agent's internal state and Q-table,
+        and records the experience in episodic memory.
 
         Args:
-            action (str): The action to be performed (e.g., "seek_food", "rest", "explore").
+            action (str): The action decided by the agent's motivation engine.
+                          Expected actions: "seek_food", "rest", "explore".
         """
-        # Perform the action and apply its immediate effects on internal state.
-        if action == "seek_food" and self.perception["food_available"]:
-            print(f"{self.name} eats food.")
-            self.internal_state.hunger = max(0.0, self.internal_state.hunger - 0.4)
-        elif action == "seek_food":
-            print(f"{self.name} searches for food but finds none.")
+        previous_internal_state = self.internal_state.snapshot()
+
+        if action == "seek_food":
+            if self.environment.food_available:
+                self.internal_state.hunger = max(0.0, self.internal_state.hunger - 0.7)
+                self.last_action_reward = 0.5  # Positive reward for successfully finding food.
+                print(f"{self.name} successfully sought food! Hunger reduced.")
+            else:
+                self.internal_state.hunger = min(1.0, self.internal_state.hunger + 0.02)
+                self.last_action_reward = -0.1  # Small penalty for unsuccessful attempt.
+                print(f"{self.name} sought food but found none. Hunger increased slightly.")
+            # Update memory about food presence
+            if self.environment.food_available:
+                self.short_term_memory["food_last_seen"] = self.current_time_step  # Use short_term_memory
+
         elif action == "rest":
-            print(f"{self.name} takes a rest.")
-            self.internal_state.fatigue = max(0.0, self.internal_state.fatigue - 0.3)
+            self.internal_state.fatigue = max(0.0, self.internal_state.fatigue - 0.6)
+            self.last_action_reward = 0.4  # Positive reward for resting.
+            print(f"{self.name} is resting. Fatigue reduced.")
+
         elif action == "explore":
-            print(f"{self.name} is exploring...")
+            self.internal_state.hunger = min(1.0, self.internal_state.hunger + 0.05)
+            self.internal_state.fatigue = min(1.0, self.internal_state.fatigue + 0.05)
+            # Reward for exploration might be neutral or slight penalty initially.
+            # This can be modified later based on discoveries during exploration.
+            self.last_action_reward = -0.05
+            print(f"{self.name} is exploring. Hunger/Fatigue increased slightly.")
 
-        # Learn from the action: Update Q-table using the reward.
-        if self._previous_physiological_states and self._last_performed_action:
-            prev_hunger, prev_fatigue = self._previous_physiological_states
-            current_hunger, current_fatigue = self.internal_state.hunger, self.internal_state.fatigue
+        else:
+            print(f"{self.name} attempted an unknown action: {action}")
+            self.last_action_reward = -0.2  # Penalty for invalid action
 
-            # Define a simple reward signal based on action outcomes.
-            reward_value = 0.0
-            if self._last_performed_action == "seek_food":
-                # Reward for reducing hunger.
-                reward_value = max(0, prev_hunger - current_hunger)
-            elif self._last_performed_action == "rest":
-                # Reward for reducing fatigue.
-                reward_value = max(0, prev_fatigue - current_fatigue)
-            elif self._last_performed_action == "explore":
-                # Small penalty for exploration, as it consumes time/energy without direct gain.
-                reward_value = -0.01
+        # Update the agent's internal state (hunger/fatigue naturally increase, mood recalculates)
+        # Pass the current time step for delta_time (assuming 1.0 per step, or pass actual delta)
+        self.internal_state.update(delta_time=1.0)  # Assume 1.0 delta_time for simplicity per step
 
-            self.q_learner.update(
-                prev_hunger = prev_hunger,
-                prev_fatigue = prev_fatigue,
-                action = self._last_performed_action,
-                reward = reward_value,
-                next_hunger = current_hunger,
-                next_fatigue = current_fatigue
-            )
+        # Update the simple RewardLearner
+        self.reward_learner.update(previous_internal_state, self.internal_state, action)
 
-        # Store the current event and state in the episodic memory for later recall/analysis.
-        self.episodic_memory.add(
-            step = self.current_time_step,
-            perception = self.perception,
-            state = self.internal_state,
-            action = action
+        # Update Q-table with the experience
+        # Q-learner needs previous state, action taken, reward, and the new state
+        self.q_learner.update(
+            previous_internal_state.hunger, previous_internal_state.fatigue,
+            action,
+            self.last_action_reward,  # Use the reward calculated for this action
+            self.internal_state.hunger, self.internal_state.fatigue
         )
+
+        # Store the episode in episodic memory with emotional weighting
+        self.episodic_memory.add(
+            step=self.current_time_step,  # Use current_time_step
+            perception=self.perception,  # Use the perception from the current step
+            internal_state=previous_internal_state,  # Record state *before* action for episodic clarity
+            action=action,
+            emotions=self.emotion_state  # Pass the current emotion state for weighting
+        )
+        self.current_time_step += 1
 
     def log_status(self):
         """
@@ -196,3 +206,5 @@ class Agent:
         print("Emotions:", self.emotion_state)
         print("Q-table (sample):")
         print(self.q_learner)
+        print("Episodic Memory (sample):")
+        print(self.episodic_memory)
