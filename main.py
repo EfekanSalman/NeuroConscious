@@ -1,6 +1,6 @@
 from core.mood.basic_mood import BasicMoodStrategy
 from agent.base_agent import Agent
-from environment.world import World, GRID_SIZE  # Import GRID_SIZE directly
+from environment.world import World, GRID_SIZE
 import json
 from visualization.action_plot import plot_action_counts
 import random
@@ -9,50 +9,51 @@ import random
 def main():
     # Initialize core components
     mood_strategy = BasicMoodStrategy()
-    world = World()  # Initialize the World (which now has a grid)
+    world = World()  # Start the world (it now has a grid)
 
-    # Initialize Multiple Agents and add to the World
+    # Launch and Add Multiple Agents to the World
     # Agent 1
     agent1 = Agent(name="SimBot-1", mood_strategy=mood_strategy)
-    world.add_agent(agent1, start_pos=(0, 0))  # Place SimBot-1 at (0,0)
+    world.add_agent(agent1, start_pos=(0, 0))
 
     # Agent 2
     agent2 = Agent(name="SimBot-2", mood_strategy=mood_strategy)
-    # Use the imported GRID_SIZE directly
-    world.add_agent(agent2, start_pos=(GRID_SIZE - 1, GRID_SIZE - 1))  # Place SimBot-2 at opposite corner
+    # Place in opposite corner using GRID_SIZE directly
+    world.add_agent(agent2, start_pos=(GRID_SIZE - 1, GRID_SIZE - 1))
 
     # Agent 3
     agent3 = Agent(name="SimBot-3", mood_strategy=mood_strategy)
-    world.add_agent(agent3, start_pos=(0, GRID_SIZE - 1)) # Place SimBot-3 at another corner
+    world.add_agent(agent3, start_pos=(0, GRID_SIZE - 1))
 
-    # Initialize action counter with all possible actions from the Q-learner
+    # Start the action counter with all possible actions from the Q-learner
     action_counter = {action: 0 for action in agent1.q_learner.actions}
 
-    # Plot initial action counts (will be all zeros)
+    # Draw the starting action numbers (all zeros)
     plot_action_counts(action_counter)
 
-    total_steps = 1000  # Total simulation steps
+    total_steps = 1000  # Total number of simulation steps
 
-    print("--- Starting Multi-Agent Simulation ---")
+    print("--- Multi-Agent Simulation Launching ---")
     for step in range(total_steps):
-        # The world's step method now handles updating environment, printing grid,
-        # and iterating through ALL agents' sense, think, act cycle.
+        # The world's step method now includes updating the perimeter, printing the grid
+        # and manages the sensing, thinking, acting cycle of ALL agents.
         world.step()
 
-        # Count action frequency for SimBot-1
+        # Count the action frequency for SimBot-1 (or any agent you want to track)
         if agent1._last_performed_action:
             action_counter[agent1._last_performed_action] += 1
 
-        # Log status every 100 steps for detailed output
+        # Log status for detailed output every 100 steps
         if step % 100 == 0:
-            print(f"\n--- Detailed Status at Step {step} ---")
-            # Agent's log_status now includes its position and local grid view
+            print(f"\n--- Adım {step} Detaylı Durum ---")
+            # Agent's log_status now includes its location and local grid view
+            # You can log the status of all agents if desired:
             # for agent in world.agents:
             #     agent.log_status()
-            agent1.log_status()  # Logging only agent1 for brevity in console output
+            agent1.log_status()  # For brevity in the console output, we only log agent1
 
-    print("\n--- Simulation Complete ---")
-    print("Action Counts for SimBot-1 after", total_steps, "steps:")
+    print("\n--- Simülasyon Tamamlandı ---")
+    print("SimBot-1 için", total_steps, "adımdan sonraki Aksiyon Sayıları:")
     for action, count in action_counter.items():
         print(f"{action}: {count}")
 
@@ -60,25 +61,28 @@ def main():
     try:
         with open("action_counts.json", "w") as f:
             json.dump(action_counter, f, indent=2)
-        print("Action counts saved to action_counts.json")
+        print("Aksiyon sayıları action_counts.json dosyasına kaydedildi.")
     except IOError as e:
-        print(f"Error saving action counts: {e}")
+        print(f"Aksiyon sayıları kaydedilirken hata oluştu: {e}")
 
-    # Dump Q-table of SimBot-1 to JSON
+    # Dump SimBot-1's Q-table to JSON
     try:
+        # Convert 'defaultdict' to a regular dict for JSON serialization
+        # Since q_table contains nested dictionaries, we also need to transform the values
         q_table_serializable = {
             state_key: dict(actions_dict)
             for state_key, actions_dict in agent1.q_learner.q_table.items()
         }
         with open("q_table_simbot1.json", "w") as f:  # Renamed for specific agent
             json.dump(q_table_serializable, f, indent=2)
-        print("Q-table for SimBot-1 saved to q_table_simbot1.json")
+        print("SimBot-1'in Q-tablosu q_table_simbot1.json dosyasına kaydedildi.")
     except IOError as e:
-        print(f"Error saving Q-table: {e}")
+        print(f"Q-tablosu kaydedilirken hata oluştu: {e}")
     except TypeError as e:
-        print(f"Error serializing Q-table to JSON: {e}. Ensure all keys/values are JSON-serializable.")
+        print(
+            f"Q-tablosu JSON'a serileştirilirken hata oluştu: {e}. Tüm anahtarların/değerlerin JSON-serileştirilebilir olduğundan emin olun.")
 
-    # Plot final action counts
+    # Draw the last action numbers
     plot_action_counts(action_counter)
 
 
