@@ -15,7 +15,8 @@ class Agent:
 
     This class encapsulates the agent's internal state, motivation, perception,
     memory, and learning capabilities, allowing it to interact with an
-    environment and make decisions. It now operates within a grid-based world.
+    environment and make decisions. It now operates within a grid-based world
+    and can perceive other agents, with its episodic memory beginning to influence behavior.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy):
@@ -33,12 +34,13 @@ class Agent:
         # Motivation engine that drives action selection based on internal needs and emotions.
         self.motivation_engine: BasicMotivationEngine = BasicMotivationEngine(agent=self)
 
-        # Perceptual data about the environment, including local grid view.
+        # Perceptual data about the environment, including local grid view and other agents.
         self.perception: dict = {
             "food_available_global": False,  # Global flag from World
             "time_of_day": "day",
             "local_grid_view": [],  # Agent's view of its immediate surroundings
-            "food_in_sight": False  # Whether food is in agent's local view
+            "food_in_sight": False,  # Whether food is in agent's local view
+            "other_agents_in_sight": []  # List of (agent_name, pos_x, pos_y) of other agents in local view
         }
         # Short-term and context-specific memory.
         self.short_term_memory: dict = {
@@ -60,6 +62,7 @@ class Agent:
         # Snapshot of the agent's state before an action, used for learning.
         self._previous_state_snapshot = None
         # Q-learning component for action selection based on states.
+        # Added 'move_up', 'move_down', 'move_left', 'move_right' to actions
         self.q_learner: QTableLearner = QTableLearner(actions=["seek_food", "rest", "explore",
                                                                "move_up", "move_down", "move_left", "move_right"])
         # Physiological state values (hunger, fatigue) before the last action, for reward calculation.
@@ -88,7 +91,8 @@ class Agent:
         Updates the agent's perceptions based on the current environment state and local grid view.
 
         This method reads global information (food availability, time of day) from the World
-        and also scans the immediate surroundings (e.g., 1-cell radius) on the grid for items like food.
+        and also scans the immediate surroundings (e.g., 1-cell radius) on the grid for items like food
+        and other agents.
         """
         if self.environment:
             # Global perceptions
@@ -97,16 +101,40 @@ class Agent:
             self.current_time_step = self.environment.time_step
 
             # Local grid perception (e.g., 1-cell radius around the agent)
+            # This returns the raw grid view, not yet processed for other agents.
             self.perception["local_grid_view"] = self._get_local_grid_view(radius=1)
 
             # Check for food in local view
             self.perception["food_in_sight"] = False
-            for row in self.perception["local_grid_view"]:
-                if 'food' in row:
+            for row_content in self.perception["local_grid_view"]:
+                if 'food' in row_content:
                     self.perception["food_in_sight"] = True
                     break
 
-            # Records the last time food was perceived as available (either globally or locally).
+            # Check for other agents in local view
+            self.perception["other_agents_in_sight"] = []
+            grid_size = len(self.environment.grid)  # Assuming square grid
+            radius = 1  # Using the same radius as _get_local_grid_view
+
+            for r_offset in range(-radius, radius + 1):
+                for c_offset in range(-radius, radius + 1):
+                    view_row, view_col = self.pos_x + r_offset, self.pos_y + c_offset
+
+                    # Skip self position
+                    if view_row == self.pos_x and view_col == self.pos_y:
+                        continue
+
+                    if 0 <= view_row < grid_size and 0 <= view_col < grid_size:
+                        # Iterate through all agents in the world to see if any are at this cell
+                        for other_agent in self.environment.agents:
+                            if other_agent is not self and other_agent.pos_x == view_row and other_agent.pos_y == view_col:
+                                self.perception["other_agents_in_sight"].append(
+                                    {"name": other_agent.name, "pos_x": other_agent.pos_x, "pos_y": other_agent.pos_y}
+                                )
+                                # Break inner loop once an agent is found at this cell to avoid duplicates
+                                break
+
+                                # Records the last time food was perceived as available (either globally or locally).
             if self.perception["food_available_global"] or self.perception["food_in_sight"]:
                 self.short_term_memory["food_last_seen"] = self.current_time_step
 
@@ -120,6 +148,8 @@ class Agent:
         Returns:
             List[List[str]]: A 2D list representing the agent's local view of the grid.
                              Cells outside the grid boundaries will be represented as 'boundary'.
+                             Note: This view primarily shows static elements like 'food' or 'empty'.
+                                   For other agents, 'other_agents_in_sight' in perception should be used.
         """
         view = []
         grid_size = len(self.environment.grid)  # Assuming square grid
@@ -138,10 +168,10 @@ class Agent:
     def think(self) -> str:
         """
         Determines the agent's next action based on its internal state, emotions,
-        and learning algorithms.
+        learning algorithms, and now, the presence of other agents and memory recall.
 
         The thinking process involves updating physiological states, emotional states,
-        and then using a combination of motivation and Q-learning to select an action.
+        and then using a combination of motivation, Q-learning, and memory to select an action.
 
         Returns:
             str: The chosen action (e.g., "seek_food", "rest", "explore", "move_up", etc.).
@@ -164,11 +194,60 @@ class Agent:
             emotions=self.emotion_state
         )
 
-        # 5. Q-learner selects an action.
+        # 5. Q-learner selects an action (primary decision maker for now).
         selected_action = self.q_learner.choose_action(
             hunger=self.internal_state.hunger,
             fatigue=self.internal_state.fatigue
         )
+
+        # Memory Influence on Decision (New Logic)
+        # Recall relevant memories based on current needs/emotions.
+        # when hunger/fatigue is high, and see if past experiences were positive.
+        recalled_actions_for_hunger = []
+        recalled_actions_for_fatigue = []
+
+        # Iterate through episodic memory to find relevant past actions
+        for episode in self.episodic_memory.get_memory():
+            # Check if the recalled episode is recent enough or emotionally significant
+            is_recent_or_impactful = (self.current_time_step - episode['step'] <= 5) or \
+                                     (episode['emotional_weight'] > 0.7)  # High emotional weight
+
+            if is_recent_or_impactful:
+                # If the agent was hungry in that past state and took 'seek_food'
+                if episode['state']['hunger'] > 0.6 and episode['action'] == 'seek_food':
+                    recalled_actions_for_hunger.append(episode)
+                # If the agent was fatigued in that past state and took 'rest'
+                if episode['state']['fatigue'] > 0.6 and episode['action'] == 'rest':
+                    recalled_actions_for_fatigue.append(episode)
+
+        # Simple decision modification based on recalled memories
+        if self.internal_state.hunger > 0.6 and recalled_actions_for_hunger:
+            # Check if seeking food was generally successful in recalled episodes
+            successful_food_seeking_count = sum(1 for ep in recalled_actions_for_hunger if
+                                                ep['state']['hunger'] > self.internal_state.hunger)  # Hunger reduced
+
+            if successful_food_seeking_count > len(recalled_actions_for_hunger) / 2:  # More than half were successful
+                if selected_action != "seek_food":
+                    print(f"{self.name} recalls successful food seeking. Overriding to 'seek_food'.")
+                    selected_action = "seek_food"  # Prioritize seeking food based on positive memory
+
+        elif self.internal_state.fatigue > 0.6 and recalled_actions_for_fatigue:
+            # Check if resting was generally successful in recalled episodes
+            successful_rest_count = sum(1 for ep in recalled_actions_for_fatigue if
+                                        ep['state']['fatigue'] > self.internal_state.fatigue)  # Fatigue reduced
+
+            if successful_rest_count > len(recalled_actions_for_fatigue) / 2:  # More than half were successful
+                if selected_action != "rest":
+                    print(f"{self.name} recalls successful resting. Overriding to 'rest'.")
+                    selected_action = "rest"  # Prioritize resting based on positive memory
+
+        # Simple decision modification based on other agents
+        if self.perception["other_agents_in_sight"] and self.internal_state.hunger > 0.5:
+            #  If other agent is also hungry, maybe compete or cooperate.
+            #  If other agent is a 'threat', maybe move away.
+            if selected_action == "explore":  # If Q-learner chose explore, but hungry and sees others
+                print(f"{self.name} sees other agents and is hungry. Prioritizing seeking food over exploring.")
+                selected_action = "seek_food"  # Override to seek food
 
         self._last_performed_action = selected_action
         return selected_action
@@ -188,7 +267,7 @@ class Agent:
         previous_internal_state = self.internal_state.snapshot()
         original_pos_x, original_pos_y = self.pos_x, self.pos_y  # Store original position
 
-        #  Perform the selected action and implement its effects
+        # Perform the selected action and implement its effects
         if action == "seek_food":
             # Check if there's food at the agent's current location
             if self.environment.grid[self.pos_x][self.pos_y] == 'food':
@@ -284,8 +363,15 @@ class Agent:
         print("Local Perception (3x3 view):")
         # Print local grid view for debugging
         if self.perception["local_grid_view"]:
-            for row in self.perception["local_grid_view"]:
-                print(" ".join(row))
+            for row_content in self.perception["local_grid_view"]:
+                print(" ".join(row_content))
         else:
             print("No local view available (sense() not called or environment not set).")
+
+        if self.perception["other_agents_in_sight"]:
+            print("Other agents in sight:")
+            for agent_info in self.perception["other_agents_in_sight"]:
+                print(f"  - {agent_info['name']} at ({agent_info['pos_x']},{agent_info['pos_y']})")
+        else:
+            print("No other agents in sight.")
 
