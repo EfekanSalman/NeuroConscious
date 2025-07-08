@@ -1,5 +1,3 @@
-# core/learning/q_table_learner.py
-
 import random
 from collections import defaultdict
 from typing import List, Dict
