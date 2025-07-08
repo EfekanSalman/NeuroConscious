@@ -1,5 +1,8 @@
+# core/learning/q_table_learner.py
+
 import random
 from collections import defaultdict
+from typing import List, Dict
 
 class QTableLearner:
     """
@@ -8,28 +11,35 @@ class QTableLearner:
     Q-learning is a model-free reinforcement learning algorithm to learn a policy
     telling an agent what action to take under what circumstances. It uses a Q-table
     to store the 'quality' (expected utility) of taking a given action in a given state.
+    This version includes epsilon decay for adaptive exploration.
     """
-    def __init__(self, actions: list[str], alpha: float = 0.1, gamma: float = 0.9, epsilon: float = 0.2):
+    def __init__(self, actions: List[str], alpha: float = 0.1, gamma: float = 0.9,
+                 epsilon: float = 1.0, epsilon_min: float = 0.01, epsilon_decay_rate: float = 0.995):
         """
         Initializes the QTableLearner.
 
         Args:
-            actions (list[str]): A list of possible actions the agent can take (e.g., ["seek_food", "rest"]).
+            actions (List[str]): A list of possible actions the agent can take (e.g., ["seek_food", "rest"]).
             alpha (float, optional): The learning rate (alpha). Controls how much new information
                                      overrides old information. Defaults to 0.1.
             gamma (float, optional): The discount factor (gamma). Determines the importance of
                                      future rewards. Defaults to 0.9.
-            epsilon (float, optional): The exploration rate (epsilon). The probability of
+            epsilon (float, optional): The initial exploration rate (epsilon). The probability of
                                        the agent choosing a random action (exploration) instead of
-                                       the best known action (exploitation). Defaults to 0.2.
+                                       the best known action (exploitation). Defaults to 1.0 (start with full exploration).
+            epsilon_min (float, optional): The minimum value epsilon can decay to. Defaults to 0.01.
+            epsilon_decay_rate (float, optional): The rate at which epsilon decays after each update.
+                                                  Defaults to 0.995 (epsilon * 0.995).
         """
-        # The Q-table stores Q-values for state-action pairs.
+        # Q-table stores Q-values for state-action pairs.
         # defaultdict is used so that new states are initialized with all actions having Q-value 0.0.
-        self.q_table: defaultdict[str, dict[str, float]] = defaultdict(lambda: {action: 0.0 for action in actions})
+        self.q_table: defaultdict[str, Dict[str, float]] = defaultdict(lambda: {action: 0.0 for action in actions})
         self.alpha: float = alpha       # Learning rate
         self.gamma: float = gamma       # Discount factor for future rewards
-        self.epsilon: float = epsilon   # Exploration-exploitation trade-off parameter
-        self.actions: list[str] = actions # List of all possible actions
+        self.epsilon: float = epsilon   # Current exploration rate
+        self.epsilon_min: float = epsilon_min # Minimum exploration rate
+        self.epsilon_decay_rate: float = epsilon_decay_rate # Rate at which epsilon decreases
+        self.actions: List[str] = actions # List of all possible actions
 
     def get_state_key(self, hunger: float, fatigue: float) -> str:
         """
@@ -72,11 +82,13 @@ class QTableLearner:
         else:
             # Exploitation: Choose the action with the maximum Q-value for the current state.
             # `self.q_table[state_key]` returns the dictionary of Q-values for that state.
+            # If all Q-values are 0.0 (e.g., new state), max() will pick one arbitrarily.
             return max(self.q_table[state_key], key=self.q_table[state_key].get)
 
     def update(self, prev_hunger: float, prev_fatigue: float, action: str, reward: float, next_hunger: float, next_fatigue: float):
         """
         Updates the Q-value for a given state-action pair using the Q-learning formula.
+        Also applies epsilon decay after the update.
 
         The Q-value represents the expected cumulative reward for taking a specific action
         in a given state and following the optimal policy thereafter.
@@ -93,6 +105,7 @@ class QTableLearner:
         next_state_key = self.get_state_key(next_hunger, next_fatigue)
 
         # Get the maximum Q-value for the next state (representing the best future action).
+        # If the next_state_key is new, self.q_table[next_state_key] will initialize with 0.0s.
         max_future_q = max(self.q_table[next_state_key].values())
         # Get the current Q-value for the previous state and action.
         old_q = self.q_table[prev_state_key][action]
@@ -101,6 +114,10 @@ class QTableLearner:
         # New Q-value = Old Q-value + learning_rate * (Reward + discount_factor * Max_Future_Q - Old Q-value)
         new_q = old_q + self.alpha * (reward + self.gamma * max_future_q - old_q)
         self.q_table[prev_state_key][action] = new_q
+
+        # Apply epsilon decay
+        # Decrease epsilon, but ensure it doesn't fall below epsilon_min.
+        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay_rate)
 
     def __str__(self) -> str:
         """
@@ -112,4 +129,6 @@ class QTableLearner:
             str: A formatted string showing the first few entries of the Q-table.
         """
         # Display only the first 5 entries of the Q-table for brevity.
-        return f"Q-table (sample): {dict(list(self.q_table.items())[:5])}"
+        # Also show the current epsilon value.
+        return f"Q-table (sample): {dict(list(self.q_table.items())[:5])}, Epsilon: {self.epsilon:.3f}"
+
