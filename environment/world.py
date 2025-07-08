@@ -2,30 +2,36 @@ import random
 from typing import List
 from agent.base_agent import Agent
 
-# World Configuration Constants
+# --- World Configuration Constants ---
 GRID_SIZE = 10 # The world will be a 10x10 grid
 FOOD_SPAWN_CHANCE = 0.1 # Chance for food to appear in an empty cell per update
 MAX_FOOD_ITEMS = 5 # Maximum number of food items that can exist on the grid at once
+
+# Weather related constants
+WEATHER_TYPES = ["sunny", "cloudy", "rainy", "stormy"]
+WEATHER_CHANGE_CHANCE = 0.2 # 20% chance for weather to change at each step
+WEATHER_CYCLE_LENGTH = 20 # How many steps before a weather type tends to cycle (optional, for more structured changes)
 
 class World:
     """
     Represents the simulated environment in which agents exist and interact.
 
     The World class manages a grid-based map, global time step, environmental conditions
-    (like food availability and time of day), and orchestrates the actions of all
+    (like food availability, time of day, and weather), and orchestrates the actions of all
     agents within it. It serves as the central hub for the NeuroConscious simulation.
     """
     def __init__(self):
         """
-        Initializes the World environment with a grid map.
+        Initializes the World environment with a grid map and initial weather.
 
         Sets up an empty list for agents, initializes the time step, and
-        establishes initial environmental conditions including the grid map.
+        establishes initial environmental conditions including the grid map and weather.
         """
         self.agents: List[Agent] = []       # A list to hold all agents participating in this world.
         self.time_step: int = 0             # The current simulation time step.
         self.food_available: bool = False   # Flag indicating if food is currently available anywhere on the grid.
         self.time_of_day: str = "day"       # Current time of day, either "day" or "night".
+        self.current_weather: str = random.choice(WEATHER_TYPES) # Initial random weather
 
         # Initialize the grid map
         # 'grid' will be a 2D list representing the world.
@@ -66,7 +72,7 @@ class World:
             if 0 <= row < GRID_SIZE and 0 <= col < GRID_SIZE and self.grid[row][col] == 'empty':
                 agent.pos_x = row
                 agent.pos_y = col
-                # self.grid[row][col] = 'agent'
+                # self.grid[row][col] = 'agent' # Optional: Mark agent's position on grid
             else:
                 print(f"Warning: Invalid or occupied start position {start_pos} for agent {agent.name}. Placing randomly.")
                 self._place_agent_randomly(agent)
@@ -91,7 +97,7 @@ class World:
     def update_environment(self):
         """
         Updates the environmental conditions for the current time step,
-        including food regeneration and day/night cycle.
+        including food regeneration, day/night cycle, and weather changes.
         """
         # Regenerate food in empty cells with a certain chance, up to MAX_FOOD_ITEMS
         current_food_count = sum(row.count('food') for row in self.grid)
@@ -116,6 +122,11 @@ class World:
         else:
             self.time_of_day = "night"
 
+        # Simulate weather changes
+        # There's a WEATHER_CHANGE_CHANCE at each step for the weather to change randomly.
+        if random.random() < WEATHER_CHANGE_CHANCE:
+            self.current_weather = random.choice(WEATHER_TYPES)
+
     def step(self):
         """
         Executes a single simulation step.
@@ -124,9 +135,9 @@ class World:
         in the world perceives its surroundings, thinks (decides an action),
         and acts upon that decision. Agent status is logged before actions.
         """
-        self.update_environment() # Update global conditions like food and time of day.
+        self.update_environment() # Update global conditions like food, time of day, and weather.
         # Log the current time step and environmental conditions.
-        print(f"\n=== Time Step {self.time_step} | Food: {self.food_available} | Time: {self.time_of_day} ===")
+        print(f"\n=== Time Step {self.time_step} | Food: {self.food_available} | Time: {self.time_of_day} | Weather: {self.current_weather} ===")
         self.print_grid()
 
         for agent in self.agents:
@@ -163,7 +174,7 @@ class World:
             for c in range(GRID_SIZE):
                 if self.grid[r][c] == 'food':
                     display_grid[r][c] = 'F'
-                # Add other elements like obstacles if you define them later
+                # Add other elements like obstacles them later
                 # elif self.grid[r][c] == 'obstacle':
                 #     display_grid[r][c] = '#'
 

@@ -1,3 +1,4 @@
+import random
 from core.state import InternalState
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
@@ -16,7 +17,8 @@ class Agent:
     This class encapsulates the agent's internal state, motivation, perception,
     memory, and learning capabilities, allowing it to interact with an
     environment and make decisions. It now operates within a grid-based world
-    and can perceive other agents, with its episodic memory beginning to influence behavior.
+    and can perceive other agents, with its episodic memory beginning to influence behavior,
+    and can also perceive and react to weather conditions.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy):
@@ -34,10 +36,11 @@ class Agent:
         # Motivation engine that drives action selection based on internal needs and emotions.
         self.motivation_engine: BasicMotivationEngine = BasicMotivationEngine(agent=self)
 
-        # Perceptual data about the environment, including local grid view and other agents.
+        # Perceptual data about the environment, including local grid view, other agents, and weather.
         self.perception: dict = {
             "food_available_global": False,  # Global flag from World
             "time_of_day": "day",
+            "current_weather": "sunny",  # New: Current weather condition
             "local_grid_view": [],  # Agent's view of its immediate surroundings
             "food_in_sight": False,  # Whether food is in agent's local view
             "other_agents_in_sight": []  # List of (agent_name, pos_x, pos_y) of other agents in local view
@@ -90,7 +93,7 @@ class Agent:
         """
         Updates the agent's perceptions based on the current environment state and local grid view.
 
-        This method reads global information (food availability, time of day) from the World
+        This method reads global information (food availability, time of day, weather) from the World
         and also scans the immediate surroundings (e.g., 1-cell radius) on the grid for items like food
         and other agents.
         """
@@ -98,6 +101,7 @@ class Agent:
             # Global perceptions
             self.perception["food_available_global"] = self.environment.food_available
             self.perception["time_of_day"] = self.environment.time_of_day
+            self.perception["current_weather"] = self.environment.current_weather  # New: Get current weather
             self.current_time_step = self.environment.time_step
 
             # Local grid perception (e.g., 1-cell radius around the agent)
@@ -117,7 +121,7 @@ class Agent:
             radius = 1  # Using the same radius as _get_local_grid_view
 
             for r_offset in range(-radius, radius + 1):
-                for c_offset in range(-radius, radius + 1):
+                for c_offset in range(-radius, radius + 0):  # Changed to radius + 0 to match 3x3 view
                     view_row, view_col = self.pos_x + r_offset, self.pos_y + c_offset
 
                     # Skip self position
@@ -168,7 +172,8 @@ class Agent:
     def think(self) -> str:
         """
         Determines the agent's next action based on its internal state, emotions,
-        learning algorithms, and now, the presence of other agents and memory recall.
+        learning algorithms, and now, the presence of other agents, memory recall,
+        and weather conditions.
 
         The thinking process involves updating physiological states, emotional states,
         and then using a combination of motivation, Q-learning, and memory to select an action.
@@ -200,15 +205,11 @@ class Agent:
             fatigue=self.internal_state.fatigue
         )
 
-        # Memory Influence on Decision (New Logic)
-        # Recall relevant memories based on current needs/emotions.
-        # when hunger/fatigue is high, and see if past experiences were positive.
+        # Memory Influence on Decision
         recalled_actions_for_hunger = []
         recalled_actions_for_fatigue = []
 
-        # Iterate through episodic memory to find relevant past actions
         for episode in self.episodic_memory.get_memory():
-            # Check if the recalled episode is recent enough or emotionally significant
             is_recent_or_impactful = (self.current_time_step - episode['step'] <= 5) or \
                                      (episode['emotional_weight'] > 0.7)  # High emotional weight
 
@@ -243,11 +244,26 @@ class Agent:
 
         # Simple decision modification based on other agents
         if self.perception["other_agents_in_sight"] and self.internal_state.hunger > 0.5:
-            #  If other agent is also hungry, maybe compete or cooperate.
-            #  If other agent is a 'threat', maybe move away.
             if selected_action == "explore":  # If Q-learner chose explore, but hungry and sees others
                 print(f"{self.name} sees other agents and is hungry. Prioritizing seeking food over exploring.")
                 selected_action = "seek_food"  # Override to seek food
+
+        # Weather Influence on Decision
+        current_weather = self.perception["current_weather"]
+        if current_weather == "stormy":
+            # In stormy weather, prioritize resting or seeking shelter (if shelter action existed)
+            # and discourage exploration or long movements.
+            if selected_action == "explore" or selected_action.startswith("move_"):
+                print(f"{self.name} detects stormy weather. Prioritizing rest over movement/exploration.")
+                selected_action = "rest"
+            # Optionally, increase fatigue faster in stormy weather in internal_state.update()
+            # or modify reward for certain actions.
+        elif current_weather == "rainy":
+            # In rainy weather, maybe slightly increase fatigue or reduce exploration reward
+            if selected_action == "explore":
+                if random.random() < 0.5:  # 50% chance to reconsider exploration
+                    print(f"{self.name} detects rainy weather. Might reconsider exploration.")
+                    selected_action = "rest" if self.internal_state.fatigue < 0.8 else "seek_food"  # Fallback to needs
 
         self._last_performed_action = selected_action
         return selected_action
@@ -374,4 +390,6 @@ class Agent:
                 print(f"  - {agent_info['name']} at ({agent_info['pos_x']},{agent_info['pos_y']})")
         else:
             print("No other agents in sight.")
+
+        print(f"Current Weather: {self.perception['current_weather']}")
 
