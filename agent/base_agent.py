@@ -1,14 +1,18 @@
+# agent/base_agent.py
+
+# Ensure all necessary imports are at the top of your file:
 import random
-from collections import defaultdict
+from collections import defaultdict, deque  # Added: Import deque for working memory
 from core.state import InternalState
+from core.motivation.motivation import MotivationEngine  # Or BasicMotivationEngine if you're using that directly
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
 from core.learning.reward_learner import RewardLearner
 from core.learning.q_table_learner import QTableLearner
 from core.emotion.emotion_state import EmotionState
 from core.emotion.basic_emotion import BasicEmotionStrategy
-from core.motivation.basic_motivation import BasicMotivationEngine
-from typing import List, Tuple, Dict  # For type hinting grid coordinates and Dict
+from core.motivation.basic_motivation import BasicMotivationEngine  # If you're using this one
+from typing import List, Tuple, Dict
 
 
 class Agent:
@@ -21,7 +25,9 @@ class Agent:
     and can perceive other agents, with its episodic memory beginning to influence behavior,
     and can also perceive and react to weather conditions. This version also
     introduces sensory noise, making perception imperfect, and incorporates
-    curiosity-driven exploration, along with a basic goal system.
+    curiosity-driven exploration, along with a basic goal system, and
+    integrates mood-based reward adjustment, a working memory buffer, and
+    a basic attention system.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
@@ -71,6 +77,7 @@ class Agent:
         # Snapshot of the agent's state before an action, used for learning.
         self._previous_state_snapshot = None
         # Q-learning component for action selection based on states.
+        # Added 'move_up', 'move_down', 'move_left', 'move_right' to actions
         self.q_learner: QTableLearner = QTableLearner(actions=["seek_food", "rest", "explore",
                                                                "move_up", "move_down", "move_left", "move_right"])
         # Physiological state values (hunger, fatigue) before the last action, for reward calculation.
@@ -85,17 +92,27 @@ class Agent:
         # Strategy for updating the agent's emotions.
         self.emotion_strategy: BasicEmotionStrategy = BasicEmotionStrategy(self.emotion_state)
 
-        # Perception accuracy for sensory noise
+        # New: Perception accuracy for sensory noise
         self.perception_accuracy: float = perception_accuracy
 
-        # Track visited states for curiosity
+        # New: Track visited states for curiosity
         self.visited_states: Dict[str, int] = defaultdict(int)  # Counts how many times a state has been visited
 
-        # Basic Goal System:
+        # New: Basic Goal System
         # Goals can be represented as dictionaries: {"type": "reach_location", "target_x": 5, "target_y": 5, "priority": 0.8, "completed": False}
         # Or {"type": "maintain_hunger", "threshold": 0.3, "duration": 10, "current_duration": 0, "priority": 0.6}
         self.active_goals: List[Dict] = []
         self._initialize_goals()  # Add some initial goals
+
+        # New: Working Memory Buffer
+        # Stores recent important perceptions or thoughts for short-term recall.
+        # Max length of 5 items, oldest items are discarded when new ones are added.
+        self.working_memory_buffer: deque = deque(maxlen=5)
+
+        # New: Attention System
+        # What the agent is currently focusing its attention on.
+        # Can be 'food', 'other_agents', 'curiosity', 'goal', or None (default/diffuse attention).
+        self.attention_focus: str = None
 
     def _initialize_goals(self):
         """
@@ -139,6 +156,8 @@ class Agent:
         This method reads global information (food availability, time of day, weather) from the World
         and also scans the immediate surroundings (e.g., 1-cell radius) on the grid for items like food
         and other agents. Sensory noise is now applied, meaning perceptions might be imperfect.
+        Important perceptions are also added to the working memory buffer.
+        An attention system can modify perception accuracy for specific stimuli.
         """
         if self.environment:
             # Global perceptions
@@ -151,21 +170,35 @@ class Agent:
             # This returns the raw grid view, not yet processed for other agents.
             raw_local_grid_view = self._get_local_grid_view(radius=1)
 
-            # Apply sensory noise to local grid view
+            # Apply sensory noise to local grid view with attention modulation
             self.perception["local_grid_view"] = []
             self.perception["food_in_sight"] = False
-            for row_content in raw_local_grid_view:
+            for r_idx, row_content in enumerate(raw_local_grid_view):
                 processed_row = []
-                for cell_content in row_content:
-                    if random.random() < self.perception_accuracy:
+                for c_idx, cell_content in enumerate(row_content):
+                    # Adjust perception accuracy based on attention focus
+                    current_perception_accuracy = self.perception_accuracy
+                    if self.attention_focus == 'food' and cell_content == 'food':
+                        current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)  # Boost food perception
+                    elif self.attention_focus == 'other_agents' and cell_content == 'agent':  # Assuming 'agent' placeholder for other agents
+                        current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)  # Boost agent perception
+                    # You can add more rules for other attention focuses
+
+                    if random.random() < current_perception_accuracy:
                         processed_row.append(cell_content)  # Perceive correctly
                         if cell_content == 'food':
                             self.perception["food_in_sight"] = True
+                            # Add perceived food location to working memory
+                            # Calculate absolute grid coordinates for the food item
+                            abs_r = self.pos_x + (r_idx - 1)  # r_idx 0,1,2 maps to offset -1,0,1
+                            abs_c = self.pos_y + (c_idx - 1)
+                            self.working_memory_buffer.append(
+                                {"type": "perceived_food", "location": (abs_r, abs_c), "time": self.current_time_step})
                     else:
                         processed_row.append('unknown')  # Perceive incorrectly (noise/occlusion)
                 self.perception["local_grid_view"].append(processed_row)
 
-            # Check for other agents in local view (also apply noise)
+            # Check for other agents in local view (also apply noise with attention modulation)
             self.perception["other_agents_in_sight"] = []
             grid_size = len(self.environment.grid)  # Assuming square grid
             radius = 1  # Using the same radius as _get_local_grid_view
@@ -179,15 +212,23 @@ class Agent:
                         continue
 
                     if 0 <= view_row < grid_size and 0 <= view_col < grid_size:
+                        # Adjust perception accuracy for other agents based on attention focus
+                        current_agent_perception_accuracy = self.perception_accuracy
+                        if self.attention_focus == 'other_agents':
+                            current_agent_perception_accuracy = min(1.0,
+                                                                    self.perception_accuracy + 0.2)  # Boost agent perception
+
                         # Apply noise to perception of other agents
-                        if random.random() < self.perception_accuracy:
+                        if random.random() < current_agent_perception_accuracy:
                             # Iterate through all agents in the world to see if any are at this cell
                             for other_agent in self.environment.agents:
                                 if other_agent is not self and other_agent.pos_x == view_row and other_agent.pos_y == view_col:
-                                    self.perception["other_agents_in_sight"].append(
-                                        {"name": other_agent.name, "pos_x": other_agent.pos_x,
-                                         "pos_y": other_agent.pos_y}
-                                    )
+                                    agent_info = {"name": other_agent.name, "pos_x": other_agent.pos_x,
+                                                  "pos_y": other_agent.pos_y}
+                                    self.perception["other_agents_in_sight"].append(agent_info)
+                                    # Add perceived other agent to working memory
+                                    self.working_memory_buffer.append(
+                                        {"type": "perceived_agent", "info": agent_info, "time": self.current_time_step})
                                     # Break inner loop once an agent is found at this cell to avoid duplicates
                                     break
                                     # Else: agent fails to perceive the other agent due to noise/occlusion
@@ -217,6 +258,7 @@ class Agent:
             for c_offset in range(-radius, radius + 1):
                 view_row, view_col = self.pos_x + r_offset, self.pos_y + c_offset
                 if 0 <= view_row < grid_size and 0 <= view_col < grid_size:
+                    # FIX: Corrected the index from 'cell_content' to 'view_col'
                     row_view.append(self.environment.grid[view_row][view_col])
                 else:
                     row_view.append('boundary')  # Mark cells outside the grid
@@ -227,7 +269,8 @@ class Agent:
         """
         Determines the agent's next action based on its internal state, emotions,
         learning algorithms, and now, the presence of other agents, memory recall,
-        weather conditions, curiosity for exploration, and active goals.
+        weather conditions, curiosity for exploration, active goals, working memory,
+        and current attention focus.
 
         The thinking process involves updating physiological states, emotional states,
         and then using a combination of motivation, Q-learning, and memory to select an action.
@@ -252,6 +295,35 @@ class Agent:
             memory=self.short_term_memory,
             emotions=self.emotion_state
         )
+
+        # --- Set Attention Focus (New Logic) ---
+        # Prioritize attention based on most pressing needs or active goals
+        if self.internal_state.hunger > 0.7:
+            self.attention_focus = 'food'
+            print(f"{self.name} is very hungry, focusing attention on food.")
+        elif self.internal_state.fatigue > 0.7:
+            self.attention_focus = 'rest'  # Could be 'shelter' or 'safe_spot' if those existed
+            print(f"{self.name} is very fatigued, focusing attention on rest.")
+        elif self.emotion_state.get("curiosity") > 0.6 and not self.active_goals:
+            self.attention_focus = 'curiosity'
+            print(f"{self.name} is very curious, focusing attention on exploration.")
+        elif any(not goal["completed"] for goal in self.active_goals):
+            # If there are active goals, focus on the highest priority uncompleted goal
+            uncompleted_goals = [g for g in self.active_goals if not g["completed"]]
+            if uncompleted_goals:
+                highest_priority_goal = max(uncompleted_goals, key=lambda g: g["priority"])
+                if highest_priority_goal["type"] == "reach_location":
+                    self.attention_focus = 'location_target'  # Specific focus for location goals
+                    print(f"{self.name} focusing attention on goal: {highest_priority_goal['name']}.")
+                elif highest_priority_goal["type"] == "maintain_hunger_low":
+                    self.attention_focus = 'food'  # Focus on food to maintain hunger
+                    print(f"{self.name} focusing attention on goal: {highest_priority_goal['name']}.")
+                else:
+                    self.attention_focus = None  # Default if goal type not specifically handled
+            else:
+                self.attention_focus = None
+        else:
+            self.attention_focus = None  # Default/diffuse attention
 
         # 5. Q-learner selects an action (primary decision maker for now).
         selected_action = self.q_learner.choose_action(
@@ -351,7 +423,7 @@ class Agent:
             elif selected_action == "explore":
                 print(f"{self.name} is already exploring and curious.")
 
-        # --- Goal System Influence (New Logic) ---
+        # --- Goal System Influence ---
         # Iterate through active goals and potentially modify the selected action
         for goal in self.active_goals:
             if goal["completed"]:
@@ -402,6 +474,33 @@ class Agent:
                         selected_action = "seek_food"
                 else:
                     goal["current_duration"] = 0  # Reset if hunger goes above threshold
+
+        # --- Working Memory Influence ---
+        # Example: If working memory contains a recent food location and agent is hungry,
+        # prioritize moving towards that food.
+        if self.internal_state.hunger > 0.6:  # If agent is hungry
+            for item in reversed(self.working_memory_buffer):  # Check most recent items first
+                if item["type"] == "perceived_food" and \
+                        self.current_time_step - item["time"] <= 3:  # If food was seen recently (e.g., within 3 steps)
+                    food_x, food_y = item["location"]
+                    # If food is not at current location and not already moving towards it
+                    if (self.pos_x, self.pos_y) != (food_x, food_y) and \
+                            not selected_action.startswith("move_"):  # Avoid overriding an existing move
+
+                        print(
+                            f"{self.name} recalls food at {food_x},{food_y} from working memory. Prioritizing movement.")
+                        # Simple movement logic towards recalled food
+                        if abs(self.pos_x - food_x) > abs(self.pos_y - food_y):
+                            if self.pos_x < food_x:
+                                selected_action = "move_down"
+                            else:
+                                selected_action = "move_up"
+                        else:
+                            if self.pos_y < food_y:
+                                selected_action = "move_right"
+                            else:
+                                selected_action = "move_left"
+                        break  # Prioritize this recalled food location
 
         self._last_performed_action = selected_action
         return selected_action
@@ -465,6 +564,7 @@ class Agent:
             grid_size = len(self.environment.grid)
             if 0 <= new_pos_x < grid_size and 0 <= new_pos_y < grid_size:
                 # For simplicity, agents can move into any cell (empty or food).
+                # You could add obstacle checks here later.
                 self.pos_x, self.pos_y = new_pos_x, new_pos_y
                 self.last_action_reward = -0.01  # Small cost for movement
                 print(f"{self.name} moved {action.replace('move_', '')} to ({self.pos_x},{self.pos_y}).")
@@ -481,13 +581,22 @@ class Agent:
         self.internal_state.update(delta_time=1.0)
 
         # Update the simple RewardLearner
-        self.reward_learner.update(previous_internal_state, self.internal_state, action)
+        # Pass the mood_value to the reward learner to adjust the reward
+        adjusted_reward = self.reward_learner.update(
+            previous_internal_state,
+            self.internal_state,
+            action,
+            self.last_action_reward,  # Pass the raw reward
+            self.internal_state.mood_value  # Pass the current mood value
+        )
+        # Update the agent's last_action_reward with the adjusted value
+        self.last_action_reward = adjusted_reward
 
-        # Update Q-table with the experience
+        # Update Q-table with the experience using the adjusted reward
         self.q_learner.update(
             previous_internal_state.hunger, previous_internal_state.fatigue,
             action,
-            self.last_action_reward,
+            self.last_action_reward,  # Use the adjusted reward here
             self.internal_state.hunger, self.internal_state.fatigue
         )
 
@@ -545,3 +654,15 @@ class Agent:
                         f"  - {goal['name']}: {status}, Threshold: {goal['threshold']:.2f}, Duration: {goal['current_duration']}/{goal['duration_steps']}, Priority: {goal['priority']:.2f}")
         else:
             print("No active goals.")
+
+        # Log working memory content
+        if self.working_memory_buffer:
+            print("Working Memory:")
+            for item in self.working_memory_buffer:
+                print(f"  - Type: {item['type']}, Time: {item['time']}")
+                if item['type'] == 'perceived_food':
+                    print(f"    Location: {item['location']}")
+                elif item['type'] == 'perceived_agent':
+                    print(f"    Agent: {item['info']['name']} at ({item['info']['pos_x']},{item['info']['pos_y']})")
+        else:
+            print("Working Memory is empty.")
