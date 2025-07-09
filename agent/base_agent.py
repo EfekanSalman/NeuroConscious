@@ -1,4 +1,5 @@
 import random
+from collections import defaultdict
 from core.state import InternalState
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
@@ -7,7 +8,7 @@ from core.learning.q_table_learner import QTableLearner
 from core.emotion.emotion_state import EmotionState
 from core.emotion.basic_emotion import BasicEmotionStrategy
 from core.motivation.basic_motivation import BasicMotivationEngine
-from typing import List, Tuple  # For type hinting grid coordinates
+from typing import List, Tuple, Dict  # For type hinting grid coordinates and Dict
 
 
 class Agent:
@@ -19,7 +20,8 @@ class Agent:
     environment and make decisions. It now operates within a grid-based world
     and can perceive other agents, with its episodic memory beginning to influence behavior,
     and can also perceive and react to weather conditions. This version also
-    introduces sensory noise, making perception imperfect.
+    introduces sensory noise, making perception imperfect, and incorporates
+    curiosity-driven exploration, along with a basic goal system.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
@@ -44,7 +46,7 @@ class Agent:
         self.perception: dict = {
             "food_available_global": False,  # Global flag from World
             "time_of_day": "day",
-            "current_weather": "sunny", # Current weather condition
+            "current_weather": "sunny",  # New: Current weather condition
             "local_grid_view": [],  # Agent's view of its immediate surroundings
             "food_in_sight": False,  # Whether food is in agent's local view
             "other_agents_in_sight": []  # List of (agent_name, pos_x, pos_y) of other agents in local view
@@ -69,7 +71,6 @@ class Agent:
         # Snapshot of the agent's state before an action, used for learning.
         self._previous_state_snapshot = None
         # Q-learning component for action selection based on states.
-        # Added 'move_up', 'move_down', 'move_left', 'move_right' to actions
         self.q_learner: QTableLearner = QTableLearner(actions=["seek_food", "rest", "explore",
                                                                "move_up", "move_down", "move_left", "move_right"])
         # Physiological state values (hunger, fatigue) before the last action, for reward calculation.
@@ -86,6 +87,41 @@ class Agent:
 
         # Perception accuracy for sensory noise
         self.perception_accuracy: float = perception_accuracy
+
+        # Track visited states for curiosity
+        self.visited_states: Dict[str, int] = defaultdict(int)  # Counts how many times a state has been visited
+
+        # Basic Goal System:
+        # Goals can be represented as dictionaries: {"type": "reach_location", "target_x": 5, "target_y": 5, "priority": 0.8, "completed": False}
+        # Or {"type": "maintain_hunger", "threshold": 0.3, "duration": 10, "current_duration": 0, "priority": 0.6}
+        self.active_goals: List[Dict] = []
+        self._initialize_goals()  # Add some initial goals
+
+    def _initialize_goals(self):
+        """
+        Initializes a set of default goals for the agent.
+        This can be expanded later to dynamically generate goals.
+        """
+        # Example Goal 1: Reach a specific location (e.g., center of the map)
+        self.active_goals.append({
+            "type": "reach_location",
+            "target_x": 5,
+            "target_y": 5,
+            "priority": 0.7,  # Higher priority means more influential
+            "completed": False,  # Ensure 'completed' key is present
+            "name": "Reach Center"
+        })
+        # Example Goal 2: Maintain low hunger for a period
+        self.active_goals.append({
+            "type": "maintain_hunger_low",
+            "threshold": 0.3,  # Keep hunger below this
+            "duration_steps": 20,  # For 20 consecutive steps
+            "current_duration": 0,
+            "priority": 0.6,
+            "name": "Stay Fed",
+            "completed": False  # Ensure 'completed' key is present
+        })
+        print(f"{self.name} initialized with goals: {[goal['name'] for goal in self.active_goals]}")
 
     def set_environment(self, env):
         """
@@ -191,7 +227,7 @@ class Agent:
         """
         Determines the agent's next action based on its internal state, emotions,
         learning algorithms, and now, the presence of other agents, memory recall,
-        and weather conditions, all based on potentially imperfect perceptions.
+        weather conditions, curiosity for exploration, and active goals.
 
         The thinking process involves updating physiological states, emotional states,
         and then using a combination of motivation, Q-learning, and memory to select an action.
@@ -260,16 +296,16 @@ class Agent:
                     print(f"{self.name} recalls successful resting. Overriding to 'rest'.")
                     selected_action = "rest"  # Prioritize resting based on positive memory
 
-        # Simple decision modification based on other agents
+        # --- Simple decision modification based on other agents (Example) ---
         if self.perception["other_agents_in_sight"] and self.internal_state.hunger > 0.5:
-            # This is a very basic example.
+            # This is a very basic example. You could make it more complex:
             # - If other agent is also hungry, maybe compete or cooperate.
             # - If other agent is a 'threat', maybe move away.
             if selected_action == "explore":  # If Q-learner chose explore, but hungry and sees others
                 print(f"{self.name} sees other agents and is hungry. Prioritizing seeking food over exploring.")
                 selected_action = "seek_food"  # Override to seek food
 
-        # Weather Influence on Decision
+        # --- Weather Influence on Decision ---
         current_weather = self.perception["current_weather"]
         if current_weather == "stormy":
             # In stormy weather, prioritize resting or seeking shelter (if shelter action existed)
@@ -286,6 +322,87 @@ class Agent:
                     print(f"{self.name} detects rainy weather. Might reconsider exploration.")
                     selected_action = "rest" if self.internal_state.fatigue < 0.8 else "seek_food"  # Fallback to needs
 
+        # --- Curiosity-Driven Exploration ---
+        # Get the key for the current state
+        current_state_key = self.q_learner.get_state_key(self.internal_state.hunger, self.internal_state.fatigue)
+
+        # Increment visit count for the current state
+        self.visited_states[current_state_key] += 1
+
+        # Calculate an 'unfamiliarity' score for the current state (e.g., inverse of visit count)
+        # Add a small epsilon to avoid division by zero for unvisited states
+        unfamiliarity_score = 1.0 / (self.visited_states[current_state_key] + 1.0)
+
+        # Combine curiosity emotion with unfamiliarity score
+        # A higher curiosity emotion and higher unfamiliarity score will increase the chance of exploration
+        curiosity_threshold = 0.5  # Base threshold for curiosity to influence action
+        curiosity_influence = self.emotion_state.get("curiosity") * unfamiliarity_score
+
+        # If curiosity is high enough and basic needs are not critical, encourage exploration
+        if curiosity_influence > curiosity_threshold and \
+                self.internal_state.hunger < 0.7 and self.internal_state.fatigue < 0.7:
+
+            # If the Q-learner didn't choose explore, but curiosity is high,
+            # consider overriding to an exploration action (e.g., a random move)
+            if selected_action not in ["explore", "move_up", "move_down", "move_left", "move_right"]:
+                print(f"{self.name} is curious! Overriding to exploration due to unfamiliarity.")
+                # Choose a random movement action for exploration
+                selected_action = random.choice(["move_up", "move_down", "move_left", "move_right"])
+            elif selected_action == "explore":
+                print(f"{self.name} is already exploring and curious.")
+
+        # --- Goal System Influence (New Logic) ---
+        # Iterate through active goals and potentially modify the selected action
+        for goal in self.active_goals:
+            if goal["completed"]:
+                continue  # Skip completed goals
+
+            if goal["type"] == "reach_location":
+                # Calculate distance to target
+                dist_x = abs(self.pos_x - goal["target_x"])
+                dist_y = abs(self.pos_y - goal["target_y"])
+                distance = dist_x + dist_y  # Manhattan distance
+
+                if distance == 0:
+                    goal["completed"] = True
+                    print(f"{self.name} completed goal: {goal['name']} at ({self.pos_x},{self.pos_y})!")
+                    # You could add a reward here for goal completion
+                    self.last_action_reward += 1.0  # Bonus reward for goal completion
+                    continue
+
+                # If agent is close to goal and not critically hungry/fatigued, prioritize movement towards it
+                if distance <= 3 and self.internal_state.hunger < 0.8 and self.internal_state.fatigue < 0.8:
+                    print(f"{self.name} is prioritizing goal: {goal['name']}. Distance: {distance}")
+                    # Decide which movement direction reduces distance most
+                    if dist_x > 0:
+                        if self.pos_x < goal["target_x"]:
+                            selected_action = "move_down"
+                        else:
+                            selected_action = "move_up"
+                    elif dist_y > 0:
+                        if self.pos_y < goal["target_y"]:
+                            selected_action = "move_right"
+                        else:
+                            selected_action = "move_left"
+                    # If already at target x or y, prioritize the other dimension
+                    # This simple logic might need refinement for optimal pathfinding, but provides goal-driven movement.
+                    break  # Prioritize one goal at a time if multiple are active and relevant
+
+            elif goal["type"] == "maintain_hunger_low":
+                if self.internal_state.hunger < goal["threshold"]:
+                    goal["current_duration"] += 1
+                    if goal["current_duration"] >= goal["duration_steps"]:
+                        goal["completed"] = True
+                        print(
+                            f"{self.name} completed goal: {goal['name']} (maintained hunger below {goal['threshold']:.2f} for {goal['duration_steps']} steps)!")
+                        self.last_action_reward += 0.8  # Reward for maintaining state
+                    # If close to threshold, prioritize seek_food
+                    if self.internal_state.hunger >= goal["threshold"] * 0.8 and selected_action != "seek_food":
+                        print(f"{self.name} prioritizing goal: {goal['name']}. Hunger getting high, seeking food.")
+                        selected_action = "seek_food"
+                else:
+                    goal["current_duration"] = 0  # Reset if hunger goes above threshold
+
         self._last_performed_action = selected_action
         return selected_action
 
@@ -300,7 +417,7 @@ class Agent:
                           Expected actions: "seek_food", "rest", "explore",
                           "move_up", "move_down", "move_left", "move_right".
         """
-        # We get a copy of the agent's internal state before the action
+        # We get a copy of the agent's internal state before the action.
         previous_internal_state = self.internal_state.snapshot()
         original_pos_x, original_pos_y = self.pos_x, self.pos_y  # Store original position
 
@@ -332,7 +449,7 @@ class Agent:
             self.last_action_reward = -0.05
             print(f"{self.name} is exploring at ({self.pos_x},{self.pos_y}). Hunger/Fatigue increased slightly.")
 
-        # Movement Actions
+        # --- Movement Actions ---
         elif action.startswith("move_"):
             new_pos_x, new_pos_y = self.pos_x, self.pos_y
             if action == "move_up":
@@ -414,3 +531,17 @@ class Agent:
 
         print(f"Current Weather: {self.perception['current_weather']}")  # New: Log current weather
 
+        # Log active goals
+        if self.active_goals:
+            print("Active Goals:")
+            # Iterate through a copy of active_goals to allow modification during iteration if needed
+            for goal in list(self.active_goals):  # Use list() to iterate over a copy
+                status = "Completed" if goal["completed"] else "Active"
+                if goal["type"] == "reach_location":
+                    print(
+                        f"  - {goal['name']}: {status}, Target: ({goal['target_x']},{goal['target_y']}), Priority: {goal['priority']:.2f}")
+                elif goal["type"] == "maintain_hunger_low":
+                    print(
+                        f"  - {goal['name']}: {status}, Threshold: {goal['threshold']:.2f}, Duration: {goal['current_duration']}/{goal['duration_steps']}, Priority: {goal['priority']:.2f}")
+        else:
+            print("No active goals.")
