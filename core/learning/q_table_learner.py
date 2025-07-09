@@ -1,6 +1,7 @@
 import random
 from collections import defaultdict
 from typing import List, Dict
+import json
 
 class QTableLearner:
     """
@@ -9,7 +10,8 @@ class QTableLearner:
     Q-learning is a model-free reinforcement learning algorithm to learn a policy
     telling an agent what action to take under what circumstances. It uses a Q-table
     to store the 'quality' (expected utility) of taking a given action in a given state.
-    This version includes epsilon decay for adaptive exploration.
+    This version includes epsilon decay for adaptive exploration and supports
+    saving/loading the Q-table for persistent learning.
     """
     def __init__(self, actions: List[str], alpha: float = 0.1, gamma: float = 0.9,
                  epsilon: float = 1.0, epsilon_min: float = 0.01, epsilon_decay_rate: float = 0.995):
@@ -116,6 +118,46 @@ class QTableLearner:
         # Apply epsilon decay
         # Decrease epsilon, but ensure it doesn't fall below epsilon_min.
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay_rate)
+
+    def save_q_table(self, filepath: str):
+        """
+        Saves the current Q-table to a JSON file.
+
+        Args:
+            filepath (str): The path to the file where the Q-table will be saved.
+        """
+        # Convert defaultdict to a regular dict for JSON serialization
+        # Nested dictionaries also need to be converted
+        serializable_q_table = {
+            state_key: dict(actions_dict)
+            for state_key, actions_dict in self.q_table.items()
+        }
+        try:
+            with open(filepath, 'w') as f:
+                json.dump(serializable_q_table, f, indent=2)
+            print(f"Q-table saved to {filepath}")
+        except IOError as e:
+            print(f"Error saving Q-table to {filepath}: {e}")
+
+    def load_q_table(self, filepath: str):
+        """
+        Loads a Q-table from a JSON file.
+
+        Args:
+            filepath (str): The path to the file from which the Q-table will be loaded.
+        """
+        try:
+            with open(filepath, 'r') as f:
+                loaded_data = json.load(f)
+            # Convert the loaded dict back to defaultdict
+            self.q_table = defaultdict(lambda: {action: 0.0 for action in self.actions}, loaded_data)
+            print(f"Q-table loaded from {filepath}")
+        except FileNotFoundError:
+            print(f"No Q-table found at {filepath}. Starting with a new Q-table.")
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON from {filepath}: {e}. Starting with a new Q-table.")
+        except IOError as e:
+            print(f"Error loading Q-table from {filepath}: {e}. Starting with a new Q-table.")
 
     def __str__(self) -> str:
         """

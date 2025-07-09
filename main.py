@@ -5,25 +5,31 @@ import json
 from visualization.action_plot import plot_action_counts
 import random
 
+# Define a filepath for saving/loading the Q-table
+Q_TABLE_FILEPATH = "q_table_simbot1.json"
+
 
 def main():
-    # Initialize core components
+    # Launch core components
     mood_strategy = BasicMoodStrategy()
-    world = World()  # Start the world (it now has a grid)
+    world = World()  # Initialize the world (now with a grid)
 
     # Launch and Add Multiple Agents to the World
     # Agent 1
     agent1 = Agent(name="SimBot-1", mood_strategy=mood_strategy)
-    world.add_agent(agent1, start_pos=(0, 0))
+    world.add_agent(agent1, start_pos=(0, 0))  # Place SimBot-1 at position (0,0)
+
+    # Load Q-table for agent1 if it exists
+    agent1.q_learner.load_q_table(Q_TABLE_FILEPATH)
 
     # Agent 2
     agent2 = Agent(name="SimBot-2", mood_strategy=mood_strategy)
     # Place in opposite corner using GRID_SIZE directly
     world.add_agent(agent2, start_pos=(GRID_SIZE - 1, GRID_SIZE - 1))
 
-    # Agent 3
-    agent3 = Agent(name="SimBot-3", mood_strategy=mood_strategy)
-    world.add_agent(agent3, start_pos=(0, GRID_SIZE - 1))
+    # Agent 3 (Optional)
+    # agent3 = Agent(name="SimBot-3", mood_strategy=mood_strategy)
+    # world.add_agent(agent3, start_pos=(0, GRID_SIZE - 1))
 
     # Start the action counter with all possible actions from the Q-learner
     action_counter = {action: 0 for action in agent1.q_learner.actions}
@@ -43,17 +49,17 @@ def main():
         if agent1._last_performed_action:
             action_counter[agent1._last_performed_action] += 1
 
-        # Log status for detailed output every 100 steps
+        #  Log status for detailed output every 100 steps
         if step % 100 == 0:
-            print(f"\n--- Adım {step} Detaylı Durum ---")
+            print(f"\n--- Step {step} Detailed Status ---")
             # Agent's log_status now includes its location and local grid view
             # You can log the status of all agents if desired:
             # for agent in world.agents:
             #     agent.log_status()
             agent1.log_status()  # For brevity in the console output, we only log agent1
 
-    print("\n--- Simülasyon Tamamlandı ---")
-    print("SimBot-1 için", total_steps, "adımdan sonraki Aksiyon Sayıları:")
+    print("\n--- Simulation Completed ---")
+    print("For SimBot-1“, total_steps, ”Number of Actions after step:")
     for action, count in action_counter.items():
         print(f"{action}: {count}")
 
@@ -61,30 +67,17 @@ def main():
     try:
         with open("action_counts.json", "w") as f:
             json.dump(action_counter, f, indent=2)
-        print("Aksiyon sayıları action_counts.json dosyasına kaydedildi.")
+        print("Action counts saved in action_counts.json.")
     except IOError as e:
-        print(f"Aksiyon sayıları kaydedilirken hata oluştu: {e}")
+        print(f"Error saving action numbers: {e}")
 
-    # Dump SimBot-1's Q-table to JSON
-    try:
-        # Convert 'defaultdict' to a regular dict for JSON serialization
-        # Since q_table contains nested dictionaries, we also need to transform the values
-        q_table_serializable = {
-            state_key: dict(actions_dict)
-            for state_key, actions_dict in agent1.q_learner.q_table.items()
-        }
-        with open("q_table_simbot1.json", "w") as f:  # Renamed for specific agent
-            json.dump(q_table_serializable, f, indent=2)
-        print("SimBot-1'in Q-tablosu q_table_simbot1.json dosyasına kaydedildi.")
-    except IOError as e:
-        print(f"Q-tablosu kaydedilirken hata oluştu: {e}")
-    except TypeError as e:
-        print(
-            f"Q-tablosu JSON'a serileştirilirken hata oluştu: {e}. Tüm anahtarların/değerlerin JSON-serileştirilebilir olduğundan emin olun.")
+    # Save Q-table of SimBot-1 using the new method
+    agent1.q_learner.save_q_table(Q_TABLE_FILEPATH)
 
-    # Draw the last action numbers
+    # Plot final action counts
     plot_action_counts(action_counter)
 
 
 if __name__ == "__main__":
     main()
+

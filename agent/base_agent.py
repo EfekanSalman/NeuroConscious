@@ -18,16 +18,20 @@ class Agent:
     memory, and learning capabilities, allowing it to interact with an
     environment and make decisions. It now operates within a grid-based world
     and can perceive other agents, with its episodic memory beginning to influence behavior,
-    and can also perceive and react to weather conditions.
+    and can also perceive and react to weather conditions. This version also
+    introduces sensory noise, making perception imperfect.
     """
 
-    def __init__(self, name: str, mood_strategy: MoodStrategy):
+    def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
         """
         Initializes a new Agent instance.
 
         Args:
             name (str): The unique name of the agent.
             mood_strategy (MoodStrategy): The strategy used to calculate the agent's mood.
+            perception_accuracy (float, optional): The probability (0.0 to 1.0) that the agent
+                                                  will correctly perceive an item in its view.
+                                                  Defaults to 0.95 (95% accurate).
         """
         self.name: str = name
         # Manages physiological states like hunger and fatigue, and mood.
@@ -40,7 +44,7 @@ class Agent:
         self.perception: dict = {
             "food_available_global": False,  # Global flag from World
             "time_of_day": "day",
-            "current_weather": "sunny",  # New: Current weather condition
+            "current_weather": "sunny", # Current weather condition
             "local_grid_view": [],  # Agent's view of its immediate surroundings
             "food_in_sight": False,  # Whether food is in agent's local view
             "other_agents_in_sight": []  # List of (agent_name, pos_x, pos_y) of other agents in local view
@@ -80,6 +84,9 @@ class Agent:
         # Strategy for updating the agent's emotions.
         self.emotion_strategy: BasicEmotionStrategy = BasicEmotionStrategy(self.emotion_state)
 
+        # Perception accuracy for sensory noise
+        self.perception_accuracy: float = perception_accuracy
+
     def set_environment(self, env):
         """
         Sets the simulation environment for the agent.
@@ -95,7 +102,7 @@ class Agent:
 
         This method reads global information (food availability, time of day, weather) from the World
         and also scans the immediate surroundings (e.g., 1-cell radius) on the grid for items like food
-        and other agents.
+        and other agents. Sensory noise is now applied, meaning perceptions might be imperfect.
         """
         if self.environment:
             # Global perceptions
@@ -106,22 +113,29 @@ class Agent:
 
             # Local grid perception (e.g., 1-cell radius around the agent)
             # This returns the raw grid view, not yet processed for other agents.
-            self.perception["local_grid_view"] = self._get_local_grid_view(radius=1)
+            raw_local_grid_view = self._get_local_grid_view(radius=1)
 
-            # Check for food in local view
+            # Apply sensory noise to local grid view
+            self.perception["local_grid_view"] = []
             self.perception["food_in_sight"] = False
-            for row_content in self.perception["local_grid_view"]:
-                if 'food' in row_content:
-                    self.perception["food_in_sight"] = True
-                    break
+            for row_content in raw_local_grid_view:
+                processed_row = []
+                for cell_content in row_content:
+                    if random.random() < self.perception_accuracy:
+                        processed_row.append(cell_content)  # Perceive correctly
+                        if cell_content == 'food':
+                            self.perception["food_in_sight"] = True
+                    else:
+                        processed_row.append('unknown')  # Perceive incorrectly (noise/occlusion)
+                self.perception["local_grid_view"].append(processed_row)
 
-            # Check for other agents in local view
+            # Check for other agents in local view (also apply noise)
             self.perception["other_agents_in_sight"] = []
             grid_size = len(self.environment.grid)  # Assuming square grid
             radius = 1  # Using the same radius as _get_local_grid_view
 
             for r_offset in range(-radius, radius + 1):
-                for c_offset in range(-radius, radius + 0):  # Changed to radius + 0 to match 3x3 view
+                for c_offset in range(-radius, radius + 1):  # Corrected loop range to radius + 1
                     view_row, view_col = self.pos_x + r_offset, self.pos_y + c_offset
 
                     # Skip self position
@@ -129,16 +143,21 @@ class Agent:
                         continue
 
                     if 0 <= view_row < grid_size and 0 <= view_col < grid_size:
-                        # Iterate through all agents in the world to see if any are at this cell
-                        for other_agent in self.environment.agents:
-                            if other_agent is not self and other_agent.pos_x == view_row and other_agent.pos_y == view_col:
-                                self.perception["other_agents_in_sight"].append(
-                                    {"name": other_agent.name, "pos_x": other_agent.pos_x, "pos_y": other_agent.pos_y}
-                                )
-                                # Break inner loop once an agent is found at this cell to avoid duplicates
-                                break
+                        # Apply noise to perception of other agents
+                        if random.random() < self.perception_accuracy:
+                            # Iterate through all agents in the world to see if any are at this cell
+                            for other_agent in self.environment.agents:
+                                if other_agent is not self and other_agent.pos_x == view_row and other_agent.pos_y == view_col:
+                                    self.perception["other_agents_in_sight"].append(
+                                        {"name": other_agent.name, "pos_x": other_agent.pos_x,
+                                         "pos_y": other_agent.pos_y}
+                                    )
+                                    # Break inner loop once an agent is found at this cell to avoid duplicates
+                                    break
+                                    # Else: agent fails to perceive the other agent due to noise/occlusion
+                    # Else: it's a boundary, no agent there
 
-                                # Records the last time food was perceived as available (either globally or locally).
+            # Records the last time food was perceived as available (either globally or locally).
             if self.perception["food_available_global"] or self.perception["food_in_sight"]:
                 self.short_term_memory["food_last_seen"] = self.current_time_step
 
@@ -152,8 +171,7 @@ class Agent:
         Returns:
             List[List[str]]: A 2D list representing the agent's local view of the grid.
                              Cells outside the grid boundaries will be represented as 'boundary'.
-                             Note: This view primarily shows static elements like 'food' or 'empty'.
-                                   For other agents, 'other_agents_in_sight' in perception should be used.
+                             Note: This raw view does not include agents; agent perception handles that.
         """
         view = []
         grid_size = len(self.environment.grid)  # Assuming square grid
@@ -173,7 +191,7 @@ class Agent:
         """
         Determines the agent's next action based on its internal state, emotions,
         learning algorithms, and now, the presence of other agents, memory recall,
-        and weather conditions.
+        and weather conditions, all based on potentially imperfect perceptions.
 
         The thinking process involves updating physiological states, emotional states,
         and then using a combination of motivation, Q-learning, and memory to select an action.
@@ -205,7 +223,7 @@ class Agent:
             fatigue=self.internal_state.fatigue
         )
 
-        # Memory Influence on Decision
+        # --- Memory Influence on Decision ---
         recalled_actions_for_hunger = []
         recalled_actions_for_fatigue = []
 
@@ -244,6 +262,9 @@ class Agent:
 
         # Simple decision modification based on other agents
         if self.perception["other_agents_in_sight"] and self.internal_state.hunger > 0.5:
+            # This is a very basic example.
+            # - If other agent is also hungry, maybe compete or cooperate.
+            # - If other agent is a 'threat', maybe move away.
             if selected_action == "explore":  # If Q-learner chose explore, but hungry and sees others
                 print(f"{self.name} sees other agents and is hungry. Prioritizing seeking food over exploring.")
                 selected_action = "seek_food"  # Override to seek food
@@ -279,7 +300,7 @@ class Agent:
                           Expected actions: "seek_food", "rest", "explore",
                           "move_up", "move_down", "move_left", "move_right".
         """
-        # We get a copy of the agent's internal state before the action.
+        # We get a copy of the agent's internal state before the action
         previous_internal_state = self.internal_state.snapshot()
         original_pos_x, original_pos_y = self.pos_x, self.pos_y  # Store original position
 
@@ -391,5 +412,5 @@ class Agent:
         else:
             print("No other agents in sight.")
 
-        print(f"Current Weather: {self.perception['current_weather']}")
+        print(f"Current Weather: {self.perception['current_weather']}")  # New: Log current weather
 
