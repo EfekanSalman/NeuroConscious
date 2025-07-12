@@ -15,15 +15,16 @@ def plot_emotion_history(time_steps: list[int], emotion_history: dict[str, list[
     plt.figure(figsize=(12, 7)) # Set figure size for better readability
 
     colors = {
-        "Joy": "green",
-        "Fear": "purple",
-        "Frustration": "orange",
-        "Curiosity": "blue"
+        "joy": "green",
+        "fear": "purple",
+        "frustration": "orange",
+        "curiosity": "blue"
     }
 
     for emotion_name, history_data in emotion_history.items():
         if history_data: # Only plot if there's data for this emotion
-            plt.plot(time_steps, history_data, label=emotion_name, color=colors.get(emotion_name, 'gray'))
+            # Use .get() with the lowercase emotion_name to retrieve the correct color
+            plt.plot(time_steps, history_data, label=emotion_name.capitalize(), color=colors.get(emotion_name, 'gray'))
 
     plt.xlabel('Time Step')
     plt.ylabel('Emotion Value')

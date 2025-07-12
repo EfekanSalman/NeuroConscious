@@ -4,7 +4,7 @@ from environment.world import World, GRID_SIZE
 import json
 from visualization.action_plot import plot_action_counts
 from visualization.internal_state_plot import plot_internal_states
-from visualization.emotion_plot import plot_emotion_history  # Import for plotting emotion history
+from visualization.emotion_plot import plot_emotion_history
 import random
 
 # Define a filepath for saving/loading the DQN model
@@ -48,12 +48,12 @@ def main():
     mood_history = []
     time_steps = []
 
-    # Updated: Dictionary to store emotion history for plotting with lowercase keys
+    # Dictionary to store emotion history for plotting with lowercase keys
     emotion_history = {
-        "joy": [],  # Changed to lowercase
-        "fear": [],  # Changed to lowercase
-        "frustration": [],  # Fixed: Removed extra double quote
-        "curiosity": []  # Changed to lowercase
+        "joy": [],
+        "fear": [],
+        "frustration": [],
+        "curiosity": []
     }
 
     print("--- Starting Multi-Agent Simulation ---")
@@ -61,6 +61,10 @@ def main():
         # The world's step method now handles updating environment, printing grid,
         # and iterating through ALL agents' sense, think, act cycle.
         world.step()
+
+        # Print agent's internal monologue for the current step
+        # This will be generated during agent.think() within world.step()
+        print(f"\n[{agent1.name} Internal Monologue]: {agent1.internal_monologue}")
 
         # Count action frequency for SimBot-1 (or any agent you want to track)
         if agent1._last_performed_action:
@@ -75,17 +79,12 @@ def main():
         # Collect emotion data for plotting
         emotion_state = agent1.emotion_state.get_emotions()  # Get current emotion values as a dict
         for emotion_name, value in emotion_state.items():
-            # The check `if emotion_name in emotion_history` will now correctly match lowercase keys
             if emotion_name in emotion_history:
                 emotion_history[emotion_name].append(value)
 
         # Log detailed status every 100 steps
         if step % 100 == 0:
             print(f"\n--- Step {step} Detailed Status ---")
-            # Agent's log_status now includes its position and local grid view
-            # You can log all agents' status if desired:
-            # for agent in world.agents:
-            #     agent.log_status()
             agent1.log_status()  # Logging only agent1 for brevity in console output
 
     print("\n--- Simulation Completed ---")
