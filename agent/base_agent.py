@@ -1,17 +1,13 @@
-# agent/base_agent.py
-
-# Ensure all necessary imports are at the top of your file:
 import random
-from collections import defaultdict, deque  # Import deque for working memory
+from collections import defaultdict, deque
 from core.state import InternalState
-from core.motivation.motivation import MotivationEngine  # Or BasicMotivationEngine if you're using that directly
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
 from core.learning.reward_learner import RewardLearner
-from core.learning.dqn_learner import DQNLearner  # Changed: Import DQNLearner
+from core.learning.dqn_learner import DQNLearner
 from core.emotion.emotion_state import EmotionState
 from core.emotion.basic_emotion import BasicEmotionStrategy
-from core.motivation.basic_motivation import BasicMotivationEngine  # If you're using this one
+from core.motivation.basic_motivation import BasicMotivationEngine
 from typing import List, Tuple, Dict
 
 
@@ -28,6 +24,7 @@ class Agent:
     curiosity-driven exploration, along with a basic goal system,
     integrates mood-based reward adjustment, a working memory buffer,
     a basic attention system, and uses a Deep Q-Network (DQN) for learning.
+    It now also generates an internal monologue or reasoning trace.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
@@ -118,6 +115,9 @@ class Agent:
         # Can be 'food', 'other_agents', 'curiosity', 'goal', or None (default/diffuse attention).
         self.attention_focus: str = None
 
+        # Internal Monologue / Reasoning Trace
+        self.internal_monologue: str = ""
+
     def _initialize_goals(self):
         """
         Initializes a set of default goals for the agent.
@@ -167,7 +167,7 @@ class Agent:
             # Global perceptions
             self.perception["food_available_global"] = self.environment.food_available
             self.perception["time_of_day"] = self.environment.time_of_day
-            self.perception["current_weather"] = self.environment.current_weather  # New: Get current weather
+            self.perception["current_weather"] = self.environment.current_weather  # New: Current weather condition
             self.current_time_step = self.environment.time_step
 
             # Local grid perception (e.g., 1-cell radius around the agent)
@@ -186,6 +186,7 @@ class Agent:
                         current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)  # Boost food perception
                     elif self.attention_focus == 'other_agents' and cell_content == 'agent':  # Assuming 'agent' placeholder for other agents
                         current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)  # Boost agent perception
+                    # You can add more rules for other attention focuses
 
                     if random.random() < current_perception_accuracy:
                         processed_row.append(cell_content)  # Perceive correctly
@@ -261,7 +262,6 @@ class Agent:
             for c_offset in range(-radius, radius + 1):
                 view_row, view_col = self.pos_x + r_offset, self.pos_y + c_offset
                 if 0 <= view_row < grid_size and 0 <= view_col < grid_size:
-                    # FIX: Corrected the index from 'cell_content' to 'view_col'
                     row_view.append(self.environment.grid[view_row][view_col])
                 else:
                     row_view.append('boundary')  # Mark cells outside the grid
@@ -273,7 +273,7 @@ class Agent:
         Determines the agent's next action based on its internal state, emotions,
         learning algorithms, and now, the presence of other agents, memory recall,
         weather conditions, curiosity for exploration, active goals, working memory,
-        and current attention focus.
+        and current attention focus. It also generates an internal monologue.
 
         The thinking process involves updating physiological states, emotional states,
         and then using a combination of motivation, DQN, and memory to select an action.
@@ -281,6 +281,11 @@ class Agent:
         Returns:
             str: The chosen action (e.g., "seek_food", "rest", "explore", "move_up", etc.).
         """
+        # Initialize internal monologue for this step
+        self.internal_monologue = f"Time Step {self.current_time_step}: I am at ({self.pos_x},{self.pos_y}). "
+        self.internal_monologue += f"Hunger: {self.internal_state.hunger:.2f}, Fatigue: {self.internal_state.fatigue:.2f}, Mood: {self.internal_state.mood}. "
+        self.internal_monologue += f"My emotions are: {self.emotion_state}. "
+
         # 1. Update physiological state (e.g., hunger, fatigue increases over time).
         time_delta_factor = 1.5 if self.perception["time_of_day"] == "night" else 1.0
         self.internal_state.update(delta_time=time_delta_factor)
@@ -292,7 +297,6 @@ class Agent:
         self._previous_physiological_states = (self.internal_state.hunger, self.internal_state.fatigue)
 
         # 4. Emotion-driven motivation engine decides preferred action
-        # This part is currently not used for the final action decision as DQN overrides it.
         _ = self.motivation_engine.decide_action(
             perception=self.perception,
             memory=self.short_term_memory,
@@ -303,36 +307,39 @@ class Agent:
         # Prioritize attention based on most pressing needs or active goals
         if self.internal_state.hunger > 0.7:
             self.attention_focus = 'food'
-            print(f"{self.name} is very hungry, focusing attention on food.")
+            self.internal_monologue += "I am very hungry, so I should focus on finding food. "
         elif self.internal_state.fatigue > 0.7:
-            self.attention_focus = 'rest'  # Could be 'shelter' or 'safe_spot' if those existed
-            print(f"{self.name} is very fatigued, focusing attention on rest.")
+            self.attention_focus = 'rest'
+            self.internal_monologue += "I am very fatigued, so I should focus on resting. "
         elif self.emotion_state.get("curiosity") > 0.6 and not self.active_goals:
             self.attention_focus = 'curiosity'
-            print(f"{self.name} is very curious, focusing attention on exploration.")
+            self.internal_monologue += "I feel curious and have no immediate goals, so I will focus on exploration. "
         elif any(not goal["completed"] for goal in self.active_goals):
-            # If there are active goals, focus on the highest priority uncompleted goal
             uncompleted_goals = [g for g in self.active_goals if not g["completed"]]
             if uncompleted_goals:
                 highest_priority_goal = max(uncompleted_goals, key=lambda g: g["priority"])
                 if highest_priority_goal["type"] == "reach_location":
-                    self.attention_focus = 'location_target'  # Specific focus for location goals
-                    print(f"{self.name} focusing attention on goal: {highest_priority_goal['name']}.")
+                    self.attention_focus = 'location_target'
+                    self.internal_monologue += f"My top priority is to reach {highest_priority_goal['name']} at ({highest_priority_goal['target_x']},{highest_priority_goal['target_y']}). "
                 elif highest_priority_goal["type"] == "maintain_hunger_low":
-                    self.attention_focus = 'food'  # Focus on food to maintain hunger
-                    print(f"{self.name} focusing attention on goal: {highest_priority_goal['name']}.")
+                    self.attention_focus = 'food'
+                    self.internal_monologue += f"I need to maintain low hunger for {highest_priority_goal['name']}, so I will focus on food. "
                 else:
-                    self.attention_focus = None  # Default if goal type not specifically handled
+                    self.attention_focus = None
+                    self.internal_monologue += "I have an active goal but no specific focus for it. "
             else:
                 self.attention_focus = None
+                self.internal_monologue += "No active goals to focus on. "
         else:
-            self.attention_focus = None  # Default/diffuse attention
+            self.attention_focus = None
+            self.internal_monologue += "No specific attention focus right now. "
 
         # 5. DQN Learner selects an action (primary decision maker for now).
         selected_action = self.q_learner.choose_action(
             hunger=self.internal_state.hunger,
             fatigue=self.internal_state.fatigue
         )
+        self.internal_monologue += f"Based on my learned values, my initial thought is to {selected_action}. "
 
         # --- Memory Influence on Decision ---
         recalled_actions_for_hunger = []
@@ -340,174 +347,118 @@ class Agent:
 
         for episode in self.episodic_memory.get_memory():
             is_recent_or_impactful = (self.current_time_step - episode['step'] <= 5) or \
-                                     (episode['emotional_weight'] > 0.7)  # High emotional weight
+                                     (episode['emotional_weight'] > 0.7)
 
             if is_recent_or_impactful:
-                # If the agent was hungry in that past state and took 'seek_food'
                 if episode['state']['hunger'] > 0.6 and episode['action'] == 'seek_food':
                     recalled_actions_for_hunger.append(episode)
-                # If the agent was fatigued in that past state and took 'rest'
                 if episode['state']['fatigue'] > 0.6 and episode['action'] == 'rest':
                     recalled_actions_for_fatigue.append(episode)
 
-        # Simple decision modification based on recalled memories
         if self.internal_state.hunger > 0.6 and recalled_actions_for_hunger:
-            # Check if seeking food was generally successful in recalled episodes
-            successful_food_seeking_count = sum(1 for ep in recalled_actions_for_hunger if
-                                                ep['state']['hunger'] > self.internal_state.hunger)  # Hunger reduced
-
-            if successful_food_seeking_count > len(recalled_actions_for_hunger) / 2:  # More than half were successful
+            successful_food_seeking_count = sum(
+                1 for ep in recalled_actions_for_hunger if ep['state']['hunger'] > self.internal_state.hunger)
+            if successful_food_seeking_count > len(recalled_actions_for_hunger) / 2:
                 if selected_action != "seek_food":
-                    print(f"{self.name} recalls successful food seeking. Overriding to 'seek_food'.")
-                    selected_action = "seek_food"  # Prioritize seeking food based on positive memory
+                    self.internal_monologue += "I recall past successful food seeking, so I will prioritize seeking food. "
+                    selected_action = "seek_food"
 
         elif self.internal_state.fatigue > 0.6 and recalled_actions_for_fatigue:
-            # Check if resting was generally successful in recalled episodes
-            successful_rest_count = sum(1 for ep in recalled_actions_for_fatigue if
-                                        ep['state']['fatigue'] > self.internal_state.fatigue)  # Fatigue reduced
-
-            if successful_rest_count > len(recalled_actions_for_fatigue) / 2:  # More than half were successful
+            successful_rest_count = sum(
+                1 for ep in recalled_actions_for_fatigue if ep['state']['fatigue'] > self.internal_state.fatigue)
+            if successful_rest_count > len(recalled_actions_for_fatigue) / 2:
                 if selected_action != "rest":
-                    print(f"{self.name} recalls successful resting. Overriding to 'rest'.")
-                    selected_action = "rest"  # Prioritize resting based on positive memory
+                    self.internal_monologue += "I recall past successful resting, so I will prioritize resting. "
+                    selected_action = "rest"
 
         # --- Simple decision modification based on other agents (Example) ---
         if self.perception["other_agents_in_sight"] and self.internal_state.hunger > 0.5:
-            # This is a very basic example. You could make it more complex:
-            # - If other agent is also hungry, maybe compete or cooperate.
-            # - If other agent is a 'threat', maybe move away.
-            if selected_action == "explore":  # If DQN chose explore, but hungry and sees others
-                print(f"{self.name} sees other agents and is hungry. Prioritizing seeking food over exploring.")
-                selected_action = "seek_food"  # Override to seek food
+            if selected_action == "explore":
+                self.internal_monologue += "Seeing other agents while hungry makes me prioritize seeking food over exploring. "
+                selected_action = "seek_food"
 
         # --- Weather Influence on Decision ---
         current_weather = self.perception["current_weather"]
         if current_weather == "stormy":
-            # In stormy weather, prioritize resting or seeking shelter (if shelter action existed)
-            # and discourage exploration or long movements.
             if selected_action == "explore" or selected_action.startswith("move_"):
-                print(f"{self.name} detects stormy weather. Prioritizing rest over movement/exploration.")
+                self.internal_monologue += "The stormy weather makes me want to rest or seek shelter instead of moving. "
                 selected_action = "rest"
-            # Optionally, increase fatigue faster in stormy weather in internal_state.update()
-            # or modify reward for certain actions.
         elif current_weather == "rainy":
-            # In rainy weather, maybe slightly increase fatigue or reduce exploration reward
             if selected_action == "explore":
-                if random.random() < 0.5:  # 50% chance to reconsider exploration
-                    print(f"{self.name} detects rainy weather. Might reconsider exploration.")
-                    selected_action = "rest" if self.internal_state.fatigue < 0.8 else "seek_food"  # Fallback to needs
+                if random.random() < 0.5:
+                    self.internal_monologue += "The rainy weather makes me reconsider exploration; I might rest or seek food. "
+                    selected_action = "rest" if self.internal_state.fatigue < 0.8 else "seek_food"
 
         # --- Curiosity-Driven Exploration ---
-        # Get the key for the current state (using DQNLearner's method for state representation)
-        # Convert to bytes for defaultdict key
         current_state_key = self.q_learner.get_state_representation(self.internal_state.hunger,
                                                                     self.internal_state.fatigue).cpu().numpy().tobytes()
-
-        # Increment visit count for the current state
         self.visited_states[current_state_key] += 1
-
-        # Calculate an 'unfamiliarity' score for the current state (e.g., inverse of visit count)
-        # Add a small epsilon to avoid division by zero for unvisited states
         unfamiliarity_score = 1.0 / (self.visited_states[current_state_key] + 1.0)
-
-        # Combine curiosity emotion with unfamiliarity score
-        # A higher curiosity emotion and higher unfamiliarity score will increase the chance of exploration
-        curiosity_threshold = 0.5  # Base threshold for curiosity to influence action
+        curiosity_threshold = 0.5
         curiosity_influence = self.emotion_state.get("curiosity") * unfamiliarity_score
 
-        # If curiosity is high enough and basic needs are not critical, encourage exploration
         if curiosity_influence > curiosity_threshold and \
                 self.internal_state.hunger < 0.7 and self.internal_state.fatigue < 0.7:
-
-            # If the DQN didn't choose explore, but curiosity is high,
-            # consider overriding to an exploration action (e.g., a random move)
             if selected_action not in ["explore", "move_up", "move_down", "move_left", "move_right"]:
-                print(f"{self.name} is curious! Overriding to exploration due to unfamiliarity.")
-                # Choose a random movement action for exploration
+                self.internal_monologue += "My high curiosity and unfamiliar surroundings make me want to explore! "
                 selected_action = random.choice(["move_up", "move_down", "move_left", "move_right"])
             elif selected_action == "explore":
-                print(f"{self.name} is already exploring and curious.")
+                self.internal_monologue += "I'm already exploring, and my curiosity is high. "
 
         # --- Goal System Influence ---
-        # Iterate through active goals and potentially modify the selected action
         for goal in self.active_goals:
             if goal["completed"]:
-                continue  # Skip completed goals
+                continue
 
             if goal["type"] == "reach_location":
-                # Calculate distance to target
                 dist_x = abs(self.pos_x - goal["target_x"])
                 dist_y = abs(self.pos_y - goal["target_y"])
-                distance = dist_x + dist_y  # Manhattan distance
+                distance = dist_x + dist_y
 
                 if distance == 0:
                     goal["completed"] = True
-                    print(f"{self.name} completed goal: {goal['name']} at ({self.pos_x},{self.pos_y})!")
-                    # You could add a reward here for goal completion
-                    self.last_action_reward += 1.0  # Bonus reward for goal completion
+                    self.internal_monologue += f"I have completed my goal: {goal['name']}! "
+                    self.last_action_reward += 1.0
                     continue
 
-                # If agent is close to goal and not critically hungry/fatigued, prioritize movement towards it
                 if distance <= 3 and self.internal_state.hunger < 0.8 and self.internal_state.fatigue < 0.8:
-                    print(f"{self.name} is prioritizing goal: {goal['name']}. Distance: {distance}")
-                    # Decide which movement direction reduces distance most
+                    self.internal_monologue += f"My goal to {goal['name']} is close ({distance} units away), so I'm prioritizing movement towards it. "
                     if dist_x > 0:
-                        if self.pos_x < goal["target_x"]:
-                            selected_action = "move_down"
-                        else:
-                            selected_action = "move_up"
+                        selected_action = "move_down" if self.pos_x < goal["target_x"] else "move_up"
                     elif dist_y > 0:
-                        if self.pos_y < goal["target_y"]:
-                            selected_action = "move_right"
-                        else:
-                            selected_action = "move_left"
-                    # If already at target x or y, prioritize the other dimension
-                    # This simple logic might need refinement for optimal pathfinding, but provides goal-driven movement.
-                    break  # Prioritize one goal at a time if multiple are active and relevant
+                        selected_action = "move_right" if self.pos_y < goal["target_y"] else "move_left"
+                    break
 
             elif goal["type"] == "maintain_hunger_low":
                 if self.internal_state.hunger < goal["threshold"]:
                     goal["current_duration"] += 1
                     if goal["current_duration"] >= goal["duration_steps"]:
                         goal["completed"] = True
-                        print(
-                            f"{self.name} completed goal: {goal['name']} (maintained hunger below {goal['threshold']:.2f} for {goal['duration_steps']} steps)!")
-                        self.last_action_reward += 0.8  # Reward for maintaining state
-                    # If close to threshold, prioritize seek_food
+                        self.internal_monologue += f"I have completed my goal: {goal['name']} (maintained hunger)! "
+                        self.last_action_reward += 0.8
                     if self.internal_state.hunger >= goal["threshold"] * 0.8 and selected_action != "seek_food":
-                        print(f"{self.name} prioritizing goal: {goal['name']}. Hunger getting high, seeking food.")
+                        self.internal_monologue += f"My hunger is getting close to the threshold for {goal['name']}, so I will seek food. "
                         selected_action = "seek_food"
                 else:
-                    goal["current_duration"] = 0  # Reset if hunger goes above threshold
+                    goal["current_duration"] = 0
 
         # --- Working Memory Influence ---
-        # Example: If working memory contains a recent food location and agent is hungry,
-        # prioritize moving towards that food.
-        if self.internal_state.hunger > 0.6:  # If agent is hungry
-            for item in reversed(self.working_memory_buffer):  # Check most recent items first
+        if self.internal_state.hunger > 0.6:
+            for item in reversed(self.working_memory_buffer):
                 if item["type"] == "perceived_food" and \
-                        self.current_time_step - item["time"] <= 3:  # If food was seen recently (e.g., within 3 steps)
+                        self.current_time_step - item["time"] <= 3:
                     food_x, food_y = item["location"]
-                    # If food is not at current location and not already moving towards it
                     if (self.pos_x, self.pos_y) != (food_x, food_y) and \
-                            not selected_action.startswith("move_"):  # Avoid overriding an existing move
-
-                        print(
-                            f"{self.name} recalls food at {food_x},{food_y} from working memory. Prioritizing movement.")
-                        # Simple movement logic towards recalled food
+                            not selected_action.startswith("move_"):
+                        self.internal_monologue += f"I recall food at ({food_x},{food_y}) from my working memory, so I'm moving towards it. "
                         if abs(self.pos_x - food_x) > abs(self.pos_y - food_y):
-                            if self.pos_x < food_x:
-                                selected_action = "move_down"
-                            else:
-                                selected_action = "move_up"
+                            selected_action = "move_down" if self.pos_x < food_x else "move_up"
                         else:
-                            if self.pos_y < food_y:
-                                selected_action = "move_right"
-                            else:
-                                selected_action = "move_left"
-                        break  # Prioritize this recalled food location
+                            selected_action = "move_right" if self.pos_y < food_y else "move_left"
+                        break
 
         self._last_performed_action = selected_action
+        self.internal_monologue += f"Therefore, I have decided to {selected_action}. "
         return selected_action
 
     def act(self, action: str):
@@ -648,8 +599,7 @@ class Agent:
         # Log active goals
         if self.active_goals:
             print("Active Goals:")
-            # Iterate through a copy of active_goals to allow modification during iteration if needed
-            for goal in list(self.active_goals):  # Use list() to iterate over a copy
+            for goal in list(self.active_goals):
                 status = "Completed" if goal["completed"] else "Active"
                 if goal["type"] == "reach_location":
                     print(
@@ -673,4 +623,5 @@ class Agent:
             print("Working Memory is empty.")
 
         print(f"Attention Focus: {self.attention_focus}")  # Log current attention focus
+        print(f"Internal Monologue: {self.internal_monologue}")  # Log the internal monologue
 
