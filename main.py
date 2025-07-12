@@ -5,6 +5,7 @@ import json
 from visualization.action_plot import plot_action_counts
 from visualization.internal_state_plot import plot_internal_states
 from visualization.emotion_plot import plot_emotion_history
+from visualization.action_timeline_plot import plot_action_timeline  # New: Import for action timeline
 import random
 
 # Define a filepath for saving/loading the DQN model
@@ -56,6 +57,10 @@ def main():
         "curiosity": []
     }
 
+    # New: Lists to store action and consciousness state history for plotting
+    action_history = []
+    consciousness_state_history = []
+
     print("--- Starting Multi-Agent Simulation ---")
     for step in range(total_steps):
         # The world's step method now handles updating environment, printing grid,
@@ -63,12 +68,14 @@ def main():
         world.step()
 
         # Print agent's internal monologue for the current step
-        # This will be generated during agent.think() within world.step()
         print(f"\n[{agent1.name} Internal Monologue]: {agent1.internal_monologue}")
 
         # Count action frequency for SimBot-1 (or any agent you want to track)
         if agent1._last_performed_action:
             action_counter[agent1._last_performed_action] += 1
+            # New: Collect action and consciousness state for timeline plotting
+            action_history.append(agent1._last_performed_action)
+            consciousness_state_history.append(agent1.current_consciousness_state.get_state_name())
 
         # Collect internal state data for plotting
         hunger_history.append(agent1.internal_state.hunger)
@@ -111,6 +118,10 @@ def main():
 
     # Plot emotion history
     plot_emotion_history(time_steps, emotion_history, agent_name=agent1.name)
+
+    # Plot action timeline
+    plot_action_timeline(time_steps[:len(action_history)], action_history, consciousness_state_history,
+                         agent_name=agent1.name)
 
 
 if __name__ == "__main__":
