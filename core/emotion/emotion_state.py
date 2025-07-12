@@ -1,66 +1,79 @@
 class EmotionState:
     """
-    Manages the current emotional state of an agent.
+    Represents the emotional state of an agent.
 
-    This class stores various emotion levels (e.g., joy, fear, curiosity, frustration)
-    and provides methods to access, update, and represent these emotions.
-    Emotion values are clamped between 0.0 and 1.0 to ensure valid ranges.
+    This class holds the current values for various emotions (e.g., joy, fear, frustration, curiosity)
+    and provides methods to update and retrieve them. Emotion values are typically normalized between 0.0 and 1.0.
     """
-    def __init__(self):
+    def __init__(self, joy: float = 0.0, fear: float = 0.0, frustration: float = 0.0, curiosity: float = 0.0):
         """
-        Initializes the EmotionState with default emotion levels.
+        Initializes the agent's emotional state.
 
-        The initial state provides a neutral starting point for the agent's emotional well-being.
+        Args:
+            joy (float, optional): Initial joy level. Defaults to 0.0.
+            fear (float, optional): Initial fear level. Defaults to 0.0.
+            frustration (float, optional): Initial frustration level. Defaults to 0.0.
+            curiosity (float, optional): Initial curiosity level. Defaults to 0.0.
         """
-        self.emotions: dict[str, float] = {
-            "joy": 0.5,          # Represents happiness or contentment.
-            "fear": 0.0,         # Represents apprehension or dread.
-            "curiosity": 0.5,    # Represents a desire to explore or learn.
-            "frustration": 0.0   # Represents annoyance or dissatisfaction.
+        self._emotions = {
+            "joy": self._clamp_value(joy),
+            "fear": self._clamp_value(fear),
+            "frustration": self._clamp_value(frustration),
+            "curiosity": self._clamp_value(curiosity)
         }
+
+    def _clamp_value(self, value: float) -> float:
+        """Clamps an emotion value between 0.0 and 1.0."""
+        return max(0.0, min(1.0, value))
 
     def get(self, emotion_name: str) -> float:
         """
         Retrieves the current value of a specific emotion.
 
         Args:
-            emotion_name (str): The name of the emotion to retrieve (e.g., "joy", "fear").
+            emotion_name (str): The name of the emotion (e.g., "joy", "fear").
 
         Returns:
-            float: The current value of the emotion. Returns 0.0 if the emotion name is not found.
+            float: The current value of the specified emotion. Returns 0.0 if emotion not found.
         """
-        return self.emotions.get(emotion_name, 0.0)
+        return self._emotions.get(emotion_name, 0.0)
 
     def set(self, emotion_name: str, value: float):
         """
         Sets the value of a specific emotion, clamping it between 0.0 and 1.0.
 
-        This ensures that emotion levels remain within a realistic and manageable range.
+        Args:
+            emotion_name (str): The name of the emotion.
+            value (float): The new value for the emotion.
+        """
+        if emotion_name in self._emotions:
+            self._emotions[emotion_name] = self._clamp_value(value)
+        else:
+            print(f"Warning: Attempted to set unknown emotion '{emotion_name}'.")
+
+    def update_emotion(self, emotion_name: str, delta: float):
+        """
+        Updates an emotion by adding a delta value, clamping the result.
 
         Args:
-            emotion_name (str): The name of the emotion to set.
-            value (float): The new value for the emotion. Will be clamped between 0.0 and 1.0.
+            emotion_name (str): The name of the emotion to update.
+            delta (float): The value to add to the current emotion level.
         """
-        # Clamps the value to be between 0.0 (minimum) and 1.0 (maximum).
-        self.emotions[emotion_name] = max(0.0, min(1.0, value))
+        current_value = self.get(emotion_name)
+        self.set(emotion_name, current_value + delta)
 
-    def all(self) -> dict:
+    def get_emotions(self) -> dict[str, float]:
         """
-        Returns a dictionary containing all current emotion names and their values.
+        Returns a dictionary of all current emotion values.
 
         Returns:
-            dict: A dictionary where keys are emotion names (str) and values are their levels (float).
+            dict[str, float]: A dictionary where keys are emotion names and values are their current levels.
         """
-        return self.emotions
+        return self._emotions.copy() # Return a copy to prevent external modification
 
     def __str__(self) -> str:
         """
-        Provides a string representation of the agent's current emotional state.
-
-        This method is useful for logging and debugging, offering a quick overview of emotions.
-
-        Returns:
-            str: A comma-separated string listing each emotion and its value, formatted to two decimal places.
-                 Example: "joy: 0.50, fear: 0.10"
+        Provides a human-readable string representation of the emotional state.
         """
-        return ", ".join([f"{k}: {v:.2f}" for k, v in self.emotions.items()])
+        return ", ".join([f"{name.capitalize()}: {value:.2f}" for name, value in self._emotions.items()])
+

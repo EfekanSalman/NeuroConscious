@@ -2,13 +2,13 @@
 
 # Ensure all necessary imports are at the top of your file:
 import random
-from collections import defaultdict, deque  # Added: Import deque for working memory
+from collections import defaultdict, deque  # Import deque for working memory
 from core.state import InternalState
 from core.motivation.motivation import MotivationEngine  # Or BasicMotivationEngine if you're using that directly
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
 from core.learning.reward_learner import RewardLearner
-from core.learning.q_table_learner import QTableLearner
+from core.learning.dqn_learner import DQNLearner  # Changed: Import DQNLearner
 from core.emotion.emotion_state import EmotionState
 from core.emotion.basic_emotion import BasicEmotionStrategy
 from core.motivation.basic_motivation import BasicMotivationEngine  # If you're using this one
@@ -25,9 +25,9 @@ class Agent:
     and can perceive other agents, with its episodic memory beginning to influence behavior,
     and can also perceive and react to weather conditions. This version also
     introduces sensory noise, making perception imperfect, and incorporates
-    curiosity-driven exploration, along with a basic goal system, and
-    integrates mood-based reward adjustment, a working memory buffer, and
-    a basic attention system.
+    curiosity-driven exploration, along with a basic goal system,
+    integrates mood-based reward adjustment, a working memory buffer,
+    a basic attention system, and uses a Deep Q-Network (DQN) for learning.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
@@ -52,7 +52,7 @@ class Agent:
         self.perception: dict = {
             "food_available_global": False,  # Global flag from World
             "time_of_day": "day",
-            "current_weather": "sunny",  # New: Current weather condition
+            "current_weather": "sunny",  # Current weather condition
             "local_grid_view": [],  # Agent's view of its immediate surroundings
             "food_in_sight": False,  # Whether food is in agent's local view
             "other_agents_in_sight": []  # List of (agent_name, pos_x, pos_y) of other agents in local view
@@ -76,10 +76,14 @@ class Agent:
         self.reward_learner: RewardLearner = RewardLearner()
         # Snapshot of the agent's state before an action, used for learning.
         self._previous_state_snapshot = None
-        # Q-learning component for action selection based on states.
-        # Added 'move_up', 'move_down', 'move_left', 'move_right' to actions
-        self.q_learner: QTableLearner = QTableLearner(actions=["seek_food", "rest", "explore",
-                                                               "move_up", "move_down", "move_left", "move_right"])
+
+        # Changed: Use DQNLearner instead of QTableLearner
+        # State size for DQN is 2 (hunger, fatigue)
+        self.q_learner: DQNLearner = DQNLearner(
+            actions=["seek_food", "rest", "explore", "move_up", "move_down", "move_left", "move_right"],
+            state_size=2  # Hunger and Fatigue
+        )
+
         # Physiological state values (hunger, fatigue) before the last action, for reward calculation.
         self._previous_physiological_states = None
         # The last action performed by the agent.
@@ -92,24 +96,24 @@ class Agent:
         # Strategy for updating the agent's emotions.
         self.emotion_strategy: BasicEmotionStrategy = BasicEmotionStrategy(self.emotion_state)
 
-        # New: Perception accuracy for sensory noise
+        # Perception accuracy for sensory noise
         self.perception_accuracy: float = perception_accuracy
 
-        # New: Track visited states for curiosity
+        # Track visited states for curiosity
         self.visited_states: Dict[str, int] = defaultdict(int)  # Counts how many times a state has been visited
 
-        # New: Basic Goal System
+        # Basic Goal System
         # Goals can be represented as dictionaries: {"type": "reach_location", "target_x": 5, "target_y": 5, "priority": 0.8, "completed": False}
         # Or {"type": "maintain_hunger", "threshold": 0.3, "duration": 10, "current_duration": 0, "priority": 0.6}
         self.active_goals: List[Dict] = []
         self._initialize_goals()  # Add some initial goals
 
-        # New: Working Memory Buffer
+        # Working Memory Buffer
         # Stores recent important perceptions or thoughts for short-term recall.
         # Max length of 5 items, oldest items are discarded when new ones are added.
         self.working_memory_buffer: deque = deque(maxlen=5)
 
-        # New: Attention System
+        # Attention System
         # What the agent is currently focusing its attention on.
         # Can be 'food', 'other_agents', 'curiosity', 'goal', or None (default/diffuse attention).
         self.attention_focus: str = None
@@ -182,7 +186,6 @@ class Agent:
                         current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)  # Boost food perception
                     elif self.attention_focus == 'other_agents' and cell_content == 'agent':  # Assuming 'agent' placeholder for other agents
                         current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)  # Boost agent perception
-                    # You can add more rules for other attention focuses
 
                     if random.random() < current_perception_accuracy:
                         processed_row.append(cell_content)  # Perceive correctly
@@ -273,7 +276,7 @@ class Agent:
         and current attention focus.
 
         The thinking process involves updating physiological states, emotional states,
-        and then using a combination of motivation, Q-learning, and memory to select an action.
+        and then using a combination of motivation, DQN, and memory to select an action.
 
         Returns:
             str: The chosen action (e.g., "seek_food", "rest", "explore", "move_up", etc.).
@@ -289,14 +292,14 @@ class Agent:
         self._previous_physiological_states = (self.internal_state.hunger, self.internal_state.fatigue)
 
         # 4. Emotion-driven motivation engine decides preferred action
-        # This part is currently not used for the final action decision as Q-learning overrides it.
+        # This part is currently not used for the final action decision as DQN overrides it.
         _ = self.motivation_engine.decide_action(
             perception=self.perception,
             memory=self.short_term_memory,
             emotions=self.emotion_state
         )
 
-        # --- Set Attention Focus (New Logic) ---
+        # --- Set Attention Focus ---
         # Prioritize attention based on most pressing needs or active goals
         if self.internal_state.hunger > 0.7:
             self.attention_focus = 'food'
@@ -325,7 +328,7 @@ class Agent:
         else:
             self.attention_focus = None  # Default/diffuse attention
 
-        # 5. Q-learner selects an action (primary decision maker for now).
+        # 5. DQN Learner selects an action (primary decision maker for now).
         selected_action = self.q_learner.choose_action(
             hunger=self.internal_state.hunger,
             fatigue=self.internal_state.fatigue
@@ -373,7 +376,7 @@ class Agent:
             # This is a very basic example. You could make it more complex:
             # - If other agent is also hungry, maybe compete or cooperate.
             # - If other agent is a 'threat', maybe move away.
-            if selected_action == "explore":  # If Q-learner chose explore, but hungry and sees others
+            if selected_action == "explore":  # If DQN chose explore, but hungry and sees others
                 print(f"{self.name} sees other agents and is hungry. Prioritizing seeking food over exploring.")
                 selected_action = "seek_food"  # Override to seek food
 
@@ -395,8 +398,10 @@ class Agent:
                     selected_action = "rest" if self.internal_state.fatigue < 0.8 else "seek_food"  # Fallback to needs
 
         # --- Curiosity-Driven Exploration ---
-        # Get the key for the current state
-        current_state_key = self.q_learner.get_state_key(self.internal_state.hunger, self.internal_state.fatigue)
+        # Get the key for the current state (using DQNLearner's method for state representation)
+        # Convert to bytes for defaultdict key
+        current_state_key = self.q_learner.get_state_representation(self.internal_state.hunger,
+                                                                    self.internal_state.fatigue).cpu().numpy().tobytes()
 
         # Increment visit count for the current state
         self.visited_states[current_state_key] += 1
@@ -414,7 +419,7 @@ class Agent:
         if curiosity_influence > curiosity_threshold and \
                 self.internal_state.hunger < 0.7 and self.internal_state.fatigue < 0.7:
 
-            # If the Q-learner didn't choose explore, but curiosity is high,
+            # If the DQN didn't choose explore, but curiosity is high,
             # consider overriding to an exploration action (e.g., a random move)
             if selected_action not in ["explore", "move_up", "move_down", "move_left", "move_right"]:
                 print(f"{self.name} is curious! Overriding to exploration due to unfamiliarity.")
@@ -507,7 +512,7 @@ class Agent:
 
     def act(self, action: str):
         """
-        Executes the chosen action, updates the agent's internal state and Q-table,
+        Executes the chosen action, updates the agent's internal state and DQN,
         and records the experience in episodic memory.
         This method now includes movement logic for grid-based actions.
 
@@ -516,11 +521,11 @@ class Agent:
                           Expected actions: "seek_food", "rest", "explore",
                           "move_up", "move_down", "move_left", "move_right".
         """
-        # We get a copy of the agent's internal state before the action.
+        # Take a snapshot of the agent's internal state before the action.
         previous_internal_state = self.internal_state.snapshot()
         original_pos_x, original_pos_y = self.pos_x, self.pos_y  # Store original position
 
-        # Perform the selected action and implement its effects
+        # Perform the selected action and apply its effects.
         if action == "seek_food":
             # Check if there's food at the agent's current location
             if self.environment.grid[self.pos_x][self.pos_y] == 'food':
@@ -592,7 +597,7 @@ class Agent:
         # Update the agent's last_action_reward with the adjusted value
         self.last_action_reward = adjusted_reward
 
-        # Update Q-table with the experience using the adjusted reward
+        # Update DQN with the experience using the adjusted reward
         self.q_learner.update(
             previous_internal_state.hunger, previous_internal_state.fatigue,
             action,
@@ -615,11 +620,11 @@ class Agent:
     def log_status(self):
         """
         Prints the agent's current status, including internal state, emotions,
-        Q-table sample, and episodic memory sample.
+        DQN learner info, and episodic memory sample.
         """
         print(f"{self.name} at ({self.pos_x},{self.pos_y}) → {self.internal_state}")
         print("Emotions:", self.emotion_state)
-        print("Q-table (sample):")
+        print("DQN Learner Info:")  # Changed from Q-table to DQN Learner
         print(self.q_learner)
         print("Episodic Memory (sample):")
         print(self.episodic_memory)
@@ -638,7 +643,7 @@ class Agent:
         else:
             print("No other agents in sight.")
 
-        print(f"Current Weather: {self.perception['current_weather']}")  # New: Log current weather
+        print(f"Current Weather: {self.perception['current_weather']}")  # Log current weather
 
         # Log active goals
         if self.active_goals:
@@ -666,3 +671,6 @@ class Agent:
                     print(f"    Agent: {item['info']['name']} at ({item['info']['pos_x']},{item['info']['pos_y']})")
         else:
             print("Working Memory is empty.")
+
+        print(f"Attention Focus: {self.attention_focus}")  # Log current attention focus
+
