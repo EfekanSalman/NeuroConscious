@@ -1,14 +1,24 @@
+# agent/base_agent.py
+
+# Ensure all necessary imports are at the top of your file:
 import random
-from collections import defaultdict, deque
+from collections import defaultdict, deque  # Import deque for working memory
 from core.state import InternalState
+from core.motivation.motivation import MotivationEngine  # Or BasicMotivationEngine if you're using that directly
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
 from core.learning.reward_learner import RewardLearner
-from core.learning.dqn_learner import DQNLearner
+from core.learning.dqn_learner import DQNLearner  # Changed: Import DQNLearner
 from core.emotion.emotion_state import EmotionState
 from core.emotion.basic_emotion import BasicEmotionStrategy
-from core.motivation.basic_motivation import BasicMotivationEngine
+from core.motivation.basic_motivation import BasicMotivationEngine  # If you're using this one
 from typing import List, Tuple, Dict
+
+# Import Consciousness States
+from core.consciousness.base import ConsciousnessState
+from core.consciousness.awake_state import AwakeState
+from core.consciousness.asleep_state import AsleepState
+from core.consciousness.focused_state import FocusedState
 
 
 class Agent:
@@ -23,8 +33,9 @@ class Agent:
     introduces sensory noise, making perception imperfect, and incorporates
     curiosity-driven exploration, along with a basic goal system,
     integrates mood-based reward adjustment, a working memory buffer,
-    a basic attention system, and uses a Deep Q-Network (DQN) for learning.
-    It now also generates an internal monologue or reasoning trace.
+    a basic attention system, uses a Deep Q-Network (DQN) for learning,
+    generates an internal monologue or reasoning trace, and manages different
+    states of consciousness.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
@@ -49,7 +60,7 @@ class Agent:
         self.perception: dict = {
             "food_available_global": False,  # Global flag from World
             "time_of_day": "day",
-            "current_weather": "sunny",  # Current weather condition
+            "current_weather": "sunny",  # New: Current weather condition
             "local_grid_view": [],  # Agent's view of its immediate surroundings
             "food_in_sight": False,  # Whether food is in agent's local view
             "other_agents_in_sight": []  # List of (agent_name, pos_x, pos_y) of other agents in local view
@@ -93,30 +104,37 @@ class Agent:
         # Strategy for updating the agent's emotions.
         self.emotion_strategy: BasicEmotionStrategy = BasicEmotionStrategy(self.emotion_state)
 
-        # Perception accuracy for sensory noise
+        # New: Perception accuracy for sensory noise
         self.perception_accuracy: float = perception_accuracy
 
-        # Track visited states for curiosity
+        # New: Track visited states for curiosity
         self.visited_states: Dict[str, int] = defaultdict(int)  # Counts how many times a state has been visited
 
-        # Basic Goal System
+        # New: Basic Goal System
         # Goals can be represented as dictionaries: {"type": "reach_location", "target_x": 5, "target_y": 5, "priority": 0.8, "completed": False}
         # Or {"type": "maintain_hunger", "threshold": 0.3, "duration": 10, "current_duration": 0, "priority": 0.6}
         self.active_goals: List[Dict] = []
         self._initialize_goals()  # Add some initial goals
 
-        # Working Memory Buffer
+        # New: Working Memory Buffer
         # Stores recent important perceptions or thoughts for short-term recall.
         # Max length of 5 items, oldest items are discarded when new ones are added.
         self.working_memory_buffer: deque = deque(maxlen=5)
 
-        # Attention System
+        # New: Attention System
         # What the agent is currently focusing its attention on.
         # Can be 'food', 'other_agents', 'curiosity', 'goal', or None (default/diffuse attention).
         self.attention_focus: str = None
 
-        # Internal Monologue / Reasoning Trace
+        # New: Internal Monologue / Reasoning Trace
         self.internal_monologue: str = ""
+
+        # New: Consciousness States
+        self.awake_state = AwakeState(self)
+        self.asleep_state = AsleepState(self)
+        self.focused_state = FocusedState(self)
+        self.current_consciousness_state: ConsciousnessState = self.awake_state  # Start in Awake state
+        self.current_consciousness_state.enter()  # Call enter for initial state
 
     def _initialize_goals(self):
         """
@@ -153,25 +171,35 @@ class Agent:
         """
         self.environment = env
 
-    def sense(self):
+    def transition_to_state(self, new_state: ConsciousnessState):
         """
-        Updates the agent's perceptions based on the current environment state and local grid view.
+        Transitions the agent to a new state of consciousness.
 
-        This method reads global information (food availability, time of day, weather) from the World
-        and also scans the immediate surroundings (e.g., 1-cell radius) on the grid for items like food
-        and other agents. Sensory noise is now applied, meaning perceptions might be imperfect.
-        Important perceptions are also added to the working memory buffer.
-        An attention system can modify perception accuracy for specific stimuli.
+        Args:
+            new_state (ConsciousnessState): The new consciousness state to transition to.
+        """
+        if self.current_consciousness_state != new_state:
+            self.current_consciousness_state.exit()
+            self.current_consciousness_state = new_state
+            self.current_consciousness_state.enter()
+            print(f"{self.name} transitioned to {new_state.get_state_name()} state.")
+            self.internal_monologue += f"Transitioning to {new_state.get_state_name()} state. "
+
+    # --- Default (Awake) Behavior Methods ---
+    # These methods encapsulate the original sense/think/act logic,
+    # which will be called by the AwakeState.
+    def _sense_default(self):
+        """
+        Default sensing behavior for the agent (used by AwakeState).
         """
         if self.environment:
             # Global perceptions
             self.perception["food_available_global"] = self.environment.food_available
             self.perception["time_of_day"] = self.environment.time_of_day
-            self.perception["current_weather"] = self.environment.current_weather  # New: Current weather condition
+            self.perception["current_weather"] = self.environment.current_weather
             self.current_time_step = self.environment.time_step
 
             # Local grid perception (e.g., 1-cell radius around the agent)
-            # This returns the raw grid view, not yet processed for other agents.
             raw_local_grid_view = self._get_local_grid_view(radius=1)
 
             # Apply sensory noise to local grid view with attention modulation
@@ -184,7 +212,7 @@ class Agent:
                     current_perception_accuracy = self.perception_accuracy
                     if self.attention_focus == 'food' and cell_content == 'food':
                         current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)  # Boost food perception
-                    elif self.attention_focus == 'other_agents' and cell_content == 'agent':  # Assuming 'agent' placeholder for other agents
+                    elif self.attention_focus == 'other_agents' and cell_content == 'agent':
                         current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)  # Boost agent perception
                     # You can add more rules for other attention focuses
 
@@ -193,8 +221,7 @@ class Agent:
                         if cell_content == 'food':
                             self.perception["food_in_sight"] = True
                             # Add perceived food location to working memory
-                            # Calculate absolute grid coordinates for the food item
-                            abs_r = self.pos_x + (r_idx - 1)  # r_idx 0,1,2 maps to offset -1,0,1
+                            abs_r = self.pos_x + (r_idx - 1)
                             abs_c = self.pos_y + (c_idx - 1)
                             self.working_memory_buffer.append(
                                 {"type": "perceived_food", "location": (abs_r, abs_c), "time": self.current_time_step})
@@ -204,11 +231,11 @@ class Agent:
 
             # Check for other agents in local view (also apply noise with attention modulation)
             self.perception["other_agents_in_sight"] = []
-            grid_size = len(self.environment.grid)  # Assuming square grid
-            radius = 1  # Using the same radius as _get_local_grid_view
+            grid_size = len(self.environment.grid)
+            radius = 1
 
             for r_offset in range(-radius, radius + 1):
-                for c_offset in range(-radius, radius + 1):  # Corrected loop range to radius + 1
+                for c_offset in range(-radius, radius + 1):
                     view_row, view_col = self.pos_x + r_offset, self.pos_y + c_offset
 
                     # Skip self position
@@ -219,12 +246,10 @@ class Agent:
                         # Adjust perception accuracy for other agents based on attention focus
                         current_agent_perception_accuracy = self.perception_accuracy
                         if self.attention_focus == 'other_agents':
-                            current_agent_perception_accuracy = min(1.0,
-                                                                    self.perception_accuracy + 0.2)  # Boost agent perception
+                            current_agent_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)
 
                         # Apply noise to perception of other agents
                         if random.random() < current_agent_perception_accuracy:
-                            # Iterate through all agents in the world to see if any are at this cell
                             for other_agent in self.environment.agents:
                                 if other_agent is not self and other_agent.pos_x == view_row and other_agent.pos_y == view_col:
                                     agent_info = {"name": other_agent.name, "pos_x": other_agent.pos_x,
@@ -233,10 +258,8 @@ class Agent:
                                     # Add perceived other agent to working memory
                                     self.working_memory_buffer.append(
                                         {"type": "perceived_agent", "info": agent_info, "time": self.current_time_step})
-                                    # Break inner loop once an agent is found at this cell to avoid duplicates
                                     break
-                                    # Else: agent fails to perceive the other agent due to noise/occlusion
-                    # Else: it's a boundary, no agent there
+                                    # Else: it's a boundary, no agent there
 
             # Records the last time food was perceived as available (either globally or locally).
             if self.perception["food_available_global"] or self.perception["food_in_sight"]:
@@ -268,23 +291,19 @@ class Agent:
             view.append(row_view)
         return view
 
-    def think(self) -> str:
+    def _think_default(self) -> str:
         """
-        Determines the agent's next action based on its internal state, emotions,
-        learning algorithms, and now, the presence of other agents, memory recall,
-        weather conditions, curiosity for exploration, active goals, working memory,
-        and current attention focus. It also generates an internal monologue.
-
-        The thinking process involves updating physiological states, emotional states,
-        and then using a combination of motivation, DQN, and memory to select an action.
+        Default thinking behavior for the agent (used by AwakeState and FocusedState).
+        This contains the core decision-making logic.
 
         Returns:
-            str: The chosen action (e.g., "seek_food", "rest", "explore", "move_up", etc.).
+            str: The chosen action.
         """
         # Initialize internal monologue for this step
-        self.internal_monologue = f"Time Step {self.current_time_step}: I am at ({self.pos_x},{self.pos_y}). "
-        self.internal_monologue += f"Hunger: {self.internal_state.hunger:.2f}, Fatigue: {self.internal_state.fatigue:.2f}, Mood: {self.internal_state.mood}. "
-        self.internal_monologue += f"My emotions are: {self.emotion_state}. "
+        # This part of monologue is handled by the consciousness state's think method
+        # self.internal_monologue = f"Time Step {self.current_time_step}: I am at ({self.pos_x},{self.pos_y}). "
+        # self.internal_monologue += f"Hunger: {self.internal_state.hunger:.2f}, Fatigue: {self.internal_state.fatigue:.2f}, Mood: {self.internal_state.mood}. "
+        # self.internal_monologue += f"My emotions are: {self.emotion_state}. "
 
         # 1. Update physiological state (e.g., hunger, fatigue increases over time).
         time_delta_factor = 1.5 if self.perception["time_of_day"] == "night" else 1.0
@@ -309,7 +328,7 @@ class Agent:
             self.attention_focus = 'food'
             self.internal_monologue += "I am very hungry, so I should focus on finding food. "
         elif self.internal_state.fatigue > 0.7:
-            self.attention_focus = 'rest'
+            self.attention_focus = 'rest'  # Could be 'shelter' or 'safe_spot' if those existed
             self.internal_monologue += "I am very fatigued, so I should focus on resting. "
         elif self.emotion_state.get("curiosity") > 0.6 and not self.active_goals:
             self.attention_focus = 'curiosity'
@@ -319,19 +338,19 @@ class Agent:
             if uncompleted_goals:
                 highest_priority_goal = max(uncompleted_goals, key=lambda g: g["priority"])
                 if highest_priority_goal["type"] == "reach_location":
-                    self.attention_focus = 'location_target'
+                    self.attention_focus = 'location_target'  # Specific focus for location goals
                     self.internal_monologue += f"My top priority is to reach {highest_priority_goal['name']} at ({highest_priority_goal['target_x']},{highest_priority_goal['target_y']}). "
                 elif highest_priority_goal["type"] == "maintain_hunger_low":
-                    self.attention_focus = 'food'
+                    self.attention_focus = 'food'  # Focus on food to maintain hunger
                     self.internal_monologue += f"I need to maintain low hunger for {highest_priority_goal['name']}, so I will focus on food. "
                 else:
-                    self.attention_focus = None
+                    self.attention_focus = None  # Default if goal type not specifically handled
                     self.internal_monologue += "I have an active goal but no specific focus for it. "
             else:
                 self.attention_focus = None
                 self.internal_monologue += "No active goals to focus on. "
         else:
-            self.attention_focus = None
+            self.attention_focus = None  # Default/diffuse attention
             self.internal_monologue += "No specific attention focus right now. "
 
         # 5. DQN Learner selects an action (primary decision maker for now).
@@ -457,20 +476,70 @@ class Agent:
                             selected_action = "move_right" if self.pos_y < food_y else "move_left"
                         break
 
-        self._last_performed_action = selected_action
         self.internal_monologue += f"Therefore, I have decided to {selected_action}. "
+        self._last_performed_action = selected_action
         return selected_action
+
+    def sense(self):
+        """
+        Delegates sensing to the current consciousness state.
+        """
+        self.current_consciousness_state.sense()
+
+    def think(self) -> str:
+        """
+        Delegates thinking to the current consciousness state.
+        Also handles transitions between consciousness states based on internal conditions.
+
+        Returns:
+            str: The chosen action.
+        """
+        # Determine if a state transition is needed BEFORE thinking
+        if self.internal_state.fatigue > 0.9 and self.current_consciousness_state != self.asleep_state:
+            self.transition_to_state(self.asleep_state)
+        elif self.internal_state.fatigue < 0.2 and self.current_consciousness_state == self.asleep_state:
+            self.transition_to_state(self.awake_state)
+        elif self.internal_state.hunger > 0.8 and self.current_consciousness_state != self.focused_state:
+            # If very hungry, try to enter focused state on food
+            self.attention_focus = 'food'  # Ensure attention is on food
+            self.transition_to_state(self.focused_state)
+        elif self.internal_state.hunger < 0.3 and self.current_consciousness_state == self.focused_state and self.attention_focus == 'food':
+            # If hunger is low and was focused on food, return to awake
+            self.transition_to_state(self.awake_state)
+        elif self.current_consciousness_state == self.focused_state and self.attention_focus == 'location_target':
+            # If focused on a location goal and it's completed, return to awake
+            target_goal = next((g for g in self.active_goals if g["type"] == "reach_location" and not g["completed"]),
+                               None)
+            if not target_goal:  # Goal completed or no active location goal
+                self.transition_to_state(self.awake_state)
+        # Add more complex transition logic here
+
+        # Initialize internal monologue for this step
+        self.internal_monologue = f"Time Step {self.current_time_step}: I am at ({self.pos_x},{self.pos_y}). "
+        self.internal_monologue += f"Hunger: {self.internal_state.hunger:.2f}, Fatigue: {self.internal_state.fatigue:.2f}, Mood: {self.internal_state.mood}. "
+        self.internal_monologue += f"My emotions are: {self.emotion_state}. "
+        self.internal_monologue += f"Current consciousness state: {self.current_consciousness_state.get_state_name()}. "
+
+        # Delegate thinking to the current consciousness state
+        return self.current_consciousness_state.think()
 
     def act(self, action: str):
         """
-        Executes the chosen action, updates the agent's internal state and DQN,
-        and records the experience in episodic memory.
-        This method now includes movement logic for grid-based actions.
+        Delegates acting to the current consciousness state.
 
         Args:
-            action (str): The action decided by the agent's motivation engine.
-                          Expected actions: "seek_food", "rest", "explore",
-                          "move_up", "move_down", "move_left", "move_right".
+            action (str): The action to perform.
+        """
+        self.current_consciousness_state.act(action)
+
+    def _act_default(self, action: str):
+        """
+        Default action execution logic for the agent (used by various ConsciousnessStates).
+        This method contains the core effects of performing an action on the agent's
+        internal state, environment, and learning.
+
+        Args:
+            action (str): The action to perform.
         """
         # Take a snapshot of the agent's internal state before the action.
         previous_internal_state = self.internal_state.snapshot()
@@ -575,12 +644,11 @@ class Agent:
         """
         print(f"{self.name} at ({self.pos_x},{self.pos_y}) → {self.internal_state}")
         print("Emotions:", self.emotion_state)
-        print("DQN Learner Info:")  # Changed from Q-table to DQN Learner
+        print("DQN Learner Info:")
         print(self.q_learner)
         print("Episodic Memory (sample):")
         print(self.episodic_memory)
         print("Local Perception (3x3 view):")
-        # Print local grid view for debugging
         if self.perception["local_grid_view"]:
             for row_content in self.perception["local_grid_view"]:
                 print(" ".join(row_content))
@@ -594,9 +662,8 @@ class Agent:
         else:
             print("No other agents in sight.")
 
-        print(f"Current Weather: {self.perception['current_weather']}")  # Log current weather
+        print(f"Current Weather: {self.perception['current_weather']}")
 
-        # Log active goals
         if self.active_goals:
             print("Active Goals:")
             for goal in list(self.active_goals):
@@ -610,7 +677,6 @@ class Agent:
         else:
             print("No active goals.")
 
-        # Log working memory content
         if self.working_memory_buffer:
             print("Working Memory:")
             for item in self.working_memory_buffer:
@@ -622,6 +688,6 @@ class Agent:
         else:
             print("Working Memory is empty.")
 
-        print(f"Attention Focus: {self.attention_focus}")  # Log current attention focus
-        print(f"Internal Monologue: {self.internal_monologue}")  # Log the internal monologue
+        print(f"Attention Focus: {self.attention_focus}")
+        print(f"Internal Monologue: {self.internal_monologue}")
 
