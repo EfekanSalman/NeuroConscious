@@ -1,11 +1,14 @@
 import random
-from typing import List
+from typing import List, Any
+
+# Assuming Agent is in agent/base_agent.py
 from agent.base_agent import Agent
 
 # --- World Configuration Constants ---
 GRID_SIZE = 10 # The world will be a 10x10 grid
 FOOD_SPAWN_CHANCE = 0.1 # Chance for food to appear in an empty cell per update
 MAX_FOOD_ITEMS = 5 # Maximum number of food items that can exist on the grid at once
+OBSTACLE_COUNT = 3 # New: Number of initial obstacles
 
 # Weather related constants
 WEATHER_TYPES = ["sunny", "cloudy", "rainy", "stormy"]
@@ -19,13 +22,14 @@ class World:
     The World class manages a grid-based map, global time step, environmental conditions
     (like food availability, time of day, and weather), and orchestrates the actions of all
     agents within it. It serves as the central hub for the NeuroConscious simulation.
+    This version includes static obstacles and methods for agents to interact with them.
     """
     def __init__(self):
         """
         Initializes the World environment with a grid map and initial weather.
 
         Sets up an empty list for agents, initializes the time step, and
-        establishes initial environmental conditions including the grid map and weather.
+        establish initial environmental conditions including the grid map and weather.
         """
         self.agents: List[Agent] = []       # A list to hold all agents participating in this world.
         self.time_step: int = 0             # The current simulation time step.
@@ -38,6 +42,7 @@ class World:
         # Each cell can contain 'empty', 'food', 'obstacle', etc.
         self.grid: List[List[str]] = [['empty' for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
         self._place_initial_food() # Place some food at the start
+        self._place_initial_obstacles() # New: Place some initial obstacles
 
     def _place_initial_food(self):
         """
@@ -50,6 +55,19 @@ class World:
             if self.grid[row][col] == 'empty':
                 self.grid[row][col] = 'food'
                 food_placed += 1
+
+    def _place_initial_obstacles(self):
+        """
+        Places a few initial 'obstacle' items randomly on the grid.
+        """
+        obstacles_placed = 0
+        while obstacles_placed < OBSTACLE_COUNT:
+            row = random.randint(0, GRID_SIZE - 1)
+            col = random.randint(0, GRID_SIZE - 1)
+            # Ensure obstacles are not placed on food or existing agents (if agents are placed first)
+            if self.grid[row][col] == 'empty':
+                self.grid[row][col] = 'obstacle'
+                obstacles_placed += 1
 
     def add_agent(self, agent: Agent, start_pos: tuple[int, int] = None):
         """
@@ -69,7 +87,8 @@ class World:
 
         if start_pos:
             row, col = start_pos
-            if 0 <= row < GRID_SIZE and 0 <= col < GRID_SIZE and self.grid[row][col] == 'empty':
+            # Ensure start position is empty or food, not an obstacle
+            if 0 <= row < GRID_SIZE and 0 <= col < GRID_SIZE and self.grid[row][col] in ['empty', 'food']:
                 agent.pos_x = row
                 agent.pos_y = col
                 # self.grid[row][col] = 'agent' # Optional: Mark agent's position on grid
@@ -87,7 +106,7 @@ class World:
         while True:
             row = random.randint(0, GRID_SIZE - 1)
             col = random.randint(0, GRID_SIZE - 1)
-            # For simplicity, agents can share a cell with 'empty' or 'food'
+            # Agents can be placed on 'empty' or 'food' cells, but not 'obstacle' cells
             if self.grid[row][col] in ['empty', 'food']:
                 agent.pos_x = row
                 agent.pos_y = col
@@ -104,6 +123,7 @@ class World:
         if current_food_count < MAX_FOOD_ITEMS:
             for r in range(GRID_SIZE):
                 for c in range(GRID_SIZE):
+                    # Only spawn food in 'empty' cells, not on 'obstacle'
                     if self.grid[r][c] == 'empty' and random.random() < FOOD_SPAWN_CHANCE:
                         self.grid[r][c] = 'food'
                         current_food_count += 1
@@ -126,6 +146,40 @@ class World:
         # There's a WEATHER_CHANGE_CHANCE at each step for the weather to change randomly.
         if random.random() < WEATHER_CHANGE_CHANCE:
             self.current_weather = random.choice(WEATHER_TYPES)
+            # Optional: More structured weather changes could be implemented here,
+            # e.g., based on time_step or previous weather.
+
+    def move_object_at_position(self, row: int, col: int, new_row: int, new_col: int) -> bool:
+        """
+        Attempts to move an object from one grid cell to another.
+        This method can be called by an agent's action.
+
+        Args:
+            row (int): The current row of the object.
+            col (int): The current column of the object.
+            new_row (int): The target row for the object.
+            new_col (int): The target column for the object.
+
+        Returns:
+            bool: True if the object was successfully moved, False otherwise.
+        """
+        # Basic validation for grid boundaries
+        if not (0 <= row < GRID_SIZE and 0 <= col < GRID_SIZE and
+                0 <= new_row < GRID_SIZE and 0 <= new_col < GRID_SIZE):
+            return False
+
+        object_to_move = self.grid[row][col]
+
+        # Only allow moving 'obstacle' for now. Expandable for other objects.
+        if object_to_move != 'obstacle':
+            return False
+
+        # Check if the target position is empty. Agents cannot move objects onto other agents or food.
+        if self.grid[new_row][new_col] == 'empty':
+            self.grid[new_row][new_col] = object_to_move
+            self.grid[row][col] = 'empty' # Original spot becomes empty
+            return True
+        return False
 
     def step(self):
         """
@@ -138,6 +192,8 @@ class World:
         self.update_environment() # Update global conditions like food, time of day, and weather.
         # Log the current time step and environmental conditions.
         print(f"\n=== Time Step {self.time_step} | Food: {self.food_available} | Time: {self.time_of_day} | Weather: {self.current_weather} ===")
+
+        # Optional: Print the grid for visualization
         self.print_grid()
 
         for agent in self.agents:
@@ -156,15 +212,13 @@ class World:
         Args:
             steps (int, optional): The total number of simulation steps to run. Defaults to 10.
         """
-        # Iterate 'steps' times, calling the 'step()' method for each iteration.
-        # The underscore (_) is used as a convention for a loop variable that is not used inside the loop.
         for _ in range(steps):
             self.step()
 
     def print_grid(self):
         """
-        Prints a visual representation of the grid, including agent positions.
-        'F' for food, 'A' for agent, '.' for empty.
+        Prints a visual representation of the grid, including agent positions and obstacles.
+        'F' for food, 'A' for agent, '.' for empty, '#' for obstacle.
         If an agent is on food, it will show 'A'.
         """
         display_grid = [['.' for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
@@ -174,9 +228,8 @@ class World:
             for c in range(GRID_SIZE):
                 if self.grid[r][c] == 'food':
                     display_grid[r][c] = 'F'
-                # Add other elements like obstacles them later
-                # elif self.grid[r][c] == 'obstacle':
-                #     display_grid[r][c] = '#'
+                elif self.grid[r][c] == 'obstacle': # New: Display obstacles
+                    display_grid[r][c] = '#'
 
         # Place agents on the display grid
         for agent in self.agents:

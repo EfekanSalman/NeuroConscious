@@ -4,14 +4,11 @@ from environment.world import World, GRID_SIZE
 import json
 from visualization.action_plot import plot_action_counts
 from visualization.internal_state_plot import plot_internal_states
-from visualization.emotion_plot import plot_emotion_history
-from visualization.action_timeline_plot import plot_action_timeline
-from visualization.dqn_q_value_plot import plot_dqn_q_values
 import random
-import os  # For directory cleanup if needed, but not for temp_frames anymore
+import os  # Import os module to create directories
 
 # Define a filepath for saving/loading the DQN model
-DQN_MODEL_FILEPATH = "dqn_model_simbot1.pth"  # .pth is a common extension for PyTorch models
+DQN_MODEL_FILEPATH = "models/dqn_model_simbot1.pth"  # .pth is a common extension for PyTorch models
 
 
 def main():
@@ -51,36 +48,15 @@ def main():
     mood_history = []
     time_steps = []
 
-    # Dictionary to store emotion history for plotting with lowercase keys
-    emotion_history = {
-        "joy": [],
-        "fear": [],
-        "frustration": [],
-        "curiosity": []
-    }
-
-    # Lists to store action and consciousness state history for plotting
-    action_history = []
-    consciousness_state_history = []
-
-    # Removed: temp_frames_dir creation and cleanup
-    print("--- Simulation Starting ---")
-
+    print("--- Starting Multi-Agent Simulation ---")
     for step in range(total_steps):
         # The world's step method now handles updating environment, printing grid,
         # and iterating through ALL agents' sense, think, act cycle.
-        # Removed: save_frame=True parameter from world.step()
         world.step()
-
-        # Print agent's internal monologue for the current step
-        print(f"\n[{agent1.name} Internal Monologue]: {agent1.internal_monologue}")
 
         # Count action frequency for SimBot-1 (or any agent you want to track)
         if agent1._last_performed_action:
             action_counter[agent1._last_performed_action] += 1
-            # Collect action and consciousness state for timeline plotting
-            action_history.append(agent1._last_performed_action)
-            consciousness_state_history.append(agent1.current_consciousness_state.get_state_name())
 
         # Collect internal state data for plotting
         hunger_history.append(agent1.internal_state.hunger)
@@ -88,19 +64,13 @@ def main():
         mood_history.append(agent1.internal_state.mood_value)
         time_steps.append(step)
 
-        # Collect emotion data for plotting
-        emotion_state = agent1.emotion_state.get_emotions()  # Get current emotion values as a dict
-        for emotion_name, value in emotion_state.items():
-            if emotion_name in emotion_history:
-                emotion_history[emotion_name].append(value)
-
         # Log detailed status every 100 steps
         if step % 100 == 0:
             print(f"\n--- Step {step} Detailed Status ---")
             agent1.log_status()  # Logging only agent1 for brevity in console output
 
     print("\n--- Simulation Completed ---")
-    print(f"Action Counts after {total_steps} steps for SimBot-1:")
+    print("Action Counts after", total_steps, "steps for SimBot-1:")
     for action, count in action_counter.items():
         print(f"{action}: {count}")
 
@@ -110,7 +80,7 @@ def main():
             json.dump(action_counter, f, indent=2)
         print("Action counts saved to action_counts.json.")
     except IOError as e:
-        print(f"Error occurred while saving action counts: {e}")
+        print(f"Error saving action counts: {e}")
 
     # Save DQN model of SimBot-1 using the new method
     agent1.q_learner.save_model(DQN_MODEL_FILEPATH)
@@ -121,19 +91,7 @@ def main():
     # Plot internal state history
     plot_internal_states(time_steps, hunger_history, fatigue_history, mood_history, agent_name=agent1.name)
 
-    # Plot emotion history
-    plot_emotion_history(time_steps, emotion_history, agent_name=agent1.name)
-
-    # Plot action timeline
-    plot_action_timeline(time_steps[:len(action_history)], action_history, consciousness_state_history,
-                         agent_name=agent1.name)
-
-    # Plot DQN Q-values
-    plot_dqn_q_values(agent1.q_learner, agent_name=agent1.name)
-
-    # Removed: plot_neural_activity call
-    # Removed: create_simulation_video call
-
 
 if __name__ == "__main__":
     main()
+
