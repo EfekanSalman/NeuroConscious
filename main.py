@@ -1,9 +1,12 @@
+# main.py
+
 from core.mood.basic_mood import BasicMoodStrategy
 from agent.base_agent import Agent
 from environment.world import World, GRID_SIZE
 import json
 from visualization.action_plot import plot_action_counts
 from visualization.internal_state_plot import plot_internal_states
+from visualization.emotion_plot import plot_emotion_history  # Import for plotting emotion history
 import random
 import os  # Import os module to create directories
 
@@ -48,11 +51,23 @@ def main():
     mood_history = []
     time_steps = []
 
+    # Dictionary to store emotion history for plotting with lowercase keys
+    emotion_history = {
+        "joy": [],
+        "fear": [],
+        "frustration": [],
+        "curiosity": []
+    }
+
     print("--- Starting Multi-Agent Simulation ---")
     for step in range(total_steps):
         # The world's step method now handles updating environment, printing grid,
         # and iterating through ALL agents' sense, think, act cycle.
         world.step()
+
+        # Print agent's internal monologue for the current step
+        # This will be generated during agent.think() within world.step()
+        print(f"\n[{agent1.name} Internal Monologue]: {agent1.internal_monologue}")
 
         # Count action frequency for SimBot-1 (or any agent you want to track)
         if agent1._last_performed_action:
@@ -63,6 +78,12 @@ def main():
         fatigue_history.append(agent1.internal_state.fatigue)
         mood_history.append(agent1.internal_state.mood_value)
         time_steps.append(step)
+
+        # Collect emotion data for plotting
+        emotion_state = agent1.emotion_state.get_emotions()  # Get current emotion values as a dict
+        for emotion_name, value in emotion_state.items():
+            if emotion_name in emotion_history:
+                emotion_history[emotion_name].append(value)
 
         # Log detailed status every 100 steps
         if step % 100 == 0:
@@ -90,6 +111,9 @@ def main():
 
     # Plot internal state history
     plot_internal_states(time_steps, hunger_history, fatigue_history, mood_history, agent_name=agent1.name)
+
+    # Plot emotion history
+    plot_emotion_history(time_steps, emotion_history, agent_name=agent1.name)
 
 
 if __name__ == "__main__":
