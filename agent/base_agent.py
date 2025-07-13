@@ -22,7 +22,7 @@ from core.consciousness.focused_state import FocusedState
 
 # Import Memory Modules
 from core.memory.semantic_memory import SemanticMemory
-from core.memory.procedural_memory import ProceduralMemory
+from core.memory.procedural_memory import ProceduralMemory  # New: Import ProceduralMemory
 
 # Import DecisionMaker
 from core.decision.decision_maker import DecisionMaker
@@ -51,8 +51,8 @@ class Agent:
     incorporates a hierarchical decision-maker with deliberative/reactive modes,
     supports plug-and-play cognitive modules, has the ability to
     interact with and move objects in the environment, supports
-    more complex goal hierarchies, and can now dynamically generate and
-    modify goals.
+    more complex goal hierarchies, can now dynamically generate and
+    modify goals, and integrates a procedural memory for learned skills.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
@@ -102,7 +102,7 @@ class Agent:
         # Semantic memory for general knowledge
         self.semantic_memory: SemanticMemory = SemanticMemory()
         # Procedural memory for learned skills and habits
-        self.procedural_memory: ProceduralMemory = ProceduralMemory()
+        self.procedural_memory: ProceduralMemory = ProceduralMemory()  # New: Initialize ProceduralMemory
 
         # High-level decision maker
         self.decision_maker: DecisionMaker = DecisionMaker()
@@ -180,6 +180,7 @@ class Agent:
         # Store cognitive modules in a dictionary for easy access by name
         self.cognitive_modules: Dict[str, CognitiveModule] = {}
         self._initialize_cognitive_modules()
+        self._initialize_procedures()  # New: Initialize default procedures
 
     def _initialize_goals(self):
         """
@@ -248,6 +249,39 @@ class Agent:
         # Add other modules here as they are created:
         # social_module = SocialModule(self)
         # self.cognitive_modules[social_module.get_module_name()] = social_module
+
+    def _initialize_procedures(self):
+        """
+        Initializes a set of default procedures (learned skills/habits) for the agent.
+        These procedures can be added dynamically or learned over time.
+        """
+        # Procedure 1: Seek food when hunger is high
+        self.procedural_memory.add_procedure(
+            name="Emergency Food Search",
+            condition={"type": "hunger_high", "threshold": 0.7},
+            action_sequence=["seek_food"],
+            priority=0.8,
+            condition_description="When hunger is high"
+        )
+
+        # Procedure 2: Rest when fatigue is high
+        self.procedural_memory.add_procedure(
+            name="Fatigue Recovery",
+            condition={"type": "fatigue_high", "threshold": 0.7},
+            action_sequence=["rest"],
+            priority=0.7,
+            condition_description="When fatigue is high"
+        )
+
+        # Procedure 3: Move object if blocking path (simple example)
+        self.procedural_memory.add_procedure(
+            name="Clear Obstacle",
+            condition={"type": "obstacle_blocking_path"},
+            action_sequence=["move_object"],
+            priority=0.9,  # High priority for clearing path
+            condition_description="When an obstacle is blocking a goal path"
+        )
+        print(f"{self.name} initialized with default procedures.")
 
     def set_environment(self, env):
         """
@@ -443,6 +477,9 @@ class Agent:
                 elif highest_priority_goal["type"] == "clear_path":  # New: Focus for clear_path goal
                     self.attention_focus = 'obstacle'
                     self.internal_monologue += f"My top priority is to clear a path for {highest_priority_goal['name']}. "
+                elif highest_priority_goal["type"] == "explore_area":  # New: Focus for explore_area goal
+                    self.attention_focus = 'curiosity'
+                    self.internal_monologue += f"My top priority is to explore new areas for {highest_priority_goal['name']}. "
                 else:
                     self.attention_focus = None  # Default if goal type not specifically handled
                     self.internal_monologue += "I have an active goal but no specific focus for it. "
@@ -486,8 +523,17 @@ class Agent:
                             self.internal_monologue += f"GoalGenerator: Modified goal '{goal['name']}'. "
                             break
 
+        # --- Procedural Memory Influence (New) ---
+        # Check if any procedure is triggered and has a higher priority than current default action
+        triggered_procedure = self.procedural_memory.get_triggered_procedure(self)
+        if triggered_procedure:
+            # DecisionMaker will arbitrate this, but here we can add it to monologue
+            self.internal_monologue += f"Procedural Memory suggests: '{triggered_procedure['name']}' ({triggered_procedure['suggested_action']}). "
+            # The DecisionMaker will ultimately decide if this overrides the DQN action.
+            # For now, we'll just pass it to the DecisionMaker.
+
         # --- Decision Maker determines the final action based on the mode ---
-        # All complex decision logic (DQN, memories, goals, environment, emotions)
+        # All complex decision logic (DQN, memories, goals, environment, emotions, procedures)
         # is now encapsulated within the DecisionMaker.
         final_action = self.decision_maker.decide_final_action(self, decision_mode)
 
@@ -560,6 +606,13 @@ class Agent:
         previous_internal_state = self.internal_state.snapshot()
         original_pos_x, original_pos_y = self.pos_x, self.pos_y  # Store original position
 
+        # Store the action that was *actually* performed, for procedural memory update
+        performed_action_id = None
+        # Check if the action was suggested by a procedure
+        triggered_procedure = self.procedural_memory.get_triggered_procedure(self)
+        if triggered_procedure and triggered_procedure["suggested_action"] == action:
+            performed_action_id = triggered_procedure["id"]
+
         # Perform the selected action and apply its effects.
         if action == "seek_food":
             # Check if there's food at the agent's current location
@@ -568,11 +621,15 @@ class Agent:
                 self.last_action_reward = 0.5  # Positive reward for successfully finding food.
                 self.environment.grid[self.pos_x][self.pos_y] = 'empty'  # Consume food
                 print(f"{self.name} successfully ate food at ({self.pos_x},{self.pos_y})! Hunger reduced.")
+                if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
+                                                                                        success=True)
             else:
                 self.internal_state.hunger = min(1.0, self.internal_state.hunger + 0.02)
                 self.last_action_reward = -0.1  # Small penalty for unsuccessful attempt.
                 print(
                     f"{self.name} sought food but found none at ({self.pos_x},{self.pos_y}). Hunger increased slightly.")
+                if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
+                                                                                        success=False)
             # Update memory about food presence (if food was globally available or locally seen)
             if self.perception["food_available_global"] or self.perception["food_in_sight"]:
                 self.short_term_memory["food_last_seen"] = self.current_time_step
@@ -581,12 +638,15 @@ class Agent:
             self.internal_state.fatigue = max(0.0, self.internal_state.fatigue - 0.6)
             self.last_action_reward = 0.4  # Positive reward for resting.
             print(f"{self.name} is resting at ({self.pos_x},{self.pos_y}). Fatigue reduced.")
+            if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id, success=True)
 
         elif action == "explore":
             self.internal_state.hunger = min(1.0, self.internal_state.hunger + 0.05)
             self.internal_state.fatigue = min(1.0, self.internal_state.fatigue + 0.05)
             self.last_action_reward = -0.05
             print(f"{self.name} is exploring at ({self.pos_x},{self.pos_y}). Hunger/Fatigue increased slightly.")
+            if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
+                                                                                    success=False)  # Exploration is not always a direct 'success'
 
         # --- Movement Actions ---
         elif action.startswith("move_"):
@@ -607,14 +667,20 @@ class Agent:
                     self.pos_x, self.pos_y = new_pos_x, new_pos_y
                     self.last_action_reward = -0.01  # Small cost for movement
                     print(f"{self.name} moved {action.replace('move_', '')} to ({self.pos_x},{self.pos_y}).")
+                    if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
+                                                                                            success=True)
                 else:
                     self.last_action_reward = -0.1  # Penalty for trying to move onto an obstacle
                     print(
                         f"{self.name} tried to move {action.replace('move_', '')} onto an obstacle at ({new_pos_x},{new_pos_y}).")
+                    if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
+                                                                                            success=False)
             else:
                 self.last_action_reward = -0.1  # Penalty for trying to move out of bounds
                 print(
                     f"{self.name} tried to move {action.replace('move_', '')} out of bounds from ({original_pos_x},{original_pos_y}).")
+                if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
+                                                                                        success=False)
 
         # --- New: Move Object Action ---
         elif action == "move_object":
@@ -639,16 +705,21 @@ class Agent:
                     print(
                         f"{self.name} successfully moved object from ({target_obj_x},{target_obj_y}) to ({new_obj_x},{new_obj_y}).")
                     moved_successfully = True
+                    if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
+                                                                                            success=True)
                     break
 
             if not moved_successfully:
                 self.last_action_reward = -0.2  # Penalty for failing to move object
                 print(
                     f"{self.name} tried to move an object at ({target_obj_x},{target_obj_y}) but failed (no object or no empty adjacent cell).")
+                if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
+                                                                                        success=False)
 
         else:
             print(f"{self.name} attempted an unknown action: {action}")
             self.last_action_reward = -0.2  # Penalty for invalid action
+            if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id, success=False)
 
         # Update the agent's internal state (hunger/fatigue naturally increase, mood recalculates)
         self.internal_state.update(delta_time=1.0)
@@ -698,7 +769,7 @@ class Agent:
         print(self.episodic_memory)
         print("Semantic Memory:")  # Log Semantic Memory
         print(self.semantic_memory)  # Print the semantic memory content
-        print("Procedural Memory:")  # Log Procedural Memory
+        print("Procedural Memory:")  # New: Log Procedural Memory
         print(self.procedural_memory)  # Print the procedural memory content
         print("Local Perception (3x3 view):")
         if self.perception["local_grid_view"]:
@@ -733,6 +804,8 @@ class Agent:
                 elif goal["type"] == "clear_path":  # New: Display obstacle location for clear_path goal
                     if goal["obstacle_location"]:
                         goal_details += f", Obstacle: ({goal['obstacle_location'][0]},{goal['obstacle_location'][1]})"
+                elif goal["type"] == "explore_area":  # New: Display target for explore_area goal
+                    goal_details += f", Target: ({goal['target_x']},{goal['target_y']})"
 
                 # Add parent and prerequisite info if available
                 if goal.get("parent_goal_id"):
