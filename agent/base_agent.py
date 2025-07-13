@@ -1,23 +1,36 @@
+# agent/base_agent.py
+
+# Ensure all necessary imports are at the top of your file:
 import random
-from collections import defaultdict, deque
+from collections import defaultdict, deque  # Import deque for working memory
 from core.state import InternalState
+from core.motivation.motivation import MotivationEngine  # Or BasicMotivationEngine if you're using that directly
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
 from core.learning.reward_learner import RewardLearner
-from core.learning.dqn_learner import DQNLearner
+from core.learning.dqn_learner import DQNLearner  # Changed: Import DQNLearner
 from core.emotion.emotion_state import EmotionState
 from core.emotion.basic_emotion import BasicEmotionStrategy
-from core.motivation.basic_motivation import BasicMotivationEngine
+from core.motivation.basic_motivation import BasicMotivationEngine  # If you're using this one
 from typing import List, Tuple, Dict, Any
+
+# Import Consciousness States
 from core.consciousness.base import ConsciousnessState
 from core.consciousness.awake_state import AwakeState
 from core.consciousness.asleep_state import AsleepState
 from core.consciousness.focused_state import FocusedState
+
+# Import Memory Modules
 from core.memory.semantic_memory import SemanticMemory
 from core.memory.procedural_memory import ProceduralMemory
+
+# Import DecisionMaker
 from core.decision.decision_maker import DecisionMaker
+
+# New: Import Cognitive Modules
 from core.cognitive_modules.base_module import CognitiveModule
-from core.cognitive_modules.problem_solver import ProblemSolver
+from core.cognitive_modules.problem_solver import ProblemSolver  # Example module
+from core.cognitive_modules.goal_generator import GoalGenerator  # New: Import GoalGenerator
 
 
 class Agent:
@@ -36,8 +49,10 @@ class Agent:
     generates an internal monologue or reasoning trace, manages different
     states of consciousness, includes semantic and procedural memory,
     incorporates a hierarchical decision-maker with deliberative/reactive modes,
-    supports plug-and-play cognitive modules, and now has the ability to
-    interact with and move objects in the environment.
+    supports plug-and-play cognitive modules, has the ability to
+    interact with and move objects in the environment, supports
+    more complex goal hierarchies, and can now dynamically generate and
+    modify goals.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
@@ -106,7 +121,7 @@ class Agent:
         )
 
         # Physiological state values (hunger, fatigue) before the last action, for reward calculation.
-        self._previous_physiological_states = None
+        self.previous_physiological_states = None
         # The last action performed by the agent.
         self._last_performed_action = None
         # The reward received from the last action.
@@ -123,9 +138,21 @@ class Agent:
         # New: Track visited states for curiosity
         self.visited_states: Dict[str, int] = defaultdict(int)  # Counts how many times a state has been visited
 
-        # New: Basic Goal System
-        # Goals can be represented as dictionaries: {"type": "reach_location", "target_x": 5, "target_y": 5, "priority": 0.8, "completed": False}
-        # Or {"type": "maintain_hunger", "threshold": 0.3, "duration": 10, "current_duration": 0, "priority": 0.6}
+        # New: Basic Goal System (now with hierarchical capabilities)
+        # Goals can be represented as dictionaries:
+        # {
+        #   "id": "unique_goal_id",
+        #   "type": "reach_location" | "maintain_hunger_low" | "clear_path" | "explore_area",
+        #   "name": "Descriptive Name",
+        #   "priority": 0.0-1.0,
+        #   "completed": False,
+        #   "parent_goal_id": None | "id_of_parent_goal", # New: For hierarchical goals
+        #   "prerequisites": [], # New: List of goal IDs that must be completed first
+        #   "sub_goals": [], # New: List of goal IDs that are part of this goal
+        #   "target_x": int, "target_y": int, # For reach_location
+        #   "threshold": float, "duration_steps": int, "current_duration": int # For maintain_hunger_low
+        #   "obstacle_location": (int, int) # For clear_path
+        # }
         self.active_goals: List[Dict] = []
         self._initialize_goals()  # Add some initial goals
 
@@ -136,7 +163,7 @@ class Agent:
 
         # New: Attention System
         # What the agent is currently focusing its attention on.
-        # Can be 'food', 'other_agents', 'curiosity', 'goal', or None (default/diffuse attention).
+        # Can be 'food', 'other_agents', 'curiosity', 'goal', 'obstacle', or None (default/diffuse attention).
         self.attention_focus: str = None
 
         # New: Internal Monologue / Reasoning Trace
@@ -156,27 +183,52 @@ class Agent:
 
     def _initialize_goals(self):
         """
-        Initializes a set of default goals for the agent.
-        This can be expanded later to dynamically generate goals.
+        Initializes a set of default goals for the agent, now supporting hierarchies.
         """
-        # Example Goal 1: Reach a specific location (e.g., center of the map)
-        self.active_goals.append({
+        # Goal 1: Clear a path to a specific location (Main Goal)
+        # This goal will have sub-goals for clearing obstacles and then reaching the location.
+        main_goal_reach_center = {
+            "id": "goal_reach_center",
             "type": "reach_location",
+            "name": "Reach Center of Map",
+            "priority": 0.9,  # High priority main goal
+            "completed": False,
+            "parent_goal_id": None,
+            "prerequisites": [],  # No prerequisites for the main goal itself
             "target_x": 5,
-            "target_y": 5,
-            "priority": 0.7,  # Higher priority means more influential
-            "completed": False,  # Ensure 'completed' key is present
-            "name": "Reach Center"
-        })
-        # Example Goal 2: Maintain low hunger for a period
+            "target_y": 5
+        }
+        self.active_goals.append(main_goal_reach_center)
+
+        # Sub-goal 1.1: Clear Obstacle (Prerequisite for reaching center if an obstacle is in the way)
+        # This goal will be dynamically created/prioritized by DecisionMaker/ProblemSolver
+        # if an obstacle is detected on the path to "goal_reach_center".
+        # For now, we'll add a placeholder that DecisionMaker can activate.
+        # This goal won't be active initially, but DecisionMaker will check for it.
+        clear_obstacle_sub_goal = {
+            "id": "sub_goal_clear_obstacle",
+            "type": "clear_path",  # New type for clearing obstacles
+            "name": "Clear Obstacle on Path",
+            "priority": 0.85,  # Slightly lower than main goal, but still high
+            "completed": False,
+            "parent_goal_id": "goal_reach_center",
+            "prerequisites": [],  # No specific prerequisites other than an obstacle existing
+            "obstacle_location": None  # This will be set dynamically when an obstacle is identified
+        }
+        self.active_goals.append(clear_obstacle_sub_goal)
+
+        # Goal 2: Maintain low hunger for a period (Independent Goal)
         self.active_goals.append({
+            "id": "goal_stay_fed",
             "type": "maintain_hunger_low",
-            "threshold": 0.3,  # Keep hunger below this
-            "duration_steps": 20,  # For 20 consecutive steps
-            "current_duration": 0,
-            "priority": 0.6,
             "name": "Stay Fed",
-            "completed": False  # Ensure 'completed' key is present
+            "priority": 0.6,
+            "completed": False,
+            "parent_goal_id": None,
+            "prerequisites": [],
+            "threshold": 0.3,
+            "duration_steps": 20,
+            "current_duration": 0
         })
         print(f"{self.name} initialized with goals: {[goal['name'] for goal in self.active_goals]}")
 
@@ -188,6 +240,11 @@ class Agent:
         problem_solver = ProblemSolver(self)
         self.cognitive_modules[problem_solver.get_module_name()] = problem_solver
         print(f"{self.name} initialized with cognitive module: {problem_solver.get_module_name()}")
+
+        # New: Add the GoalGenerator module
+        goal_generator = GoalGenerator(self)
+        self.cognitive_modules[goal_generator.get_module_name()] = goal_generator
+        print(f"{self.name} initialized with cognitive module: {goal_generator.get_module_name()}")
         # Add other modules here as they are created:
         # social_module = SocialModule(self)
         # self.cognitive_modules[social_module.get_module_name()] = social_module
@@ -353,7 +410,7 @@ class Agent:
         self.emotion_strategy.update_emotions(self.perception, self.internal_state)
 
         # 3. Store current state before acting (for learning)
-        self._previous_physiological_states = (self.internal_state.hunger, self.internal_state.fatigue)
+        self.previous_physiological_states = (self.internal_state.hunger, self.internal_state.fatigue)
 
         # 4. Emotion-driven motivation engine decides preferred action (not directly used for final action here)
         _ = self.motivation_engine.decide_action(
@@ -383,6 +440,9 @@ class Agent:
                 elif highest_priority_goal["type"] == "maintain_hunger_low":
                     self.attention_focus = 'food'  # Focus on food to maintain hunger
                     self.internal_monologue += f"I need to maintain low hunger for {highest_priority_goal['name']}, so I will focus on food. "
+                elif highest_priority_goal["type"] == "clear_path":  # New: Focus for clear_path goal
+                    self.attention_focus = 'obstacle'
+                    self.internal_monologue += f"My top priority is to clear a path for {highest_priority_goal['name']}. "
                 else:
                     self.attention_focus = None  # Default if goal type not specifically handled
                     self.internal_monologue += "I have an active goal but no specific focus for it. "
@@ -406,6 +466,25 @@ class Agent:
                 cognitive_module_outputs[module_name] = module_output
                 self.internal_monologue += f"Cognitive module '{module_name}' provided output: {module_output}. "
 
+        # New: Process GoalGenerator output
+        if "GoalGenerator" in self.cognitive_modules:
+            goal_generator_output = cognitive_module_outputs.get("GoalGenerator", {})
+            if "new_goals" in goal_generator_output:
+                for new_goal in goal_generator_output["new_goals"]:
+                    # Check if a goal with the same ID already exists to prevent duplicates
+                    if not any(g["id"] == new_goal["id"] for g in self.active_goals):
+                        self.active_goals.append(new_goal)
+                        self.internal_monologue += f"GoalGenerator: Added new goal '{new_goal['name']}'. "
+            if "modify_goals" in goal_generator_output:
+                for modify_instruction in goal_generator_output["modify_goals"]:
+                    goal_id_to_modify = modify_instruction["id"]
+                    for goal in self.active_goals:
+                        if goal["id"] == goal_id_to_modify:
+                            for key, value in modify_instruction.items():
+                                if key != "id":  # Don't modify the ID
+                                    goal[key] = value
+                            self.internal_monologue += f"GoalGenerator: Modified goal '{goal['name']}'. "
+                            break
 
         # --- Decision Maker determines the final action based on the mode ---
         # All complex decision logic (DQN, memories, goals, environment, emotions)
@@ -646,12 +725,22 @@ class Agent:
             print("Active Goals:")
             for goal in list(self.active_goals):
                 status = "Completed" if goal["completed"] else "Active"
+                goal_details = f"  - {goal['name']}: {status}, Priority: {goal['priority']:.2f}"
                 if goal["type"] == "reach_location":
-                    print(
-                        f"  - {goal['name']}: {status}, Target: ({goal['target_x']},{goal['target_y']}), Priority: {goal['priority']:.2f}")
+                    goal_details += f", Target: ({goal['target_x']},{goal['target_y']})"
                 elif goal["type"] == "maintain_hunger_low":
-                    print(
-                        f"  - {goal['name']}: {status}, Threshold: {goal['threshold']:.2f}, Duration: {goal['current_duration']}/{goal['duration_steps']}, Priority: {goal['priority']:.2f}")
+                    goal_details += f", Threshold: {goal['threshold']:.2f}, Duration: {goal['current_duration']}/{goal['duration_steps']}"
+                elif goal["type"] == "clear_path":  # New: Display obstacle location for clear_path goal
+                    if goal["obstacle_location"]:
+                        goal_details += f", Obstacle: ({goal['obstacle_location'][0]},{goal['obstacle_location'][1]})"
+
+                # Add parent and prerequisite info if available
+                if goal.get("parent_goal_id"):
+                    goal_details += f", Parent: {goal['parent_goal_id']}"
+                if goal.get("prerequisites"):
+                    goal_details += f", Prerequisites: {', '.join(goal['prerequisites'])}"
+
+                print(goal_details)
         else:
             print("No active goals.")
 

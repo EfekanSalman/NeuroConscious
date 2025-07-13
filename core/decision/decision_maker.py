@@ -1,3 +1,5 @@
+# core/decision/decision_maker.py
+
 import random
 from typing import Dict, Any, Tuple
 
@@ -9,7 +11,9 @@ class DecisionMaker:
 
     It takes inputs from various cognitive modules (DQN, needs, goals, memories)
     and applies a hierarchical logic or set of rules to determine the final action.
-    This version incorporates deliberative and reactive decision-making modes.
+    This version incorporates deliberative and reactive decision-making modes,
+    includes logic for moving objects, supports complex goal hierarchies
+    with prerequisites and sub-goals, and integrates with the GoalGenerator.
     """
 
     def __init__(self):
@@ -34,10 +38,7 @@ class DecisionMaker:
         chosen_action = None
         agent.internal_monologue += f"Current decision mode: {decision_mode.capitalize()}. "
 
-        # --- Decision Hierarchy based on Mode ---
-
-        # Reactive Mode prioritizes immediate needs and strong procedural memories.
-        # Deliberative Mode prioritizes goals, planning, and learned values (DQN).
+        # --- Decision Hierarchy ---
 
         # 1. Critical Needs Override (Highest Priority in both modes, but more immediate in Reactive)
         if agent.internal_state.hunger > 0.85:
@@ -89,39 +90,156 @@ class DecisionMaker:
         chosen_action = initial_dqn_suggestion
         agent.internal_monologue += f"Defaulting to DQN suggestion: {chosen_action}. "
 
-        # 3. Goal System Influence (More prominent in Deliberative Mode)
-        uncompleted_goals = [g for g in agent.active_goals if not g["completed"]]
-        if uncompleted_goals and decision_mode == 'deliberative':
-            highest_priority_goal = max(uncompleted_goals, key=lambda g: g["priority"])
+        # --- Complex Goal System Influence (More prominent in Deliberative Mode) ---
+        # Prioritize goals based on their priority, prerequisites, and parent-child relationships.
+        # We need to find the most relevant uncompleted goal.
+        relevant_goal = None
+        highest_priority = -1.0
 
-            if highest_priority_goal["type"] == "reach_location":
-                dist_x = abs(agent.pos_x - highest_priority_goal["target_x"])
-                dist_y = abs(agent.pos_y - highest_priority_goal["target_y"])
+        # Filter and sort goals: first by completion status, then by prerequisites, then by priority
+        uncompleted_goals = [g for g in agent.active_goals if not g["completed"]]
+
+        # Sort goals: Higher priority first, then by whether prerequisites are met
+        # For simplicity, we'll iterate and find the most relevant one based on a simple heuristic.
+        # A more robust solution would involve a proper planning algorithm.
+        for goal in uncompleted_goals:
+            # Check prerequisites: A goal is only considered if its prerequisites are met.
+            prerequisites_met = True
+            for prereq_id in goal.get("prerequisites", []):
+                prereq_goal = next((g for g in agent.active_goals if g["id"] == prereq_id), None)
+                if prereq_goal and not prereq_goal["completed"]:
+                    prerequisites_met = False
+                    break
+
+            if not prerequisites_met:
+                agent.internal_monologue += f"Goal '{goal['name']}' has unmet prerequisites. Skipping for now. "
+                continue
+
+            # Consider parent-child relationships: If a parent goal is active, its sub-goals might get a boost.
+            effective_priority = goal["priority"]
+            if goal.get("parent_goal_id"):
+                parent_goal = next((g for g in agent.active_goals if g["id"] == goal["parent_goal_id"]), None)
+                if parent_goal and not parent_goal["completed"]:
+                    # Boost sub-goal priority if parent is active
+                    effective_priority = min(1.0, effective_priority + (parent_goal["priority"] * 0.1))  # Small boost
+
+            if effective_priority > highest_priority:
+                highest_priority = effective_priority
+                relevant_goal = goal
+
+        if relevant_goal and decision_mode == 'deliberative':
+            agent.internal_monologue += f"DELIBERATIVE: Focusing on highest priority goal: '{relevant_goal['name']}' (Effective Priority: {highest_priority:.2f}). "
+
+            if relevant_goal["type"] == "reach_location":
+                target_x, target_y = relevant_goal["target_x"], relevant_goal["target_y"]
+                dist_x = abs(agent.pos_x - target_x)
+                dist_y = abs(agent.pos_y - target_y)
                 distance = dist_x + dist_y
 
                 if distance == 0:
-                    highest_priority_goal["completed"] = True
-                    agent.internal_monologue += f"Goal completed: {highest_priority_goal['name']}! "
-                    # Reward for goal completion can be applied here or in act()
-                elif distance <= 5:  # Deliberative mode can plan for slightly further goals
-                    agent.internal_monologue += f"DELIBERATIVE: Goal '{highest_priority_goal['name']}' is within reach ({distance} units), prioritizing movement. "
-                    if dist_x > 0:
-                        chosen_action = "move_down" if agent.pos_x < highest_priority_goal["target_x"] else "move_up"
-                    elif dist_y > 0:
-                        chosen_action = "move_right" if agent.pos_y < highest_priority_goal["target_y"] else "move_left"
+                    relevant_goal["completed"] = True
+                    agent.internal_monologue += f"Goal completed: {relevant_goal['name']}! "
+                    # Consider finding a new goal or reverting to exploration
+                    chosen_action = "explore"  # Fallback
+                else:
+                    # Check for obstacles blocking the path to the goal
+                    blocking_obstacle_loc = None
+                    if agent.perception["obstacle_in_sight"]:
+                        # Simple check: Is there an obstacle between agent and target?
+                        # This is a very basic check, a real pathfinding would be needed for complex maps.
+                        for obs_loc in agent.perception["obstacle_locations"]:
+                            # If obstacle is on the direct path (simplistic check)
+                            if (min(agent.pos_x, target_x) <= obs_loc[0] <= max(agent.pos_x, target_x) and
+                                    min(agent.pos_y, target_y) <= obs_loc[1] <= max(agent.pos_y, target_y)):
+                                blocking_obstacle_loc = obs_loc
+                                break
 
-            elif highest_priority_goal["type"] == "maintain_hunger_low":
-                if agent.internal_state.hunger < highest_priority_goal["threshold"]:
-                    highest_priority_goal["current_duration"] += 1
-                    if highest_priority_goal["current_duration"] >= highest_priority_goal["duration_steps"]:
-                        highest_priority_goal["completed"] = True
-                        agent.internal_monologue += f"DELIBERATIVE: Goal completed: {highest_priority_goal['name']} (maintained hunger)! "
-                    if agent.internal_state.hunger >= highest_priority_goal[
-                        "threshold"] * 0.8 and chosen_action != "seek_food":
-                        agent.internal_monologue += f"DELIBERATIVE: Hunger approaching threshold for goal '{highest_priority_goal['name']}', suggesting 'seek_food'. "
+                    # If an obstacle is blocking the path, activate/prioritize the 'clear_path' sub-goal
+                    clear_path_goal = next((g for g in agent.active_goals if g["id"] == "sub_goal_clear_obstacle"),
+                                           None)
+                    if blocking_obstacle_loc and clear_path_goal:
+                        clear_path_goal["obstacle_location"] = blocking_obstacle_loc
+                        clear_path_goal["completed"] = False  # Ensure it's active
+                        agent.internal_monologue += f"DELIBERATIVE: Obstacle at {blocking_obstacle_loc} blocking path to '{relevant_goal['name']}'. Prioritizing 'clear_path' sub-goal. "
+                        # The ProblemSolver (if active) or DecisionMaker itself should now pick 'move_object'
+                        # For now, we'll directly suggest move_object if agent is adjacent to the obstacle.
+                        if (abs(agent.pos_x - blocking_obstacle_loc[0]) <= 1 and
+                                abs(agent.pos_y - blocking_obstacle_loc[1]) <= 1):
+                            chosen_action = "move_object"
+                            agent.internal_monologue += "Agent is adjacent to blocking obstacle, attempting to move object. "
+                        else:
+                            # Move towards the obstacle to clear it
+                            if abs(agent.pos_x - blocking_obstacle_loc[0]) > abs(
+                                    agent.pos_y - blocking_obstacle_loc[1]):
+                                chosen_action = "move_down" if agent.pos_x < blocking_obstacle_loc[0] else "move_up"
+                            else:
+                                chosen_action = "move_right" if agent.pos_y < blocking_obstacle_loc[1] else "move_left"
+                            agent.internal_monologue += f"Moving towards obstacle at {blocking_obstacle_loc} to clear path: {chosen_action}. "
+                    else:
+                        # No blocking obstacle or clear_path goal not defined/relevant, continue moving towards location
+                        if dist_x > 0:
+                            chosen_action = "move_down" if agent.pos_x < target_x else "move_up"
+                        elif dist_y > 0:
+                            chosen_action = "move_right" if agent.pos_y < target_y else "move_left"
+                        agent.internal_monologue += f"Moving towards goal '{relevant_goal['name']}': {chosen_action}. "
+
+            elif relevant_goal["type"] == "maintain_hunger_low":
+                if agent.internal_state.hunger < relevant_goal["threshold"]:
+                    relevant_goal["current_duration"] += 1
+                    if relevant_goal["current_duration"] >= relevant_goal["duration_steps"]:
+                        relevant_goal["completed"] = True
+                        agent.internal_monologue += f"DELIBERATIVE: Goal completed: {relevant_goal['name']} (maintained hunger)! "
+                    if agent.internal_state.hunger >= relevant_goal["threshold"] * 0.8 and chosen_action != "seek_food":
+                        agent.internal_monologue += f"DELIBERATIVE: Hunger approaching threshold for goal '{relevant_goal['name']}', suggesting 'seek_food'. "
                         chosen_action = "seek_food"
                 else:
-                    highest_priority_goal["current_duration"] = 0
+                    relevant_goal["current_duration"] = 0
+
+            elif relevant_goal["type"] == "clear_path":
+                # If this sub-goal is active, its obstacle_location should be set.
+                if relevant_goal["obstacle_location"]:
+                    obs_x, obs_y = relevant_goal["obstacle_location"]
+                    # Check if the obstacle is still at the location (it might have been moved by another agent or disappeared)
+                    if agent.environment.grid[obs_x][obs_y] != 'obstacle':
+                        relevant_goal["completed"] = True
+                        agent.internal_monologue += f"DELIBERATIVE: Obstacle at ({obs_x},{obs_y}) is gone. 'Clear Path' goal completed. "
+                        # Fallback to parent goal or exploration
+                        chosen_action = "explore"
+                    elif agent.pos_x == obs_x and agent.pos_y == obs_y:
+                        chosen_action = "move_object"
+                        agent.internal_monologue += f"DELIBERATIVE: At obstacle location ({obs_x},{obs_y}), attempting to move object. "
+                    else:
+                        # Move towards the obstacle
+                        if abs(agent.pos_x - obs_x) > abs(agent.pos_y - obs_y):
+                            chosen_action = "move_down" if agent.pos_x < obs_x else "move_up"
+                        else:
+                            chosen_action = "move_right" if agent.pos_y < obs_y else "move_left"
+                        agent.internal_monologue += f"Moving towards obstacle at ({obs_x},{obs_y}) to clear path: {chosen_action}. "
+                else:
+                    # If clear_path goal is active but no obstacle_location, it means it's waiting for an obstacle to appear or be identified.
+                    agent.internal_monologue += "DELIBERATIVE: Clear path goal active but no specific obstacle identified yet. "
+                    # Fallback to exploration or parent goal logic
+                    chosen_action = "explore"
+
+            elif relevant_goal["type"] == "explore_area":  # New: Handle explore_area goal
+                target_x, target_y = relevant_goal["target_x"], relevant_goal["target_y"]
+                dist_x = abs(agent.pos_x - target_x)
+                dist_y = abs(agent.pos_y - target_y)
+                distance = dist_x + dist_y
+
+                if distance == 0:
+                    relevant_goal["completed"] = True
+                    agent.internal_monologue += f"DELIBERATIVE: Goal completed: {relevant_goal['name']} (reached exploration target)! "
+                    chosen_action = "explore"  # Continue exploring or wait for new goal
+                else:
+                    agent.internal_monologue += f"DELIBERATIVE: Pursuing exploration goal '{relevant_goal['name']}'. Moving towards ({target_x},{target_y}). "
+                    if dist_x > 0:
+                        chosen_action = "move_down" if agent.pos_x < target_x else "move_up"
+                    elif dist_y > 0:
+                        chosen_action = "move_right" if agent.pos_y < target_y else "move_left"
+                    else:
+                        chosen_action = random.choice(
+                            ["move_up", "move_down", "move_left", "move_right"])  # Random move if stuck or at target
 
         # 4. Semantic Memory / Working Memory Influence (More prominent in Deliberative Mode)
         # These are generally lower priority and refine the chosen action rather than override.
@@ -131,7 +249,8 @@ class DecisionMaker:
                 if food_facts:
                     agent.internal_monologue += "DELIBERATIVE: Semantic memory reminds me about food. "
                     if agent.perception["food_in_sight"] and chosen_action not in ["seek_food", "move_up", "move_down",
-                                                                                   "move_left", "move_right"]:
+                                                                                   "move_left", "move_right",
+                                                                                   "move_object"]:
                         agent.internal_monologue += "Food in sight, considering 'seek_food'. "
 
                 for item in reversed(agent.working_memory_buffer):
@@ -139,7 +258,8 @@ class DecisionMaker:
                             agent.current_time_step - item["time"] <= 3 and \
                             (agent.pos_x, agent.pos_y) != item["location"]:
                         food_x, food_y = item["location"]
-                        if chosen_action not in ["seek_food", "move_up", "move_down", "move_left", "move_right"]:
+                        if chosen_action not in ["seek_food", "move_up", "move_down", "move_left", "move_right",
+                                                 "move_object"]:
                             agent.internal_monologue += f"DELIBERATIVE: Working memory recalls food at ({food_x},{food_y}). "
                             if abs(agent.pos_x - food_x) > abs(agent.pos_y - food_y):
                                 chosen_action = "move_down" if agent.pos_x < food_x else "move_up"
@@ -163,7 +283,8 @@ class DecisionMaker:
                 agent.internal_state.hunger < 0.7 and agent.internal_state.fatigue < 0.7 and \
                 not uncompleted_goals:  # and chosen_action not in movement/explore
             if decision_mode == 'deliberative' and chosen_action not in ["explore", "move_up", "move_down", "move_left",
-                                                                         "move_right"]:
+                                                                         "move_right",
+                                                                         "move_object"]:  # Exclude move_object
                 agent.internal_monologue += "DELIBERATIVE: High curiosity and no pressing needs, so I will explore. "
                 chosen_action = random.choice(["move_up", "move_down", "move_left", "move_right"])
             elif decision_mode == 'reactive' and chosen_action == "explore":
