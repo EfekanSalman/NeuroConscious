@@ -13,7 +13,8 @@ class DecisionMaker:
     and applies a hierarchical logic or set of rules to determine the final action.
     This version incorporates deliberative and reactive decision-making modes,
     includes logic for moving objects, supports complex goal hierarchies
-    with prerequisites and sub-goals, and integrates with the GoalGenerator.
+    with prerequisites and sub-goals, integrates with the GoalGenerator,
+    and now leverages semantic memory for more informed decisions.
     """
 
     def __init__(self):
@@ -221,7 +222,7 @@ class DecisionMaker:
                     # Fallback to exploration or parent goal logic
                     chosen_action = "explore"
 
-            elif relevant_goal["type"] == "explore_area":  # New: Handle explore_area goal
+            elif relevant_goal["type"] == "explore_area":  # Handle explore_area goal
                 target_x, target_y = relevant_goal["target_x"], relevant_goal["target_y"]
                 dist_x = abs(agent.pos_x - target_x)
                 dist_y = abs(agent.pos_y - target_y)
@@ -244,29 +245,48 @@ class DecisionMaker:
         # 4. Semantic Memory / Working Memory Influence (More prominent in Deliberative Mode)
         # These are generally lower priority and refine the chosen action rather than override.
         if decision_mode == 'deliberative':
+            # Semantic Memory influence for hunger
             if agent.internal_state.hunger > 0.6:
                 food_facts = agent.semantic_memory.retrieve_facts("food")
                 if food_facts:
-                    agent.internal_monologue += "DELIBERATIVE: Semantic memory reminds me about food. "
-                    if agent.perception["food_in_sight"] and chosen_action not in ["seek_food", "move_up", "move_down",
-                                                                                   "move_left", "move_right",
-                                                                                   "move_object"]:
-                        agent.internal_monologue += "Food in sight, considering 'seek_food'. "
+                    agent.internal_monologue += f"DELIBERATIVE: Semantic memory reminds me that 'food' is {food_facts.get('property', 'unknown')} and {food_facts.get('effect', 'has no effect')}. "
+                    # If food is in sight and we know it reduces hunger, prioritize seeking food
+                    if agent.perception["food_in_sight"] and agent.semantic_memory.infer_property("food",
+                                                                                                  "effect") == "reduces_hunger" and chosen_action not in [
+                        "seek_food", "move_up", "move_down", "move_left", "move_right", "move_object"]:
+                        agent.internal_monologue += "Food in sight and known to reduce hunger, considering 'seek_food'. "
+                        chosen_action = "seek_food"
 
-                for item in reversed(agent.working_memory_buffer):
-                    if item["type"] == "perceived_food" and \
-                            agent.current_time_step - item["time"] <= 3 and \
-                            (agent.pos_x, agent.pos_y) != item["location"]:
-                        food_x, food_y = item["location"]
-                        if chosen_action not in ["seek_food", "move_up", "move_down", "move_left", "move_right",
-                                                 "move_object"]:
-                            agent.internal_monologue += f"DELIBERATIVE: Working memory recalls food at ({food_x},{food_y}). "
-                            if abs(agent.pos_x - food_x) > abs(agent.pos_y - food_y):
-                                chosen_action = "move_down" if agent.pos_x < food_x else "move_up"
-                            else:
-                                chosen_action = "move_right" if agent.pos_y < food_y else "move_left"
-                            agent.internal_monologue += f"Suggesting movement towards recalled food: {chosen_action}. "
-                        break
+            # Semantic Memory influence for fatigue/rest
+            if agent.internal_state.fatigue > 0.6:
+                rest_facts = agent.semantic_memory.retrieve_facts("rest")
+                if rest_facts and rest_facts.get("effect") == "reduces_fatigue" and chosen_action != "rest":
+                    agent.internal_monologue += f"DELIBERATIVE: Semantic memory reminds me that 'rest' {rest_facts.get('effect', 'has no effect')}. Prioritizing 'rest'. "
+                    chosen_action = "rest"
+
+            # Semantic Memory influence for stormy weather
+            current_weather = agent.perception["current_weather"]
+            if current_weather == "stormy":
+                shelter_facts = agent.semantic_memory.retrieve_facts("shelter")
+                if shelter_facts and shelter_facts.get("property") == "provides_safety" and shelter_facts.get(
+                        "context") == "bad_weather" and chosen_action not in ["rest"]:
+                    agent.internal_monologue += f"DELIBERATIVE: Semantic memory informs me that 'shelter' provides safety in bad weather. I should seek shelter (or rest). "
+                    chosen_action = "rest"  # As shelter action is not yet explicit, fallback to rest
+
+            for item in reversed(agent.working_memory_buffer):
+                if item["type"] == "perceived_food" and \
+                        agent.current_time_step - item["time"] <= 3 and \
+                        (agent.pos_x, agent.pos_y) != item["location"]:
+                    food_x, food_y = item["location"]
+                    if chosen_action not in ["seek_food", "move_up", "move_down", "move_left", "move_right",
+                                             "move_object"]:
+                        agent.internal_monologue += f"DELIBERATIVE: Working memory recalls food at ({food_x},{food_y}). "
+                        if abs(agent.pos_x - food_x) > abs(agent.pos_y - food_y):
+                            chosen_action = "move_down" if agent.pos_x < food_x else "move_up"
+                        else:
+                            chosen_action = "move_right" if agent.pos_y < food_y else "move_left"
+                        agent.internal_monologue += f"Suggesting movement towards recalled food: {chosen_action}. "
+                    break
 
         # 5. Environmental/Emotional Modifiers (Weather, Curiosity, Other Agents)
         # These can influence both modes, but their impact might differ.
