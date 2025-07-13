@@ -8,7 +8,7 @@ from core.learning.dqn_learner import DQNLearner
 from core.emotion.emotion_state import EmotionState
 from core.emotion.basic_emotion import BasicEmotionStrategy
 from core.motivation.basic_motivation import BasicMotivationEngine
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Any
 from core.consciousness.base import ConsciousnessState
 from core.consciousness.awake_state import AwakeState
 from core.consciousness.asleep_state import AsleepState
@@ -16,6 +16,8 @@ from core.consciousness.focused_state import FocusedState
 from core.memory.semantic_memory import SemanticMemory
 from core.memory.procedural_memory import ProceduralMemory
 from core.decision.decision_maker import DecisionMaker
+from core.cognitive_modules.base_module import CognitiveModule
+from core.cognitive_modules.problem_solver import ProblemSolver
 
 
 class Agent:
@@ -33,7 +35,9 @@ class Agent:
     a basic attention system, uses a Deep Q-Network (DQN) for learning,
     generates an internal monologue or reasoning trace, manages different
     states of consciousness, includes semantic and procedural memory,
-    and now incorporates a hierarchical decision-maker with deliberative/reactive modes.
+    incorporates a hierarchical decision-maker with deliberative/reactive modes,
+    supports plug-and-play cognitive modules, and now has the ability to
+    interact with and move objects in the environment.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
@@ -61,7 +65,9 @@ class Agent:
             "current_weather": "sunny",  # New: Current weather condition
             "local_grid_view": [],  # Agent's view of its immediate surroundings
             "food_in_sight": False,  # Whether food is in agent's local view
-            "other_agents_in_sight": []  # List of (agent_name, pos_x, pos_y) of other agents in local view
+            "other_agents_in_sight": [],  # List of (agent_name, pos_x, pos_y) of other agents in local view
+            "obstacle_in_sight": False,  # New: Whether an obstacle is in agent's local view
+            "obstacle_locations": []  # New: List of (row, col) of obstacles in local view
         }
         # Short-term and context-specific memory.
         self.short_term_memory: dict = {
@@ -71,6 +77,10 @@ class Agent:
         self.environment = None
         # Current simulation time step.
         self.current_time_step: int = 0
+
+        # Agent's position on the grid (row, column)
+        self.pos_x: int = 0
+        self.pos_y: int = 0
 
         # Long-term memory for past experiences.
         self.episodic_memory: EpisodicMemory = EpisodicMemory(capacity=5)
@@ -90,7 +100,8 @@ class Agent:
         # Changed: Use DQNLearner instead of QTableLearner
         # State size for DQN is 2 (hunger, fatigue)
         self.q_learner: DQNLearner = DQNLearner(
-            actions=["seek_food", "rest", "explore", "move_up", "move_down", "move_left", "move_right"],
+            actions=["seek_food", "rest", "explore", "move_up", "move_down", "move_left", "move_right", "move_object"],
+            # New: Added "move_object" action
             state_size=2  # Hunger and Fatigue
         )
 
@@ -138,6 +149,11 @@ class Agent:
         self.current_consciousness_state: ConsciousnessState = self.awake_state  # Start in Awake state
         self.current_consciousness_state.enter()  # Call enter for initial state
 
+        # New: Plug-and-Play Cognitive Modules
+        # Store cognitive modules in a dictionary for easy access by name
+        self.cognitive_modules: Dict[str, CognitiveModule] = {}
+        self._initialize_cognitive_modules()
+
     def _initialize_goals(self):
         """
         Initializes a set of default goals for the agent.
@@ -163,6 +179,18 @@ class Agent:
             "completed": False  # Ensure 'completed' key is present
         })
         print(f"{self.name} initialized with goals: {[goal['name'] for goal in self.active_goals]}")
+
+    def _initialize_cognitive_modules(self):
+        """
+        Initializes and registers plug-and-play cognitive modules.
+        """
+        # Add the ProblemSolver module
+        problem_solver = ProblemSolver(self)
+        self.cognitive_modules[problem_solver.get_module_name()] = problem_solver
+        print(f"{self.name} initialized with cognitive module: {problem_solver.get_module_name()}")
+        # Add other modules here as they are created:
+        # social_module = SocialModule(self)
+        # self.cognitive_modules[social_module.get_module_name()] = social_module
 
     def set_environment(self, env):
         """
@@ -207,6 +235,9 @@ class Agent:
             # Apply sensory noise to local grid view with attention modulation
             self.perception["local_grid_view"] = []
             self.perception["food_in_sight"] = False
+            self.perception["obstacle_in_sight"] = False  # New: Reset obstacle flag
+            self.perception["obstacle_locations"] = []  # New: Reset obstacle locations
+
             for r_idx, row_content in enumerate(raw_local_grid_view):
                 processed_row = []
                 for c_idx, cell_content in enumerate(row_content):
@@ -216,7 +247,9 @@ class Agent:
                         current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)  # Boost food perception
                     elif self.attention_focus == 'other_agents' and cell_content == 'agent':
                         current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)  # Boost agent perception
-                    # You can add more rules for other attention focuses
+                    elif self.attention_focus == 'obstacle' and cell_content == 'obstacle':  # New: Boost obstacle perception
+                        current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)
+                        # You can add more rules for other attention focuses
 
                     if random.random() < current_perception_accuracy:
                         processed_row.append(cell_content)  # Perceive correctly
@@ -227,6 +260,13 @@ class Agent:
                             abs_c = self.pos_y + (c_idx - 1)
                             self.working_memory_buffer.append(
                                 {"type": "perceived_food", "location": (abs_r, abs_c), "time": self.current_time_step})
+                        elif cell_content == 'obstacle':  # New: Perceive obstacle
+                            self.perception["obstacle_in_sight"] = True
+                            abs_r = self.pos_x + (r_idx - 1)
+                            abs_c = self.pos_y + (c_idx - 1)
+                            self.perception["obstacle_locations"].append((abs_r, abs_c))
+                            self.working_memory_buffer.append({"type": "perceived_obstacle", "location": (abs_r, abs_c),
+                                                               "time": self.current_time_step})
                     else:
                         processed_row.append('unknown')  # Perceive incorrectly (noise/occlusion)
                 self.perception["local_grid_view"].append(processed_row)
@@ -349,9 +389,23 @@ class Agent:
             else:
                 self.attention_focus = None
                 self.internal_monologue += "No active goals to focus on. "
+        elif self.perception["obstacle_in_sight"]:  # New: Focus on obstacle if present
+            self.attention_focus = 'obstacle'
+            self.internal_monologue += "I see an obstacle, focusing on how to deal with it. "
         else:
             self.attention_focus = None  # Default/diffuse attention
             self.internal_monologue += "No specific attention focus right now. "
+
+        # --- Process Cognitive Modules ---
+        # Cognitive modules can provide inputs or suggestions to the DecisionMaker.
+        # Collect outputs from all active cognitive modules.
+        cognitive_module_outputs: Dict[str, Any] = {}
+        for module_name, module_instance in self.cognitive_modules.items():
+            module_output = module_instance.process()
+            if module_output:
+                cognitive_module_outputs[module_name] = module_output
+                self.internal_monologue += f"Cognitive module '{module_name}' provided output: {module_output}. "
+
 
         # --- Decision Maker determines the final action based on the mode ---
         # All complex decision logic (DQN, memories, goals, environment, emotions)
@@ -467,18 +521,51 @@ class Agent:
             elif action == "move_right":
                 new_pos_y += 1
 
-            # Check if new position is within grid boundaries
+            # Check if new position is within grid boundaries AND not an obstacle
             grid_size = len(self.environment.grid)
             if 0 <= new_pos_x < grid_size and 0 <= new_pos_y < grid_size:
-                # For simplicity, agents can move into any cell (empty or food).
-                # You could add obstacle checks here later.
-                self.pos_x, self.pos_y = new_pos_x, new_pos_y
-                self.last_action_reward = -0.01  # Small cost for movement
-                print(f"{self.name} moved {action.replace('move_', '')} to ({self.pos_x},{self.pos_y}).")
+                if self.environment.grid[new_pos_x][new_pos_y] != 'obstacle':  # Cannot move onto an obstacle
+                    self.pos_x, self.pos_y = new_pos_x, new_pos_y
+                    self.last_action_reward = -0.01  # Small cost for movement
+                    print(f"{self.name} moved {action.replace('move_', '')} to ({self.pos_x},{self.pos_y}).")
+                else:
+                    self.last_action_reward = -0.1  # Penalty for trying to move onto an obstacle
+                    print(
+                        f"{self.name} tried to move {action.replace('move_', '')} onto an obstacle at ({new_pos_x},{new_pos_y}).")
             else:
                 self.last_action_reward = -0.1  # Penalty for trying to move out of bounds
                 print(
                     f"{self.name} tried to move {action.replace('move_', '')} out of bounds from ({original_pos_x},{original_pos_y}).")
+
+        # --- New: Move Object Action ---
+        elif action == "move_object":
+            # Agent tries to move an object from its current position to an adjacent empty cell.
+            # For simplicity, let's assume it tries to move an object one step to the right if possible.
+            # This logic can be expanded to allow agent to choose direction.
+            target_obj_x, target_obj_y = self.pos_x, self.pos_y  # Object is at agent's current position
+
+            # Find an adjacent empty cell to move the object to
+            # Prioritize right, then down, then left, then up
+            possible_new_positions = [
+                (target_obj_x, target_obj_y + 1),  # Right
+                (target_obj_x + 1, target_obj_y),  # Down
+                (target_obj_x, target_obj_y - 1),  # Left
+                (target_obj_x - 1, target_obj_y)  # Up
+            ]
+
+            moved_successfully = False
+            for new_obj_x, new_obj_y in possible_new_positions:
+                if self.environment.move_object_at_position(target_obj_x, target_obj_y, new_obj_x, new_obj_y):
+                    self.last_action_reward = 0.3  # Positive reward for moving an object
+                    print(
+                        f"{self.name} successfully moved object from ({target_obj_x},{target_obj_y}) to ({new_obj_x},{new_obj_y}).")
+                    moved_successfully = True
+                    break
+
+            if not moved_successfully:
+                self.last_action_reward = -0.2  # Penalty for failing to move object
+                print(
+                    f"{self.name} tried to move an object at ({target_obj_x},{target_obj_y}) but failed (no object or no empty adjacent cell).")
 
         else:
             print(f"{self.name} attempted an unknown action: {action}")
@@ -548,6 +635,11 @@ class Agent:
         else:
             print("No other agents in sight.")
 
+        if self.perception["obstacle_in_sight"]:  # New: Log obstacle info
+            print(f"Obstacles in sight at: {self.perception['obstacle_locations']}")
+        else:
+            print("No obstacles in sight.")
+
         print(f"Current Weather: {self.perception['current_weather']}")
 
         if self.active_goals:
@@ -571,6 +663,8 @@ class Agent:
                     print(f"    Location: {item['location']}")
                 elif item['type'] == 'perceived_agent':
                     print(f"    Agent: {item['info']['name']} at ({item['info']['pos_x']},{item['info']['pos_y']})")
+                elif item['type'] == 'perceived_obstacle':  # New: Log perceived obstacle in working memory
+                    print(f"    Location: {item['location']}")
         else:
             print("Working Memory is empty.")
 

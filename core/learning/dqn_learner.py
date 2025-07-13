@@ -5,6 +5,7 @@ import random
 from collections import deque  # For replay buffer
 import numpy as np  # For state representation conversion
 from typing import List, Tuple, Dict
+import os  # For file operations (saving/loading model)
 
 
 # Define the Deep Q-Network architecture
@@ -285,6 +286,8 @@ class DQNLearner:
         Args:
             filepath (str): The path to the file where the model will be saved.
         """
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         try:
             torch.save(self.policy_net.state_dict(), filepath)
             print(f"DQN model saved to {filepath}")
@@ -298,14 +301,16 @@ class DQNLearner:
         Args:
             filepath (str): The path to the file from which the model will be loaded.
         """
+        if not os.path.exists(filepath):
+            print(f"No DQN model found at {filepath}. Starting with a new model.")
+            return
+
         try:
             self.policy_net.load_state_dict(torch.load(filepath))
             self.policy_net.eval()  # Set to evaluation mode after loading
             self.target_net.load_state_dict(self.policy_net.state_dict())  # Sync target net
             self.target_net.eval()
             print(f"DQN model loaded from {filepath}")
-        except FileNotFoundError:
-            print(f"No DQN model found at {filepath}. Starting with a new model.")
         except Exception as e:
             print(f"Error loading DQN model from {filepath}: {e}. Starting with a new model.")
 
