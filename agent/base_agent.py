@@ -20,6 +20,11 @@ from core.consciousness.awake_state import AwakeState
 from core.consciousness.asleep_state import AsleepState
 from core.consciousness.focused_state import FocusedState
 
+# New: Import Semantic Memory
+from core.memory.semantic_memory import SemanticMemory
+# New: Import Procedural Memory
+from core.memory.procedural_memory import ProceduralMemory
+
 
 class Agent:
     """
@@ -34,8 +39,8 @@ class Agent:
     curiosity-driven exploration, along with a basic goal system,
     integrates mood-based reward adjustment, a working memory buffer,
     a basic attention system, uses a Deep Q-Network (DQN) for learning,
-    generates an internal monologue or reasoning trace, and manages different
-    states of consciousness.
+    generates an internal monologue or reasoning trace, manages different
+    states of consciousness, and now includes semantic and procedural memory.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
@@ -74,12 +79,13 @@ class Agent:
         # Current simulation time step.
         self.current_time_step: int = 0
 
-        # Agent's position on the grid (row, column)
-        self.pos_x: int = 0
-        self.pos_y: int = 0
-
         # Long-term memory for past experiences.
         self.episodic_memory: EpisodicMemory = EpisodicMemory(capacity=5)
+        # New: Semantic memory for general knowledge
+        self.semantic_memory: SemanticMemory = SemanticMemory()
+        # New: Procedural memory for learned skills and habits
+        self.procedural_memory: ProceduralMemory = ProceduralMemory()
+
         # Learner for generic reward-based learning (e.g., policy gradients - though not fully implemented here).
         self.reward_learner: RewardLearner = RewardLearner()
         # Snapshot of the agent's state before an action, used for learning.
@@ -476,6 +482,50 @@ class Agent:
                             selected_action = "move_right" if self.pos_y < food_y else "move_left"
                         break
 
+        # --- Semantic Memory Influence on Decision ---
+        if self.internal_state.hunger > 0.7:
+            food_facts = self.semantic_memory.retrieve_facts("food")
+            if food_facts:
+                self.internal_monologue += "My semantic memory reminds me: " + " ".join(food_facts) + " "
+                if "Food reduces hunger." in food_facts and selected_action != "seek_food":
+                    self.internal_monologue += "Given this knowledge, seeking food is a good idea. "
+                    # selected_action = "seek_food" # Uncomment to force override
+
+        if self.emotion_state.get("frustration") > 0.5:
+            rest_facts = self.semantic_memory.retrieve_facts("rest")
+            if rest_facts:
+                self.internal_monologue += "My semantic memory suggests: " + " ".join(rest_facts) + " "
+                if "Rest is important for recovery." in rest_facts and selected_action != "rest":
+                    self.internal_monologue += "Perhaps resting would help my frustration. "
+                    # selected_action = "rest" # Uncomment to force override
+
+        # --- Procedural Memory Influence on Decision (New) ---
+        triggered_procedure = self.procedural_memory.get_triggered_procedure(self)
+        if triggered_procedure:
+            proc_action = triggered_procedure["suggested_action"]
+            self.internal_monologue += f"My procedural memory suggests: '{triggered_procedure['condition_description']}' leads to '{proc_action}'. "
+
+            if proc_action == "move_towards_goal":
+                # Special handling for "move_towards_goal" procedure
+                target_goal = next(
+                    (g for g in self.active_goals if g["type"] == "reach_location" and not g["completed"]), None)
+                if target_goal:
+                    dist_x = abs(self.pos_x - target_goal["target_x"])
+                    dist_y = abs(self.pos_y - target_goal["target_y"])
+                    if dist_x > 0:
+                        selected_action = "move_down" if self.pos_x < target_goal["target_x"] else "move_up"
+                    else:
+                        selected_action = "move_right" if self.pos_y < target_goal["target_y"] else "move_left"
+                    self.internal_monologue += f"Following the procedure, I will move towards my goal: {selected_action}. "
+                else:
+                    # If goal is not found or completed, procedural memory might suggest a general explore or rest
+                    self.internal_monologue += "The 'move_towards_goal' procedure was triggered, but no active location goal found. Defaulting to explore. "
+                    selected_action = "explore"  # Fallback
+            else:
+                # For other direct actions, override the selected action
+                selected_action = proc_action
+                self.internal_monologue += f"Following the procedure, I will {selected_action}. "
+
         self.internal_monologue += f"Therefore, I have decided to {selected_action}. "
         self._last_performed_action = selected_action
         return selected_action
@@ -648,6 +698,10 @@ class Agent:
         print(self.q_learner)
         print("Episodic Memory (sample):")
         print(self.episodic_memory)
+        print("Semantic Memory:")  # Log Semantic Memory
+        print(self.semantic_memory)  # Print the semantic memory content
+        print("Procedural Memory:")  # New: Log Procedural Memory
+        print(self.procedural_memory)  # Print the procedural memory content
         print("Local Perception (3x3 view):")
         if self.perception["local_grid_view"]:
             for row_content in self.perception["local_grid_view"]:
