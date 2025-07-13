@@ -1,29 +1,21 @@
-# agent/base_agent.py
-
-# Ensure all necessary imports are at the top of your file:
 import random
-from collections import defaultdict, deque  # Import deque for working memory
+from collections import defaultdict, deque
 from core.state import InternalState
-from core.motivation.motivation import MotivationEngine  # Or BasicMotivationEngine if you're using that directly
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
 from core.learning.reward_learner import RewardLearner
-from core.learning.dqn_learner import DQNLearner  # Changed: Import DQNLearner
+from core.learning.dqn_learner import DQNLearner
 from core.emotion.emotion_state import EmotionState
 from core.emotion.basic_emotion import BasicEmotionStrategy
-from core.motivation.basic_motivation import BasicMotivationEngine  # If you're using this one
+from core.motivation.basic_motivation import BasicMotivationEngine
 from typing import List, Tuple, Dict
-
-# Import Consciousness States
 from core.consciousness.base import ConsciousnessState
 from core.consciousness.awake_state import AwakeState
 from core.consciousness.asleep_state import AsleepState
 from core.consciousness.focused_state import FocusedState
-
-# New: Import Semantic Memory
 from core.memory.semantic_memory import SemanticMemory
-# New: Import Procedural Memory
 from core.memory.procedural_memory import ProceduralMemory
+from core.decision.decision_maker import DecisionMaker
 
 
 class Agent:
@@ -40,7 +32,8 @@ class Agent:
     integrates mood-based reward adjustment, a working memory buffer,
     a basic attention system, uses a Deep Q-Network (DQN) for learning,
     generates an internal monologue or reasoning trace, manages different
-    states of consciousness, and now includes semantic and procedural memory.
+    states of consciousness, includes semantic and procedural memory,
+    and now incorporates a hierarchical decision-maker with deliberative/reactive modes.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
@@ -81,10 +74,13 @@ class Agent:
 
         # Long-term memory for past experiences.
         self.episodic_memory: EpisodicMemory = EpisodicMemory(capacity=5)
-        # New: Semantic memory for general knowledge
+        # Semantic memory for general knowledge
         self.semantic_memory: SemanticMemory = SemanticMemory()
-        # New: Procedural memory for learned skills and habits
+        # Procedural memory for learned skills and habits
         self.procedural_memory: ProceduralMemory = ProceduralMemory()
+
+        # High-level decision maker
+        self.decision_maker: DecisionMaker = DecisionMaker()
 
         # Learner for generic reward-based learning (e.g., policy gradients - though not fully implemented here).
         self.reward_learner: RewardLearner = RewardLearner()
@@ -297,20 +293,18 @@ class Agent:
             view.append(row_view)
         return view
 
-    def _think_default(self) -> str:
+    def _think_default(self, decision_mode: str) -> str:  # Added decision_mode parameter
         """
         Default thinking behavior for the agent (used by AwakeState and FocusedState).
-        This contains the core decision-making logic.
+        This method now primarily orchestrates the decision-making process by
+        delegating to the DecisionMaker, based on the current decision mode.
+
+        Args:
+            decision_mode (str): The current decision-making mode ('reactive' or 'deliberative').
 
         Returns:
             str: The chosen action.
         """
-        # Initialize internal monologue for this step
-        # This part of monologue is handled by the consciousness state's think method
-        # self.internal_monologue = f"Time Step {self.current_time_step}: I am at ({self.pos_x},{self.pos_y}). "
-        # self.internal_monologue += f"Hunger: {self.internal_state.hunger:.2f}, Fatigue: {self.internal_state.fatigue:.2f}, Mood: {self.internal_state.mood}. "
-        # self.internal_monologue += f"My emotions are: {self.emotion_state}. "
-
         # 1. Update physiological state (e.g., hunger, fatigue increases over time).
         time_delta_factor = 1.5 if self.perception["time_of_day"] == "night" else 1.0
         self.internal_state.update(delta_time=time_delta_factor)
@@ -321,7 +315,7 @@ class Agent:
         # 3. Store current state before acting (for learning)
         self._previous_physiological_states = (self.internal_state.hunger, self.internal_state.fatigue)
 
-        # 4. Emotion-driven motivation engine decides preferred action
+        # 4. Emotion-driven motivation engine decides preferred action (not directly used for final action here)
         _ = self.motivation_engine.decide_action(
             perception=self.perception,
             memory=self.short_term_memory,
@@ -359,176 +353,14 @@ class Agent:
             self.attention_focus = None  # Default/diffuse attention
             self.internal_monologue += "No specific attention focus right now. "
 
-        # 5. DQN Learner selects an action (primary decision maker for now).
-        selected_action = self.q_learner.choose_action(
-            hunger=self.internal_state.hunger,
-            fatigue=self.internal_state.fatigue
-        )
-        self.internal_monologue += f"Based on my learned values, my initial thought is to {selected_action}. "
+        # --- Decision Maker determines the final action based on the mode ---
+        # All complex decision logic (DQN, memories, goals, environment, emotions)
+        # is now encapsulated within the DecisionMaker.
+        final_action = self.decision_maker.decide_final_action(self, decision_mode)
 
-        # --- Memory Influence on Decision ---
-        recalled_actions_for_hunger = []
-        recalled_actions_for_fatigue = []
-
-        for episode in self.episodic_memory.get_memory():
-            is_recent_or_impactful = (self.current_time_step - episode['step'] <= 5) or \
-                                     (episode['emotional_weight'] > 0.7)
-
-            if is_recent_or_impactful:
-                if episode['state']['hunger'] > 0.6 and episode['action'] == 'seek_food':
-                    recalled_actions_for_hunger.append(episode)
-                if episode['state']['fatigue'] > 0.6 and episode['action'] == 'rest':
-                    recalled_actions_for_fatigue.append(episode)
-
-        if self.internal_state.hunger > 0.6 and recalled_actions_for_hunger:
-            successful_food_seeking_count = sum(
-                1 for ep in recalled_actions_for_hunger if ep['state']['hunger'] > self.internal_state.hunger)
-            if successful_food_seeking_count > len(recalled_actions_for_hunger) / 2:
-                if selected_action != "seek_food":
-                    self.internal_monologue += "I recall past successful food seeking, so I will prioritize seeking food. "
-                    selected_action = "seek_food"
-
-        elif self.internal_state.fatigue > 0.6 and recalled_actions_for_fatigue:
-            successful_rest_count = sum(
-                1 for ep in recalled_actions_for_fatigue if ep['state']['fatigue'] > self.internal_state.fatigue)
-            if successful_rest_count > len(recalled_actions_for_fatigue) / 2:
-                if selected_action != "rest":
-                    self.internal_monologue += "I recall past successful resting, so I will prioritize resting. "
-                    selected_action = "rest"
-
-        # --- Simple decision modification based on other agents (Example) ---
-        if self.perception["other_agents_in_sight"] and self.internal_state.hunger > 0.5:
-            if selected_action == "explore":
-                self.internal_monologue += "Seeing other agents while hungry makes me prioritize seeking food over exploring. "
-                selected_action = "seek_food"
-
-        # --- Weather Influence on Decision ---
-        current_weather = self.perception["current_weather"]
-        if current_weather == "stormy":
-            if selected_action == "explore" or selected_action.startswith("move_"):
-                self.internal_monologue += "The stormy weather makes me want to rest or seek shelter instead of moving. "
-                selected_action = "rest"
-        elif current_weather == "rainy":
-            if selected_action == "explore":
-                if random.random() < 0.5:
-                    self.internal_monologue += "The rainy weather makes me reconsider exploration; I might rest or seek food. "
-                    selected_action = "rest" if self.internal_state.fatigue < 0.8 else "seek_food"
-
-        # --- Curiosity-Driven Exploration ---
-        current_state_key = self.q_learner.get_state_representation(self.internal_state.hunger,
-                                                                    self.internal_state.fatigue).cpu().numpy().tobytes()
-        self.visited_states[current_state_key] += 1
-        unfamiliarity_score = 1.0 / (self.visited_states[current_state_key] + 1.0)
-        curiosity_threshold = 0.5
-        curiosity_influence = self.emotion_state.get("curiosity") * unfamiliarity_score
-
-        if curiosity_influence > curiosity_threshold and \
-                self.internal_state.hunger < 0.7 and self.internal_state.fatigue < 0.7:
-            if selected_action not in ["explore", "move_up", "move_down", "move_left", "move_right"]:
-                self.internal_monologue += "My high curiosity and unfamiliar surroundings make me want to explore! "
-                selected_action = random.choice(["move_up", "move_down", "move_left", "move_right"])
-            elif selected_action == "explore":
-                self.internal_monologue += "I'm already exploring, and my curiosity is high. "
-
-        # --- Goal System Influence ---
-        for goal in self.active_goals:
-            if goal["completed"]:
-                continue
-
-            if goal["type"] == "reach_location":
-                dist_x = abs(self.pos_x - goal["target_x"])
-                dist_y = abs(self.pos_y - goal["target_y"])
-                distance = dist_x + dist_y
-
-                if distance == 0:
-                    goal["completed"] = True
-                    self.internal_monologue += f"I have completed my goal: {goal['name']}! "
-                    self.last_action_reward += 1.0
-                    continue
-
-                if distance <= 3 and self.internal_state.hunger < 0.8 and self.internal_state.fatigue < 0.8:
-                    self.internal_monologue += f"My goal to {goal['name']} is close ({distance} units away), so I'm prioritizing movement towards it. "
-                    if dist_x > 0:
-                        selected_action = "move_down" if self.pos_x < goal["target_x"] else "move_up"
-                    elif dist_y > 0:
-                        selected_action = "move_right" if self.pos_y < goal["target_y"] else "move_left"
-                    break
-
-            elif goal["type"] == "maintain_hunger_low":
-                if self.internal_state.hunger < goal["threshold"]:
-                    goal["current_duration"] += 1
-                    if goal["current_duration"] >= goal["duration_steps"]:
-                        goal["completed"] = True
-                        self.internal_monologue += f"I have completed my goal: {goal['name']} (maintained hunger)! "
-                        self.last_action_reward += 0.8
-                    if self.internal_state.hunger >= goal["threshold"] * 0.8 and selected_action != "seek_food":
-                        self.internal_monologue += f"My hunger is getting close to the threshold for {goal['name']}, so I will seek food. "
-                        selected_action = "seek_food"
-                else:
-                    goal["current_duration"] = 0
-
-        # --- Working Memory Influence ---
-        if self.internal_state.hunger > 0.6:
-            for item in reversed(self.working_memory_buffer):
-                if item["type"] == "perceived_food" and \
-                        self.current_time_step - item["time"] <= 3:
-                    food_x, food_y = item["location"]
-                    if (self.pos_x, self.pos_y) != (food_x, food_y) and \
-                            not selected_action.startswith("move_"):
-                        self.internal_monologue += f"I recall food at ({food_x},{food_y}) from my working memory, so I'm moving towards it. "
-                        if abs(self.pos_x - food_x) > abs(self.pos_y - food_y):
-                            selected_action = "move_down" if self.pos_x < food_x else "move_up"
-                        else:
-                            selected_action = "move_right" if self.pos_y < food_y else "move_left"
-                        break
-
-        # --- Semantic Memory Influence on Decision ---
-        if self.internal_state.hunger > 0.7:
-            food_facts = self.semantic_memory.retrieve_facts("food")
-            if food_facts:
-                self.internal_monologue += "My semantic memory reminds me: " + " ".join(food_facts) + " "
-                if "Food reduces hunger." in food_facts and selected_action != "seek_food":
-                    self.internal_monologue += "Given this knowledge, seeking food is a good idea. "
-                    # selected_action = "seek_food" # Uncomment to force override
-
-        if self.emotion_state.get("frustration") > 0.5:
-            rest_facts = self.semantic_memory.retrieve_facts("rest")
-            if rest_facts:
-                self.internal_monologue += "My semantic memory suggests: " + " ".join(rest_facts) + " "
-                if "Rest is important for recovery." in rest_facts and selected_action != "rest":
-                    self.internal_monologue += "Perhaps resting would help my frustration. "
-                    # selected_action = "rest" # Uncomment to force override
-
-        # --- Procedural Memory Influence on Decision (New) ---
-        triggered_procedure = self.procedural_memory.get_triggered_procedure(self)
-        if triggered_procedure:
-            proc_action = triggered_procedure["suggested_action"]
-            self.internal_monologue += f"My procedural memory suggests: '{triggered_procedure['condition_description']}' leads to '{proc_action}'. "
-
-            if proc_action == "move_towards_goal":
-                # Special handling for "move_towards_goal" procedure
-                target_goal = next(
-                    (g for g in self.active_goals if g["type"] == "reach_location" and not g["completed"]), None)
-                if target_goal:
-                    dist_x = abs(self.pos_x - target_goal["target_x"])
-                    dist_y = abs(self.pos_y - target_goal["target_y"])
-                    if dist_x > 0:
-                        selected_action = "move_down" if self.pos_x < target_goal["target_x"] else "move_up"
-                    else:
-                        selected_action = "move_right" if self.pos_y < target_goal["target_y"] else "move_left"
-                    self.internal_monologue += f"Following the procedure, I will move towards my goal: {selected_action}. "
-                else:
-                    # If goal is not found or completed, procedural memory might suggest a general explore or rest
-                    self.internal_monologue += "The 'move_towards_goal' procedure was triggered, but no active location goal found. Defaulting to explore. "
-                    selected_action = "explore"  # Fallback
-            else:
-                # For other direct actions, override the selected action
-                selected_action = proc_action
-                self.internal_monologue += f"Following the procedure, I will {selected_action}. "
-
-        self.internal_monologue += f"Therefore, I have decided to {selected_action}. "
-        self._last_performed_action = selected_action
-        return selected_action
+        self.internal_monologue += f"Therefore, I have decided to {final_action}. "
+        self._last_performed_action = final_action
+        return final_action
 
     def sense(self):
         """
@@ -570,8 +402,8 @@ class Agent:
         self.internal_monologue += f"My emotions are: {self.emotion_state}. "
         self.internal_monologue += f"Current consciousness state: {self.current_consciousness_state.get_state_name()}. "
 
-        # Delegate thinking to the current consciousness state
-        return self.current_consciousness_state.think()
+        # Delegate thinking to the current consciousness state, passing the decision mode
+        return self.current_consciousness_state.think()  # The consciousness state's think() will call _think_default with mode
 
     def act(self, action: str):
         """
@@ -700,7 +532,7 @@ class Agent:
         print(self.episodic_memory)
         print("Semantic Memory:")  # Log Semantic Memory
         print(self.semantic_memory)  # Print the semantic memory content
-        print("Procedural Memory:")  # New: Log Procedural Memory
+        print("Procedural Memory:")  # Log Procedural Memory
         print(self.procedural_memory)  # Print the procedural memory content
         print("Local Perception (3x3 view):")
         if self.perception["local_grid_view"]:

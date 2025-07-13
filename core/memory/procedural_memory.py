@@ -1,5 +1,3 @@
-# core/memory/procedural_memory.py
-
 from typing import Dict, List, Any, Callable
 
 
