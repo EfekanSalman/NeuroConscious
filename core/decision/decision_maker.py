@@ -1,4 +1,26 @@
-# core/decision/decision_maker.py
+# !/usr/bin/env python3
+#
+# Copyright (c) 2025 Efekan Salman
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 import random
 from typing import Dict, Any, Tuple
@@ -47,6 +69,11 @@ class DecisionMaker:
             agent.internal_monologue += "CRITICAL: Extreme hunger detected, prioritizing 'seek_food'. "
             return chosen_action  # Override and return immediately
 
+        if agent.internal_state.thirst > 0.85:  # New: Critical thirst override
+            chosen_action = "drink_water"
+            agent.internal_monologue += "CRITICAL: Extreme thirst detected, prioritizing 'drink_water'. "
+            return chosen_action  # Override and return immediately
+
         if agent.internal_state.fatigue > 0.85:
             chosen_action = "rest"
             agent.internal_monologue += "CRITICAL: Extreme fatigue detected, prioritizing 'rest'. "
@@ -86,7 +113,8 @@ class DecisionMaker:
         # Default to DQN suggestion if nothing else overrides it.
         initial_dqn_suggestion = agent.q_learner.choose_action(
             hunger=agent.internal_state.hunger,
-            fatigue=agent.internal_state.fatigue
+            fatigue=agent.internal_state.fatigue,
+            thirst=agent.internal_state.thirst
         )
         chosen_action = initial_dqn_suggestion
         agent.internal_monologue += f"Defaulting to DQN suggestion: {chosen_action}. "
@@ -196,6 +224,19 @@ class DecisionMaker:
                 else:
                     relevant_goal["current_duration"] = 0
 
+            elif relevant_goal["type"] == "maintain_thirst_low":  # New: Handle maintain_thirst_low goal
+                if agent.internal_state.thirst < relevant_goal["threshold"]:
+                    relevant_goal["current_duration"] += 1
+                    if relevant_goal["current_duration"] >= relevant_goal["duration_steps"]:
+                        relevant_goal["completed"] = True
+                        agent.internal_monologue += f"DELIBERATIVE: Goal completed: {relevant_goal['name']} (maintained thirst)! "
+                    if agent.internal_state.thirst >= relevant_goal[
+                        "threshold"] * 0.8 and chosen_action != "drink_water":
+                        agent.internal_monologue += f"DELIBERATIVE: Thirst approaching threshold for goal '{relevant_goal['name']}', suggesting 'drink_water'. "
+                        chosen_action = "drink_water"
+                else:
+                    relevant_goal["current_duration"] = 0
+
             elif relevant_goal["type"] == "clear_path":
                 # If this sub-goal is active, its obstacle_location should be set.
                 if relevant_goal["obstacle_location"]:
@@ -257,6 +298,17 @@ class DecisionMaker:
                         agent.internal_monologue += "Food in sight and known to reduce hunger, considering 'seek_food'. "
                         chosen_action = "seek_food"
 
+            # Semantic Memory influence for thirst
+            if agent.internal_state.thirst > 0.6:
+                water_facts = agent.semantic_memory.retrieve_facts("water")
+                if water_facts:
+                    agent.internal_monologue += f"DELIBERATIVE: Semantic memory reminds me that 'water' is {water_facts.get('property', 'unknown')} and {water_facts.get('effect', 'has no effect')}. "
+                    if agent.perception["water_in_sight"] and agent.semantic_memory.infer_property("water",
+                                                                                                   "effect") == "reduces_thirst" and chosen_action not in [
+                        "drink_water", "move_up", "move_down", "move_left", "move_right", "move_object"]:
+                        agent.internal_monologue += "Water in sight and known to reduce thirst, considering 'drink_water'. "
+                        chosen_action = "drink_water"
+
             # Semantic Memory influence for fatigue/rest
             if agent.internal_state.fatigue > 0.6:
                 rest_facts = agent.semantic_memory.retrieve_facts("rest")
@@ -287,6 +339,19 @@ class DecisionMaker:
                             chosen_action = "move_right" if agent.pos_y < food_y else "move_left"
                         agent.internal_monologue += f"Suggesting movement towards recalled food: {chosen_action}. "
                     break
+                elif item["type"] == "perceived_water" and \
+                        agent.current_time_step - item["time"] <= 3 and \
+                        (agent.pos_x, agent.pos_y) != item["location"]:
+                    water_x, water_y = item["location"]
+                    if chosen_action not in ["drink_water", "move_up", "move_down", "move_left", "move_right",
+                                             "move_object"]:
+                        agent.internal_monologue += f"DELIBERATIVE: Working memory recalls water at ({water_x},{water_y}). "
+                        if abs(agent.pos_x - water_x) > abs(agent.pos_y - water_y):
+                            chosen_action = "move_down" if agent.pos_x < water_x else "move_up"
+                        else:
+                            chosen_action = "move_right" if agent.pos_y < water_y else "move_left"
+                        agent.internal_monologue += f"Suggesting movement towards recalled water: {chosen_action}. "
+                    break
 
         # 5. Environmental/Emotional Modifiers (Weather, Curiosity, Other Agents)
         # These can influence both modes, but their impact might differ.
@@ -300,11 +365,10 @@ class DecisionMaker:
 
         # Curiosity-driven exploration (More prominent in Deliberative Mode if no pressing needs/goals)
         if agent.emotion_state.get("curiosity") > 0.6 and \
-                agent.internal_state.hunger < 0.7 and agent.internal_state.fatigue < 0.7 and \
-                not uncompleted_goals:  # and chosen_action not in movement/explore
+                agent.internal_state.hunger < 0.7 and agent.internal_state.fatigue < 0.7 and agent.internal_state.thirst < 0.7 and \
+                not uncompleted_goals:
             if decision_mode == 'deliberative' and chosen_action not in ["explore", "move_up", "move_down", "move_left",
-                                                                         "move_right",
-                                                                         "move_object"]:  # Exclude move_object
+                                                                         "move_right", "move_object"]:
                 agent.internal_monologue += "DELIBERATIVE: High curiosity and no pressing needs, so I will explore. "
                 chosen_action = random.choice(["move_up", "move_down", "move_left", "move_right"])
             elif decision_mode == 'reactive' and chosen_action == "explore":

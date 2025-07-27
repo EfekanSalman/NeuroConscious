@@ -1,3 +1,27 @@
+# !/usr/bin/env python3
+#
+# Copyright (c) 2025 Efekan Salman
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -5,7 +29,6 @@ import random
 from collections import deque  # For replay buffer
 import numpy as np  # For state representation conversion
 from typing import List, Tuple, Dict
-import os  # For file operations (saving/loading model)
 
 
 # Define the Deep Q-Network architecture
@@ -153,9 +176,10 @@ class DQNLearner:
         self.action_to_idx = {action: i for i, action in enumerate(actions)}
         self.idx_to_action = {i: action for i, action in enumerate(actions)}
 
-    def get_state_representation(self, hunger: float, fatigue: float) -> torch.Tensor:
+    def get_state_representation(self, hunger: float, fatigue: float,
+                                 thirst: float) -> torch.Tensor:  # Added thirst parameter
         """
-        Converts agent's internal state (hunger, fatigue) into a numerical tensor
+        Converts agent's internal state (hunger, fatigue, thirst) into a numerical tensor
         suitable for input to the neural network.
 
         In a more advanced setup, this could also include local grid view,
@@ -164,16 +188,17 @@ class DQNLearner:
         Args:
             hunger (float): The agent's current hunger level.
             fatigue (float): The agent's current fatigue level.
+            thirst (float): The agent's current thirst level.
 
         Returns:
             torch.Tensor: A 1D tensor representing the state.
         """
-        # For now, a simple 2-element vector (hunger, fatigue)
+        # Now a 3-element vector (hunger, fatigue, thirst)
         # Ensure values are within a reasonable range (0.0 to 1.0)
-        state_vector = np.array([hunger, fatigue], dtype=np.float32)
+        state_vector = np.array([hunger, fatigue, thirst], dtype=np.float32)  # New: Include thirst
         return torch.from_numpy(state_vector).float().unsqueeze(0)  # unsqueeze(0) adds batch dimension
 
-    def choose_action(self, hunger: float, fatigue: float) -> str:
+    def choose_action(self, hunger: float, fatigue: float, thirst: float) -> str:  # New: Added thirst parameter
         """
         Selects an action based on the agent's current state using an epsilon-greedy policy.
 
@@ -184,11 +209,12 @@ class DQNLearner:
         Args:
             hunger (float): The agent's current hunger level.
             fatigue (float): The agent's current fatigue level.
+            thirst (float): The agent's current thirst level.
 
         Returns:
             str: The chosen action.
         """
-        state_tensor = self.get_state_representation(hunger, fatigue)
+        state_tensor = self.get_state_representation(hunger, fatigue, thirst)  # New: Pass thirst
 
         if random.random() < self.epsilon:
             # Exploration: Choose a random action index.
@@ -201,8 +227,9 @@ class DQNLearner:
 
         return self.idx_to_action[action_idx]
 
-    def update(self, prev_hunger: float, prev_fatigue: float, action: str, reward: float, next_hunger: float,
-               next_fatigue: float):
+    def update(self, prev_hunger: float, prev_fatigue: float, prev_thirst: float,  # New: Added prev_thirst
+               action: str, reward: float,
+               next_hunger: float, next_fatigue: float, next_thirst: float):  # New: Added next_thirst
         """
         Updates the policy network using a batch of experiences from the replay buffer.
         This method also adds the current experience to the replay buffer.
@@ -210,16 +237,18 @@ class DQNLearner:
         Args:
             prev_hunger (float): Hunger level before the action was taken.
             prev_fatigue (float): Fatigue level before the action was taken.
+            prev_thirst (float): Thirst level before the action was taken.
             action (str): The action that was performed.
             reward (float): The immediate reward received after performing the action.
             next_hunger (float): Hunger level after the action was taken.
             next_fatigue (float): Fatigue level after the action was taken.
+            next_thirst (float): Thirst level after the action was taken.
         """
         # Convert states and action to tensors/indices
-        state = self.get_state_representation(prev_hunger, prev_fatigue)
+        state = self.get_state_representation(prev_hunger, prev_fatigue, prev_thirst)  # New: Pass prev_thirst
         action_idx = self.action_to_idx[action]
         reward = torch.tensor([reward], dtype=torch.float32)
-        next_state = self.get_state_representation(next_hunger, next_fatigue)
+        next_state = self.get_state_representation(next_hunger, next_fatigue, next_thirst)  # New: Pass next_thirst
         # For simplicity, 'done' is always False for now in this continuous simulation.
         # In a real RL episode, 'done' would be True if the episode terminates.
         done = False
@@ -286,8 +315,6 @@ class DQNLearner:
         Args:
             filepath (str): The path to the file where the model will be saved.
         """
-        # Ensure the directory exists
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         try:
             torch.save(self.policy_net.state_dict(), filepath)
             print(f"DQN model saved to {filepath}")
@@ -301,16 +328,14 @@ class DQNLearner:
         Args:
             filepath (str): The path to the file from which the model will be loaded.
         """
-        if not os.path.exists(filepath):
-            print(f"No DQN model found at {filepath}. Starting with a new model.")
-            return
-
         try:
             self.policy_net.load_state_dict(torch.load(filepath))
             self.policy_net.eval()  # Set to evaluation mode after loading
             self.target_net.load_state_dict(self.policy_net.state_dict())  # Sync target net
             self.target_net.eval()
             print(f"DQN model loaded from {filepath}")
+        except FileNotFoundError:
+            print(f"No DQN model found at {filepath}. Starting with a new model.")
         except Exception as e:
             print(f"Error loading DQN model from {filepath}: {e}. Starting with a new model.")
 

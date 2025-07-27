@@ -1,6 +1,27 @@
-# agent/base_agent.py
+#!/usr/bin/env python3
+#
+# Copyright (c) 2025 Efekan Salman
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
-# Ensure all necessary imports are at the top of your file:
 import random
 from collections import defaultdict, deque  # Import deque for working memory
 from core.state import InternalState
@@ -22,7 +43,7 @@ from core.consciousness.focused_state import FocusedState
 
 # Import Memory Modules
 from core.memory.semantic_memory import SemanticMemory
-from core.memory.procedural_memory import ProceduralMemory  # New: Import ProceduralMemory
+from core.memory.procedural_memory import ProceduralMemory
 
 # Import DecisionMaker
 from core.decision.decision_maker import DecisionMaker
@@ -52,7 +73,8 @@ class Agent:
     supports plug-and-play cognitive modules, has the ability to
     interact with and move objects in the environment, supports
     more complex goal hierarchies, can now dynamically generate and
-    modify goals, and integrates a procedural memory for learned skills.
+    modify goals, and integrates procedural and semantic memory for learned skills and general knowledge.
+    This version also includes 'thirst' as a physiological need and the ability to perceive and drink water.
     """
 
     def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
@@ -76,17 +98,21 @@ class Agent:
         # Perceptual data about the environment, including local grid view, other agents, and weather.
         self.perception: dict = {
             "food_available_global": False,  # Global flag from World
+            "water_available_global": False,  # New: Global flag for water
             "time_of_day": "day",
             "current_weather": "sunny",  # New: Current weather condition
             "local_grid_view": [],  # Agent's view of its immediate surroundings
             "food_in_sight": False,  # Whether food is in agent's local view
+            "water_in_sight": False,  # New: Whether water is in agent's local view
+            "water_locations": [],  # New: List of (row, col) of water in local view
             "other_agents_in_sight": [],  # List of (agent_name, pos_x, pos_y) of other agents in local view
             "obstacle_in_sight": False,  # New: Whether an obstacle is in agent's local view
             "obstacle_locations": []  # New: List of (row, col) of obstacles in local view
         }
         # Short-term and context-specific memory.
         self.short_term_memory: dict = {
-            "food_last_seen": None
+            "food_last_seen": None,
+            "water_last_seen": None  # New: Last time water was seen
         }
         # Reference to the simulation environment the agent interacts with.
         self.environment = None
@@ -102,7 +128,7 @@ class Agent:
         # Semantic memory for general knowledge
         self.semantic_memory: SemanticMemory = SemanticMemory()
         # Procedural memory for learned skills and habits
-        self.procedural_memory: ProceduralMemory = ProceduralMemory()  # New: Initialize ProceduralMemory
+        self.procedural_memory: ProceduralMemory = ProceduralMemory()
 
         # High-level decision maker
         self.decision_maker: DecisionMaker = DecisionMaker()
@@ -113,14 +139,14 @@ class Agent:
         self._previous_state_snapshot = None
 
         # Changed: Use DQNLearner instead of QTableLearner
-        # State size for DQN is 2 (hunger, fatigue)
+        # State size for DQN is 3 (hunger, fatigue, thirst)
         self.q_learner: DQNLearner = DQNLearner(
-            actions=["seek_food", "rest", "explore", "move_up", "move_down", "move_left", "move_right", "move_object"],
-            # New: Added "move_object" action
-            state_size=2  # Hunger and Fatigue
+            actions=["seek_food", "rest", "explore", "move_up", "move_down", "move_left", "move_right", "move_object",
+                     "drink_water"],  # New: Added "drink_water" action
+            state_size=3  # Hunger, Fatigue, Thirst
         )
 
-        # Physiological state values (hunger, fatigue) before the last action, for reward calculation.
+        # Physiological state values (hunger, fatigue, thirst) before the last action, for reward calculation.
         self.previous_physiological_states = None
         # The last action performed by the agent.
         self._last_performed_action = None
@@ -142,7 +168,7 @@ class Agent:
         # Goals can be represented as dictionaries:
         # {
         #   "id": "unique_goal_id",
-        #   "type": "reach_location" | "maintain_hunger_low" | "clear_path" | "explore_area",
+        #   "type": "reach_location" | "maintain_hunger_low" | "clear_path" | "explore_area" | "maintain_thirst_low",
         #   "name": "Descriptive Name",
         #   "priority": 0.0-1.0,
         #   "completed": False,
@@ -150,7 +176,7 @@ class Agent:
         #   "prerequisites": [], # New: List of goal IDs that must be completed first
         #   "sub_goals": [], # New: List of goal IDs that are part of this goal
         #   "target_x": int, "target_y": int, # For reach_location
-        #   "threshold": float, "duration_steps": int, "current_duration": int # For maintain_hunger_low
+        #   "threshold": float, "duration_steps": int, "current_duration": int # For maintain_hunger_low / maintain_thirst_low
         #   "obstacle_location": (int, int) # For clear_path
         # }
         self.active_goals: List[Dict] = []
@@ -163,7 +189,7 @@ class Agent:
 
         # New: Attention System
         # What the agent is currently focusing its attention on.
-        # Can be 'food', 'other_agents', 'curiosity', 'goal', 'obstacle', or None (default/diffuse attention).
+        # Can be 'food', 'water', 'other_agents', 'curiosity', 'goal', 'obstacle', or None (default/diffuse attention).
         self.attention_focus: str = None
 
         # New: Internal Monologue / Reasoning Trace
@@ -180,14 +206,14 @@ class Agent:
         # Store cognitive modules in a dictionary for easy access by name
         self.cognitive_modules: Dict[str, CognitiveModule] = {}
         self._initialize_cognitive_modules()
-        self._initialize_procedures()  # New: Initialize default procedures
+        self._initialize_procedures()
+        self._initialize_semantic_memory()
 
     def _initialize_goals(self):
         """
         Initializes a set of default goals for the agent, now supporting hierarchies.
         """
         # Goal 1: Clear a path to a specific location (Main Goal)
-        # This goal will have sub-goals for clearing obstacles and then reaching the location.
         main_goal_reach_center = {
             "id": "goal_reach_center",
             "type": "reach_location",
@@ -202,10 +228,6 @@ class Agent:
         self.active_goals.append(main_goal_reach_center)
 
         # Sub-goal 1.1: Clear Obstacle (Prerequisite for reaching center if an obstacle is in the way)
-        # This goal will be dynamically created/prioritized by DecisionMaker/ProblemSolver
-        # if an obstacle is detected on the path to "goal_reach_center".
-        # For now, we'll add a placeholder that DecisionMaker can activate.
-        # This goal won't be active initially, but DecisionMaker will check for it.
         clear_obstacle_sub_goal = {
             "id": "sub_goal_clear_obstacle",
             "type": "clear_path",  # New type for clearing obstacles
@@ -213,7 +235,7 @@ class Agent:
             "priority": 0.85,  # Slightly lower than main goal, but still high
             "completed": False,
             "parent_goal_id": "goal_reach_center",
-            "prerequisites": [],  # No specific prerequisites other than an obstacle existing
+            "prerequisites": [],
             "obstacle_location": None  # This will be set dynamically when an obstacle is identified
         }
         self.active_goals.append(clear_obstacle_sub_goal)
@@ -231,6 +253,21 @@ class Agent:
             "duration_steps": 20,
             "current_duration": 0
         })
+
+        # New Goal 3: Maintain low thirst for a period (Independent Goal)
+        self.active_goals.append({
+            "id": "goal_stay_hydrated",
+            "type": "maintain_thirst_low",  # New goal type
+            "name": "Stay Hydrated",
+            "priority": 0.7,  # Higher priority than hunger, as thirst increases faster
+            "completed": False,
+            "parent_goal_id": None,
+            "prerequisites": [],
+            "threshold": 0.2,  # Keep thirst below this
+            "duration_steps": 15,
+            "current_duration": 0
+        })
+
         print(f"{self.name} initialized with goals: {[goal['name'] for goal in self.active_goals]}")
 
     def _initialize_cognitive_modules(self):
@@ -281,7 +318,32 @@ class Agent:
             priority=0.9,  # High priority for clearing path
             condition_description="When an obstacle is blocking a goal path"
         )
+
+        # New Procedure 4: Drink water when thirst is high
+        self.procedural_memory.add_procedure(
+            name="Emergency Water Search",
+            condition={"type": "thirst_high", "threshold": 0.7},
+            action_sequence=["drink_water"],
+            priority=0.85,  # Slightly higher than food, as thirst increases faster
+            condition_description="When thirst is high"
+        )
         print(f"{self.name} initialized with default procedures.")
+
+    def _initialize_semantic_memory(self):
+        """
+        Initializes the semantic memory with some default general knowledge facts.
+        """
+        self.semantic_memory.add_fact("food", {"is_a": "resource", "property": "edible", "effect": "reduces_hunger"})
+        self.semantic_memory.add_fact("water", {"is_a": "resource", "property": "drinkable",
+                                                "effect": "reduces_thirst"})  # New: Water fact
+        self.semantic_memory.add_fact("obstacle", {"is_a": "barrier", "property": "immovable_by_default",
+                                                   "action_needed": "move_object"})
+        self.semantic_memory.add_fact("rest", {"is_a": "action", "effect": "reduces_fatigue", "context": "safe_place"})
+        self.semantic_memory.add_fact("explore", {"is_a": "action", "effect": "gains_information",
+                                                  "cost": "increases_hunger_fatigue_thirst"})  # Updated cost
+        self.semantic_memory.add_fact("shelter",
+                                      {"is_a": "structure", "property": "provides_safety", "context": "bad_weather"})
+        print(f"{self.name} initialized with default semantic facts.")
 
     def set_environment(self, env):
         """
@@ -316,6 +378,7 @@ class Agent:
         if self.environment:
             # Global perceptions
             self.perception["food_available_global"] = self.environment.food_available
+            self.perception["water_available_global"] = self.environment.water_available  # New: Global water flag
             self.perception["time_of_day"] = self.environment.time_of_day
             self.perception["current_weather"] = self.environment.current_weather
             self.current_time_step = self.environment.time_step
@@ -326,8 +389,10 @@ class Agent:
             # Apply sensory noise to local grid view with attention modulation
             self.perception["local_grid_view"] = []
             self.perception["food_in_sight"] = False
-            self.perception["obstacle_in_sight"] = False  # New: Reset obstacle flag
-            self.perception["obstacle_locations"] = []  # New: Reset obstacle locations
+            self.perception["water_in_sight"] = False  # New: Reset water flag
+            self.perception["water_locations"] = []  # New: Reset water locations
+            self.perception["obstacle_in_sight"] = False
+            self.perception["obstacle_locations"] = []
 
             for r_idx, row_content in enumerate(raw_local_grid_view):
                 processed_row = []
@@ -336,11 +401,12 @@ class Agent:
                     current_perception_accuracy = self.perception_accuracy
                     if self.attention_focus == 'food' and cell_content == 'food':
                         current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)  # Boost food perception
-                    elif self.attention_focus == 'other_agents' and cell_content == 'agent':
-                        current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)  # Boost agent perception
-                    elif self.attention_focus == 'obstacle' and cell_content == 'obstacle':  # New: Boost obstacle perception
+                    elif self.attention_focus == 'water' and cell_content == 'water':  # New: Boost water perception
                         current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)
-                        # You can add more rules for other attention focuses
+                    elif self.attention_focus == 'other_agents' and cell_content == 'agent':
+                        current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)
+                    elif self.attention_focus == 'obstacle' and cell_content == 'obstacle':
+                        current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)
 
                     if random.random() < current_perception_accuracy:
                         processed_row.append(cell_content)  # Perceive correctly
@@ -351,7 +417,14 @@ class Agent:
                             abs_c = self.pos_y + (c_idx - 1)
                             self.working_memory_buffer.append(
                                 {"type": "perceived_food", "location": (abs_r, abs_c), "time": self.current_time_step})
-                        elif cell_content == 'obstacle':  # New: Perceive obstacle
+                        elif cell_content == 'water':  # New: Perceive water
+                            self.perception["water_in_sight"] = True
+                            abs_r = self.pos_x + (r_idx - 1)
+                            abs_c = self.pos_y + (c_idx - 1)
+                            self.perception["water_locations"].append((abs_r, abs_c))
+                            self.working_memory_buffer.append(
+                                {"type": "perceived_water", "location": (abs_r, abs_c), "time": self.current_time_step})
+                        elif cell_content == 'obstacle':
                             self.perception["obstacle_in_sight"] = True
                             abs_r = self.pos_x + (r_idx - 1)
                             abs_c = self.pos_y + (c_idx - 1)
@@ -392,11 +465,13 @@ class Agent:
                                     self.working_memory_buffer.append(
                                         {"type": "perceived_agent", "info": agent_info, "time": self.current_time_step})
                                     break
-                                    # Else: it's a boundary, no agent there
-
-            # Records the last time food was perceived as available (either globally or locally).
+                                    # Records the last time food was perceived as available (either globally or locally).
             if self.perception["food_available_global"] or self.perception["food_in_sight"]:
                 self.short_term_memory["food_last_seen"] = self.current_time_step
+
+            # New: Records the last time water was perceived as available
+            if self.perception["water_available_global"] or self.perception["water_in_sight"]:
+                self.short_term_memory["water_last_seen"] = self.current_time_step
 
     def _get_local_grid_view(self, radius: int = 1) -> List[List[str]]:
         """
@@ -436,7 +511,7 @@ class Agent:
         Returns:
             str: The chosen action.
         """
-        # 1. Update physiological state (e.g., hunger, fatigue increases over time).
+        # 1. Update physiological state (e.g., hunger, fatigue, thirst increases over time).
         time_delta_factor = 1.5 if self.perception["time_of_day"] == "night" else 1.0
         self.internal_state.update(delta_time=time_delta_factor)
 
@@ -444,7 +519,8 @@ class Agent:
         self.emotion_strategy.update_emotions(self.perception, self.internal_state)
 
         # 3. Store current state before acting (for learning)
-        self.previous_physiological_states = (self.internal_state.hunger, self.internal_state.fatigue)
+        self.previous_physiological_states = (self.internal_state.hunger, self.internal_state.fatigue,
+                                              self.internal_state.thirst)  # New: Include thirst
 
         # 4. Emotion-driven motivation engine decides preferred action (not directly used for final action here)
         _ = self.motivation_engine.decide_action(
@@ -458,6 +534,9 @@ class Agent:
         if self.internal_state.hunger > 0.7:
             self.attention_focus = 'food'
             self.internal_monologue += "I am very hungry, so I should focus on finding food. "
+        elif self.internal_state.thirst > 0.7:  # New: Focus on water if thirsty
+            self.attention_focus = 'water'
+            self.internal_monologue += "I am very thirsty, so I should focus on finding water. "
         elif self.internal_state.fatigue > 0.7:
             self.attention_focus = 'rest'  # Could be 'shelter' or 'safe_spot' if those existed
             self.internal_monologue += "I am very fatigued, so I should focus on resting. "
@@ -474,28 +553,29 @@ class Agent:
                 elif highest_priority_goal["type"] == "maintain_hunger_low":
                     self.attention_focus = 'food'  # Focus on food to maintain hunger
                     self.internal_monologue += f"I need to maintain low hunger for {highest_priority_goal['name']}, so I will focus on food. "
-                elif highest_priority_goal["type"] == "clear_path":  # New: Focus for clear_path goal
+                elif highest_priority_goal["type"] == "maintain_thirst_low":  # New: Focus for thirst goal
+                    self.attention_focus = 'water'
+                    self.internal_monologue += f"I need to maintain low thirst for {highest_priority_goal['name']}, so I will focus on water. "
+                elif highest_priority_goal["type"] == "clear_path":
                     self.attention_focus = 'obstacle'
                     self.internal_monologue += f"My top priority is to clear a path for {highest_priority_goal['name']}. "
-                elif highest_priority_goal["type"] == "explore_area":  # New: Focus for explore_area goal
+                elif highest_priority_goal["type"] == "explore_area":
                     self.attention_focus = 'curiosity'
                     self.internal_monologue += f"My top priority is to explore new areas for {highest_priority_goal['name']}. "
                 else:
-                    self.attention_focus = None  # Default if goal type not specifically handled
+                    self.attention_focus = None
                     self.internal_monologue += "I have an active goal but no specific focus for it. "
             else:
                 self.attention_focus = None
                 self.internal_monologue += "No active goals to focus on. "
-        elif self.perception["obstacle_in_sight"]:  # New: Focus on obstacle if present
+        elif self.perception["obstacle_in_sight"]:
             self.attention_focus = 'obstacle'
             self.internal_monologue += "I see an obstacle, focusing on how to deal with it. "
         else:
-            self.attention_focus = None  # Default/diffuse attention
+            self.attention_focus = None
             self.internal_monologue += "No specific attention focus right now. "
 
         # --- Process Cognitive Modules ---
-        # Cognitive modules can provide inputs or suggestions to the DecisionMaker.
-        # Collect outputs from all active cognitive modules.
         cognitive_module_outputs: Dict[str, Any] = {}
         for module_name, module_instance in self.cognitive_modules.items():
             module_output = module_instance.process()
@@ -503,12 +583,11 @@ class Agent:
                 cognitive_module_outputs[module_name] = module_output
                 self.internal_monologue += f"Cognitive module '{module_name}' provided output: {module_output}. "
 
-        # New: Process GoalGenerator output
+        # Process GoalGenerator output
         if "GoalGenerator" in self.cognitive_modules:
             goal_generator_output = cognitive_module_outputs.get("GoalGenerator", {})
             if "new_goals" in goal_generator_output:
                 for new_goal in goal_generator_output["new_goals"]:
-                    # Check if a goal with the same ID already exists to prevent duplicates
                     if not any(g["id"] == new_goal["id"] for g in self.active_goals):
                         self.active_goals.append(new_goal)
                         self.internal_monologue += f"GoalGenerator: Added new goal '{new_goal['name']}'. "
@@ -518,23 +597,46 @@ class Agent:
                     for goal in self.active_goals:
                         if goal["id"] == goal_id_to_modify:
                             for key, value in modify_instruction.items():
-                                if key != "id":  # Don't modify the ID
+                                if key != "id":
                                     goal[key] = value
                             self.internal_monologue += f"GoalGenerator: Modified goal '{goal['name']}'. "
                             break
 
-        # --- Procedural Memory Influence (New) ---
-        # Check if any procedure is triggered and has a higher priority than current default action
+        # --- Procedural Memory Influence ---
         triggered_procedure = self.procedural_memory.get_triggered_procedure(self)
         if triggered_procedure:
-            # DecisionMaker will arbitrate this, but here we can add it to monologue
             self.internal_monologue += f"Procedural Memory suggests: '{triggered_procedure['name']}' ({triggered_procedure['suggested_action']}). "
-            # The DecisionMaker will ultimately decide if this overrides the DQN action.
-            # For now, we'll just pass it to the DecisionMaker.
+
+        # --- Semantic Memory Influence ---
+        if self.internal_state.hunger > 0.6:
+            food_facts = self.semantic_memory.retrieve_facts("food")
+            if food_facts:
+                self.internal_monologue += f"Semantic Memory reminds me that 'food' is {food_facts.get('property', 'unknown')} and {food_facts.get('effect', 'has no effect')}. "
+                if self.perception["food_in_sight"] and self.semantic_memory.infer_property("food",
+                                                                                            "effect") == "reduces_hunger":
+                    self.internal_monologue += "Food in sight and known to reduce hunger, considering 'seek_food'. "
+
+        if self.internal_state.thirst > 0.6:  # New: Semantic memory for thirst
+            water_facts = self.semantic_memory.retrieve_facts("water")
+            if water_facts:
+                self.internal_monologue += f"Semantic Memory reminds me that 'water' is {water_facts.get('property', 'unknown')} and {water_facts.get('effect', 'has no effect')}. "
+                if self.perception["water_in_sight"] and self.semantic_memory.infer_property("water",
+                                                                                             "effect") == "reduces_thirst":
+                    self.internal_monologue += "Water in sight and known to reduce thirst, considering 'drink_water'. "
+
+        if self.internal_state.fatigue > 0.6:
+            rest_facts = self.semantic_memory.retrieve_facts("rest")
+            if rest_facts and rest_facts.get("effect") == "reduces_fatigue":
+                self.internal_monologue += f"Semantic Memory reminds me that 'rest' {rest_facts.get('effect', 'has no effect')}. "
+
+        current_weather = self.perception["current_weather"]
+        if current_weather == "stormy":
+            shelter_facts = self.semantic_memory.retrieve_facts("shelter")
+            if shelter_facts and shelter_facts.get("property") == "provides_safety" and shelter_facts.get(
+                    "context") == "bad_weather":
+                self.internal_monologue += f"Semantic Memory informs me that 'shelter' provides safety in bad weather. "
 
         # --- Decision Maker determines the final action based on the mode ---
-        # All complex decision logic (DQN, memories, goals, environment, emotions, procedures)
-        # is now encapsulated within the DecisionMaker.
         final_action = self.decision_maker.decide_final_action(self, decision_mode)
 
         self.internal_monologue += f"Therefore, I have decided to {final_action}. "
@@ -561,23 +663,27 @@ class Agent:
         elif self.internal_state.fatigue < 0.2 and self.current_consciousness_state == self.asleep_state:
             self.transition_to_state(self.awake_state)
         elif self.internal_state.hunger > 0.8 and self.current_consciousness_state != self.focused_state:
-            # If very hungry, try to enter focused state on food
-            self.attention_focus = 'food'  # Ensure attention is on food
+            self.attention_focus = 'food'
+            self.transition_to_state(self.focused_state)
+        elif self.internal_state.thirst > 0.8 and self.current_consciousness_state != self.focused_state:  # New: Thirst-driven focus
+            self.attention_focus = 'water'
             self.transition_to_state(self.focused_state)
         elif self.internal_state.hunger < 0.3 and self.current_consciousness_state == self.focused_state and self.attention_focus == 'food':
-            # If hunger is low and was focused on food, return to awake
+            self.transition_to_state(self.awake_state)
+        elif self.internal_state.thirst < 0.2 and self.current_consciousness_state == self.focused_state and self.attention_focus == 'water':  # New: Thirst focus exit
             self.transition_to_state(self.awake_state)
         elif self.current_consciousness_state == self.focused_state and self.attention_focus == 'location_target':
-            # If focused on a location goal and it's completed, return to awake
             target_goal = next((g for g in self.active_goals if g["type"] == "reach_location" and not g["completed"]),
                                None)
-            if not target_goal:  # Goal completed or no active location goal
+            if not target_goal:
                 self.transition_to_state(self.awake_state)
         # Add more complex transition logic here
 
         # Initialize internal monologue for this step
         self.internal_monologue = f"Time Step {self.current_time_step}: I am at ({self.pos_x},{self.pos_y}). "
-        self.internal_monologue += f"Hunger: {self.internal_state.hunger:.2f}, Fatigue: {self.internal_state.fatigue:.2f}, Mood: {self.internal_state.mood}. "
+        self.internal_monologue += (
+            f"Hunger: {self.internal_state.hunger:.2f}, Fatigue: {self.internal_state.fatigue:.2f}, "
+            f"Thirst: {self.internal_state.thirst:.2f}, Mood: {self.internal_state.mood_value:.2f}. ")  # New: Include thirst
         self.internal_monologue += f"My emotions are: {self.emotion_state}. "
         self.internal_monologue += f"Current consciousness state: {self.current_consciousness_state.get_state_name()}. "
 
@@ -603,7 +709,7 @@ class Agent:
             action (str): The action to perform.
         """
         # Take a snapshot of the agent's internal state before the action.
-        previous_internal_state = self.internal_state.snapshot()
+        previous_internal_state_snapshot = self.internal_state.snapshot()  # Renamed variable for clarity
         original_pos_x, original_pos_y = self.pos_x, self.pos_y  # Store original position
 
         # Store the action that was *actually* performed, for procedural memory update
@@ -634,6 +740,27 @@ class Agent:
             if self.perception["food_available_global"] or self.perception["food_in_sight"]:
                 self.short_term_memory["food_last_seen"] = self.current_time_step
 
+        elif action == "drink_water":  # New: Handle drink_water action
+            # Check if there's water at the agent's current location
+            if self.environment.grid[self.pos_x][self.pos_y] == 'water':
+                self.internal_state.thirst = max(0.0, self.internal_state.thirst - 0.8)  # Reduce thirst significantly
+                self.last_action_reward = 0.6  # Positive reward for successfully drinking water
+                self.environment.grid[self.pos_x][self.pos_y] = 'empty'  # Consume water
+                print(f"{self.name} successfully drank water at ({self.pos_x},{self.pos_y})! Thirst reduced.")
+                if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
+                                                                                        success=True)
+            else:
+                self.internal_state.thirst = min(1.0,
+                                                 self.internal_state.thirst + 0.03)  # Small penalty for unsuccessful attempt
+                self.last_action_reward = -0.15  # Slightly higher penalty than food, as thirst increases faster
+                print(
+                    f"{self.name} sought water but found none at ({self.pos_x},{self.pos_y}). Thirst increased slightly.")
+                if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
+                                                                                        success=False)
+            # Update memory about water presence
+            if self.perception["water_available_global"] or self.perception["water_in_sight"]:
+                self.short_term_memory["water_last_seen"] = self.current_time_step
+
         elif action == "rest":
             self.internal_state.fatigue = max(0.0, self.internal_state.fatigue - 0.6)
             self.last_action_reward = 0.4  # Positive reward for resting.
@@ -643,10 +770,11 @@ class Agent:
         elif action == "explore":
             self.internal_state.hunger = min(1.0, self.internal_state.hunger + 0.05)
             self.internal_state.fatigue = min(1.0, self.internal_state.fatigue + 0.05)
+            self.internal_state.thirst = min(1.0,
+                                             self.internal_state.thirst + 0.05)  # New: Exploration increases thirst
             self.last_action_reward = -0.05
-            print(f"{self.name} is exploring at ({self.pos_x},{self.pos_y}). Hunger/Fatigue increased slightly.")
-            if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
-                                                                                    success=False)  # Exploration is not always a direct 'success'
+            print(f"{self.name} is exploring at ({self.pos_x},{self.pos_y}). Hunger/Fatigue/Thirst increased slightly.")
+            if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id, success=False)
 
         # --- Movement Actions ---
         elif action.startswith("move_"):
@@ -663,7 +791,7 @@ class Agent:
             # Check if new position is within grid boundaries AND not an obstacle
             grid_size = len(self.environment.grid)
             if 0 <= new_pos_x < grid_size and 0 <= new_pos_y < grid_size:
-                if self.environment.grid[new_pos_x][new_pos_y] != 'obstacle':  # Cannot move onto an obstacle
+                if self.environment.grid[new_pos_x][new_pos_y] != 'obstacle':
                     self.pos_x, self.pos_y = new_pos_x, new_pos_y
                     self.last_action_reward = -0.01  # Small cost for movement
                     print(f"{self.name} moved {action.replace('move_', '')} to ({self.pos_x},{self.pos_y}).")
@@ -684,13 +812,8 @@ class Agent:
 
         # --- New: Move Object Action ---
         elif action == "move_object":
-            # Agent tries to move an object from its current position to an adjacent empty cell.
-            # For simplicity, let's assume it tries to move an object one step to the right if possible.
-            # This logic can be expanded to allow agent to choose direction.
-            target_obj_x, target_obj_y = self.pos_x, self.pos_y  # Object is at agent's current position
+            target_obj_x, target_obj_y = self.pos_x, self.pos_y
 
-            # Find an adjacent empty cell to move the object to
-            # Prioritize right, then down, then left, then up
             possible_new_positions = [
                 (target_obj_x, target_obj_y + 1),  # Right
                 (target_obj_x + 1, target_obj_y),  # Down
@@ -721,13 +844,12 @@ class Agent:
             self.last_action_reward = -0.2  # Penalty for invalid action
             if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id, success=False)
 
-        # Update the agent's internal state (hunger/fatigue naturally increase, mood recalculates)
+        # Update the agent's internal state (hunger/fatigue/thirst naturally increase, mood recalculates)
         self.internal_state.update(delta_time=1.0)
 
         # Update the simple RewardLearner
-        # Pass the mood_value to the reward learner to adjust the reward
         adjusted_reward = self.reward_learner.update(
-            previous_internal_state,
+            previous_internal_state_snapshot,  # Pass the snapshot object
             self.internal_state,
             action,
             self.last_action_reward,  # Pass the raw reward
@@ -737,18 +859,22 @@ class Agent:
         self.last_action_reward = adjusted_reward
 
         # Update DQN with the experience using the adjusted reward
+        # Access dictionary elements using bracket notation for the snapshot
         self.q_learner.update(
-            previous_internal_state.hunger, previous_internal_state.fatigue,
+            previous_internal_state_snapshot['hunger'],
+            previous_internal_state_snapshot['fatigue'],
+            previous_internal_state_snapshot['thirst'],
             action,
             self.last_action_reward,  # Use the adjusted reward here
-            self.internal_state.hunger, self.internal_state.fatigue
+            self.internal_state.hunger, self.internal_state.fatigue, self.internal_state.thirst
         )
 
         # Store the episode in episodic memory with emotional weighting
+        # FIX: Pass the InternalState object itself, not the snapshot dictionary
         self.episodic_memory.add(
             step=self.current_time_step,
             perception=self.perception,
-            internal_state=previous_internal_state,  # Record state *before* action for episodic clarity
+            internal_state=self.internal_state,  # Pass the InternalState object here
             action=action,
             emotions=self.emotion_state
         )
@@ -766,10 +892,10 @@ class Agent:
         print("DQN Learner Info:")
         print(self.q_learner)
         print("Episodic Memory (sample):")
-        print(self.episodic_memory)
+        print(self.episodic_memory)  # Print the semantic memory content
         print("Semantic Memory:")  # Log Semantic Memory
         print(self.semantic_memory)  # Print the semantic memory content
-        print("Procedural Memory:")  # New: Log Procedural Memory
+        print("Procedural Memory:")  # Log Procedural Memory
         print(self.procedural_memory)  # Print the procedural memory content
         print("Local Perception (3x3 view):")
         if self.perception["local_grid_view"]:
@@ -785,10 +911,15 @@ class Agent:
         else:
             print("No other agents in sight.")
 
-        if self.perception["obstacle_in_sight"]:  # New: Log obstacle info
+        if self.perception["obstacle_in_sight"]:
             print(f"Obstacles in sight at: {self.perception['obstacle_locations']}")
         else:
             print("No obstacles in sight.")
+
+        if self.perception["water_in_sight"]:  # New: Log water info
+            print(f"Water in sight at: {self.perception['water_locations']}")
+        else:
+            print("No water in sight.")
 
         print(f"Current Weather: {self.perception['current_weather']}")
 
@@ -801,10 +932,12 @@ class Agent:
                     goal_details += f", Target: ({goal['target_x']},{goal['target_y']})"
                 elif goal["type"] == "maintain_hunger_low":
                     goal_details += f", Threshold: {goal['threshold']:.2f}, Duration: {goal['current_duration']}/{goal['duration_steps']}"
-                elif goal["type"] == "clear_path":  # New: Display obstacle location for clear_path goal
+                elif goal["type"] == "maintain_thirst_low":  # New: Display for thirst goal
+                    goal_details += f", Threshold: {goal['threshold']:.2f}, Duration: {goal['current_duration']}/{goal['duration_steps']}"
+                elif goal["type"] == "clear_path":
                     if goal["obstacle_location"]:
                         goal_details += f", Obstacle: ({goal['obstacle_location'][0]},{goal['obstacle_location'][1]})"
-                elif goal["type"] == "explore_area":  # New: Display target for explore_area goal
+                elif goal["type"] == "explore_area":
                     goal_details += f", Target: ({goal['target_x']},{goal['target_y']})"
 
                 # Add parent and prerequisite info if available
@@ -823,9 +956,11 @@ class Agent:
                 print(f"  - Type: {item['type']}, Time: {item['time']}")
                 if item['type'] == 'perceived_food':
                     print(f"    Location: {item['location']}")
+                elif item['type'] == 'perceived_water':  # New: Log perceived water in working memory
+                    print(f"    Location: {item['location']}")
                 elif item['type'] == 'perceived_agent':
                     print(f"    Agent: {item['info']['name']} at ({item['info']['pos_x']},{item['info']['pos_y']})")
-                elif item['type'] == 'perceived_obstacle':  # New: Log perceived obstacle in working memory
+                elif item['type'] == 'perceived_obstacle':
                     print(f"    Location: {item['location']}")
         else:
             print("Working Memory is empty.")

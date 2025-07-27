@@ -1,119 +1,95 @@
+# !/usr/bin/env python3
+#
+# Copyright (c) 2025 Efekan Salman
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 from core.mood.base import MoodStrategy
+from typing import Dict, Any
 
 class InternalState:
     """
-    Represents the internal physiological and psychological state of an agent.
+    Manages the internal physiological and emotional state of an agent.
 
-    This includes core needs like hunger and fatigue, and a derived emotional
-    or psychological state like mood. Values are typically normalized between 0.0 and 1.0.
+    This includes core needs like hunger and fatigue, and a calculated mood value.
+    This version adds 'thirst' as a new physiological need.
     """
-    def __init__(self, mood_strategy: MoodStrategy, hunger: float = 0.5, fatigue: float = 0.5):
+    def __init__(self, mood_strategy: MoodStrategy):
         """
         Initializes the agent's internal state.
 
         Args:
             mood_strategy (MoodStrategy): The strategy used to calculate the agent's mood.
-            hunger (float, optional): Initial hunger level (0.0 = full, 1.0 = starving). Defaults to 0.5.
-            fatigue (float, optional): Initial fatigue level (0.0 = rested, 1.0 = exhausted). Defaults to 0.5.
         """
-        self._hunger: float = self._clamp_value(hunger)
-        self._fatigue: float = self._clamp_value(fatigue)
-        self._mood_strategy: MoodStrategy = mood_strategy
-        self._mood: str = "neutral" # Initial mood as string
-        self._mood_value: float = 0.5 # New: Numerical representation of mood (e.g., 0.0 to 1.0)
-        self._update_mood() # Calculate initial mood and mood_value
+        self.hunger: float = 0.0    # 0.0 (full) to 1.0 (starving)
+        self.fatigue: float = 0.0   # 0.0 (rested) to 1.0 (exhausted)
+        self.thirst: float = 0.0    # New: 0.0 (hydrated) to 1.0 (dehydrated)
+        self.mood_strategy: MoodStrategy = mood_strategy
+        self.mood_value: float = 0.0 # -1.0 (very bad) to 1.0 (very good)
 
-    def _clamp_value(self, value: float) -> float:
-        """Clamps a value between 0.0 and 1.0."""
-        return max(0.0, min(1.0, value))
+        # Initial mood calculation
+        self._update_mood()
 
-    @property
-    def hunger(self) -> float:
-        """Gets the current hunger level."""
-        return self._hunger
-
-    @hunger.setter
-    def hunger(self, value: float):
-        """Sets the hunger level and clamps it between 0.0 and 1.0."""
-        self._hunger = self._clamp_value(value)
-        self._update_mood() # Recalculate mood when hunger changes
-
-    @property
-    def fatigue(self) -> float:
-        """Gets the current fatigue level."""
-        return self._fatigue
-
-    @fatigue.setter
-    def fatigue(self, value: float):
-        """Sets the fatigue level and clamps it between 0.0 and 1.0."""
-        self._fatigue = self._clamp_value(value)
-        self._update_mood() # Recalculate mood when fatigue changes
-
-    @property
-    def mood(self) -> str:
-        """Gets the current mood (string representation)."""
-        return self._mood
-
-    @property
-    def mood_value(self) -> float:
-        """Gets the current numerical mood value (0.0 to 1.0)."""
-        return self._mood_value
-
-    def _update_mood(self):
-        """
-        Calculates and updates the agent's mood (both string and numerical)
-        based on current hunger and fatigue levels using the assigned mood strategy.
-        """
-        self._mood = self._mood_strategy.calculate_mood(self._hunger, self._fatigue)
-        # Map string mood to a numerical value for plotting/further calculations
-        if self._mood == "happy":
-            self._mood_value = 1.0
-        elif self._mood == "neutral":
-            self._mood_value = 0.5
-        elif self._mood == "sad":
-            self._mood_value = 0.0
-        elif self._mood == "frustrated": # Assuming frustrated is a negative mood
-            self._mood_value = 0.2
-        elif self._mood == "anxious": # Assuming anxious is a negative mood
-            self._mood_value = 0.3
-        else: # Default for any other unmapped mood
-            self._mood_value = 0.5
-
-
-    def update(self, delta_time: float):
+    def update(self, delta_time: float = 1.0):
         """
         Updates the agent's internal state over time.
 
-        Hunger and fatigue naturally increase over time, simulating metabolic processes.
-        Mood is recalculated after these updates.
-
         Args:
-            delta_time (float): The time elapsed since the last update.
+            delta_time (float): The amount of time that has passed, influencing
+                                the rate of hunger and fatigue increase.
         """
         # Hunger and fatigue increase over time
-        self.hunger = self._hunger + (0.01 * delta_time) # Hunger increases by 0.01 per delta_time
-        self.fatigue = self._fatigue + (0.005 * delta_time) # Fatigue increases by 0.005 per delta_time
-        # Mood is automatically updated by the setters for hunger/fatigue,
-        # but calling it explicitly here ensures it's always fresh after a general update.
+        self.hunger = min(1.0, self.hunger + (0.01 * delta_time))
+        self.fatigue = min(1.0, self.fatigue + (0.015 * delta_time))
+        self.thirst = min(1.0, self.thirst + (0.02 * delta_time)) # New: Thirst increases over time
+
+        # Recalculate mood based on updated internal states
         self._update_mood()
 
-    def snapshot(self):
+    def _update_mood(self):
         """
-        Creates a snapshot (copy) of the current internal state.
+        Calculates and updates the agent's mood based on its current hunger,
+        fatigue, and thirst levels using the assigned mood strategy.
+        """
+        self.mood_value = self.mood_strategy.calculate_mood(self.hunger, self.fatigue, self.thirst) # New: Pass thirst to mood strategy
 
-        This is useful for storing the state before an action is taken,
-        for use in learning algorithms (e.g., Q-learning previous state).
+    def snapshot(self) -> Dict[str, float]:
+        """
+        Returns a snapshot of the current internal state values.
 
         Returns:
-            InternalState: A new InternalState object with the current values.
+            Dict[str, float]: A dictionary containing hunger, fatigue, and mood_value.
         """
-        # Create a new instance of InternalState with current values
-        # Pass the same mood_strategy instance to the snapshot
-        return InternalState(self._mood_strategy, hunger=self._hunger, fatigue=self._fatigue)
+        return {
+            "hunger": self.hunger,
+            "fatigue": self.fatigue,
+            "thirst": self.thirst, # New: Include thirst in snapshot
+            "mood_value": self.mood_value
+        }
 
     def __str__(self) -> str:
         """
         Provides a human-readable string representation of the internal state.
         """
-        return f"Hunger: {self._hunger:.2f}, Fatigue: {self._fatigue:.2f}, Mood: {self._mood}"
+        return (f"Hunger: {self.hunger:.2f}, Fatigue: {self.fatigue:.2f}, "
+                f"Thirst: {self.thirst:.2f}, Mood: {self.mood_value:.2f}") # New: Include thirst in string representation
+
 
