@@ -22,4 +22,35 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__version__ = "0.0.4"
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Dict, Any
+
+if TYPE_CHECKING:
+    from agent.base_agent import Agent
+
+class BaseActionExecutor(ABC):
+    """
+    Abstract base class for all action executors.
+
+    Defines the interface for how an agent performs an action,
+    applying its effects on internal state, environment, and learning.
+    """
+    def __init__(self, agent: 'Agent'):
+        """
+        Initializes the base action executor with a reference to the agent.
+
+        Args:
+            agent (Agent): The agent instance this executor belongs to.
+        """
+        self.agent = agent
+
+    @abstractmethod
+    def execute_action(self, action: str):
+        """
+        Executes the given action and applies its consequences.
+
+        Args:
+            action (str): The action to be executed.
+        """
+        pass
+

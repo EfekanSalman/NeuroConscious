@@ -22,4 +22,38 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__version__ = "0.0.4"
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Dict, Any
+
+if TYPE_CHECKING:
+    from agent.base_agent import Agent
+
+class BaseThoughtProcessor(ABC):
+    """
+    Abstract base class for all thought processors.
+
+    Defines the interface for how an agent processes information,
+    updates its internal state, and decides on an action.
+    """
+    def __init__(self, agent: 'Agent'):
+        """
+        Initializes the base thought processor with a reference to the agent.
+
+        Args:
+            agent (Agent): The agent instance this processor belongs to.
+        """
+        self.agent = agent
+
+    @abstractmethod
+    def process_thought(self, decision_mode: str) -> str:
+        """
+        Processes the agent's internal state and perceptions to decide on an action.
+
+        Args:
+            decision_mode (str): The current decision-making mode ('reactive' or 'deliberative').
+
+        Returns:
+            str: The chosen action.
+        """
+        pass
+
