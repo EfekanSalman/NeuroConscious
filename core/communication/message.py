@@ -1,4 +1,3 @@
-# !/usr/bin/env python3
 #
 # Copyright (c) 2025 Efekan Salman
 #
@@ -22,4 +21,29 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__version__ = "0.0.5"
+"""
+This module contains the Message class used for communication between agents.
+"""
+
+class Message:
+    """
+    A data class representing a message sent between agents.
+    """
+    def __init__(self, sender: str, recipient: str, content: str):
+        """
+        Initializes the message object.
+
+        Args:
+            sender (str): The name of the entity sending the message.
+            recipient (str): The name of the entity receiving the message.
+            content (str): The textual content of the message.
+        """
+        self.sender = sender
+        self.recipient = recipient
+        self.content = content
+
+    def __str__(self):
+        """
+        Returns a human-readable string representation of the message.
+        """
+        return f"From: {self.sender}, To: {self.recipient}, Content: '{self.content}'"
