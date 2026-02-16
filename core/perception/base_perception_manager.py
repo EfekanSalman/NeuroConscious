@@ -21,28 +21,46 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, List, Dict, Any
+if TYPE_CHECKING:
+    from agent.base_agent import Agent
 
-class MoodStrategy(ABC):
+class BasePerceptionManager(ABC):
     """
-    Abstract base class for defining different mood calculation strategies.
+    Abstract base class for all perception managers.
 
-    Concrete implementations of this class will provide specific logic
-    for how an agent's mood is determined based on its internal state.
-    This version includes 'thirst' as a parameter for mood calculation.
+    Defines the interface for how an agent perceives its environment.
+    Concrete implementations will handle specific sensing mechanisms,
+    sensory noise, and attention modulation.
     """
-    @abstractmethod
-    def calculate_mood(self, hunger: float, fatigue: float, thirst: float) -> float:
+    def __init__(self, agent: 'Agent'):
         """
-        Calculates the agent's mood based on its internal physiological states.
+        Initializes the base perception manager with a reference to the agent.
 
         Args:
-            hunger (float): The agent's current hunger level (0.0 to 1.0).
-            fatigue (float): The agent's current fatigue level (0.0 to 1.0).
-            thirst (float): The agent's current thirst level (0.0 to 1.0).
+            agent (Agent): The agent instance this manager belongs to.
+        """
+        self.agent = agent
 
-        Returns:
-            float: A numerical representation of the agent's mood (e.g., -1.0 for very bad, 1.0 for very good).
+    @abstractmethod
+    def update_perception(self):
+        """
+        Updates the agent's perception dictionary based on the current environment state.
+        This method should encapsulate all sensing logic.
         """
         pass
+
+    @abstractmethod
+    def _get_local_grid_view(self, radius: int) -> List[List[str]]:
+        """
+        Retrieves a local view of the grid around the agent.
+
+        Args:
+            radius (int): The radius of the square view.
+
+        Returns:
+            List[List[str]]: A 2D list representing the agent's local view.
+        """
+        pass
+

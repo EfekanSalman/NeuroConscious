@@ -23,26 +23,37 @@
 # SOFTWARE.
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Dict, Any
 
-class MoodStrategy(ABC):
-    """
-    Abstract base class for defining different mood calculation strategies.
+if TYPE_CHECKING:
+    from agent.base_agent import Agent
 
-    Concrete implementations of this class will provide specific logic
-    for how an agent's mood is determined based on its internal state.
-    This version includes 'thirst' as a parameter for mood calculation.
+class BaseThoughtProcessor(ABC):
     """
-    @abstractmethod
-    def calculate_mood(self, hunger: float, fatigue: float, thirst: float) -> float:
+    Abstract base class for all thought processors.
+
+    Defines the interface for how an agent processes information,
+    updates its internal state, and decides on an action.
+    """
+    def __init__(self, agent: 'Agent'):
         """
-        Calculates the agent's mood based on its internal physiological states.
+        Initializes the base thought processor with a reference to the agent.
 
         Args:
-            hunger (float): The agent's current hunger level (0.0 to 1.0).
-            fatigue (float): The agent's current fatigue level (0.0 to 1.0).
-            thirst (float): The agent's current thirst level (0.0 to 1.0).
+            agent (Agent): The agent instance this processor belongs to.
+        """
+        self.agent = agent
+
+    @abstractmethod
+    def process_thought(self, decision_mode: str) -> str:
+        """
+        Processes the agent's internal state and perceptions to decide on an action.
+
+        Args:
+            decision_mode (str): The current decision-making mode ('reactive' or 'deliberative').
 
         Returns:
-            float: A numerical representation of the agent's mood (e.g., -1.0 for very bad, 1.0 for very good).
+            str: The chosen action.
         """
         pass
+

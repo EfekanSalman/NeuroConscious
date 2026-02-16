@@ -23,26 +23,34 @@
 # SOFTWARE.
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Dict, Any
 
-class MoodStrategy(ABC):
-    """
-    Abstract base class for defining different mood calculation strategies.
+if TYPE_CHECKING:
+    from agent.base_agent import Agent
 
-    Concrete implementations of this class will provide specific logic
-    for how an agent's mood is determined based on its internal state.
-    This version includes 'thirst' as a parameter for mood calculation.
+class BaseActionExecutor(ABC):
     """
-    @abstractmethod
-    def calculate_mood(self, hunger: float, fatigue: float, thirst: float) -> float:
+    Abstract base class for all action executors.
+
+    Defines the interface for how an agent performs an action,
+    applying its effects on internal state, environment, and learning.
+    """
+    def __init__(self, agent: 'Agent'):
         """
-        Calculates the agent's mood based on its internal physiological states.
+        Initializes the base action executor with a reference to the agent.
 
         Args:
-            hunger (float): The agent's current hunger level (0.0 to 1.0).
-            fatigue (float): The agent's current fatigue level (0.0 to 1.0).
-            thirst (float): The agent's current thirst level (0.0 to 1.0).
+            agent (Agent): The agent instance this executor belongs to.
+        """
+        self.agent = agent
 
-        Returns:
-            float: A numerical representation of the agent's mood (e.g., -1.0 for very bad, 1.0 for very good).
+    @abstractmethod
+    def execute_action(self, action: str):
+        """
+        Executes the given action and applies its consequences.
+
+        Args:
+            action (str): The action to be executed.
         """
         pass
+

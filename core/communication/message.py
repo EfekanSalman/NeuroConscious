@@ -1,4 +1,3 @@
-# !/usr/bin/env python3
 #
 # Copyright (c) 2025 Efekan Salman
 #
@@ -22,27 +21,29 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from abc import ABC, abstractmethod
+"""
+This module contains the Message class used for communication between agents.
+"""
 
-class MoodStrategy(ABC):
+class Message:
     """
-    Abstract base class for defining different mood calculation strategies.
-
-    Concrete implementations of this class will provide specific logic
-    for how an agent's mood is determined based on its internal state.
-    This version includes 'thirst' as a parameter for mood calculation.
+    A data class representing a message sent between agents.
     """
-    @abstractmethod
-    def calculate_mood(self, hunger: float, fatigue: float, thirst: float) -> float:
+    def __init__(self, sender: str, recipient: str, content: str):
         """
-        Calculates the agent's mood based on its internal physiological states.
+        Initializes the message object.
 
         Args:
-            hunger (float): The agent's current hunger level (0.0 to 1.0).
-            fatigue (float): The agent's current fatigue level (0.0 to 1.0).
-            thirst (float): The agent's current thirst level (0.0 to 1.0).
-
-        Returns:
-            float: A numerical representation of the agent's mood (e.g., -1.0 for very bad, 1.0 for very good).
+            sender (str): The name of the entity sending the message.
+            recipient (str): The name of the entity receiving the message.
+            content (str): The textual content of the message.
         """
-        pass
+        self.sender = sender
+        self.recipient = recipient
+        self.content = content
+
+    def __str__(self):
+        """
+        Returns a human-readable string representation of the message.
+        """
+        return f"From: {self.sender}, To: {self.recipient}, Content: '{self.content}'"
