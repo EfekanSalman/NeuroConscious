@@ -89,8 +89,9 @@ class GoalGenerator(CognitiveModule):
 
             # Simple exploration goal: reach a random unvisited area (conceptually)
             # For now, let's make it a low priority 'reach_location' to a random spot
-            target_x = random.randint(0, self.agent.environment.GRID_SIZE - 1)
-            target_y = random.randint(0, self.agent.environment.GRID_SIZE - 1)
+            grid_size = len(self.agent.environment.grid)
+            target_x = random.randint(0, grid_size - 1)
+            target_y = random.randint(0, grid_size - 1)
 
             new_explore_goal = {
                 "id": f"goal_explore_{self.agent.current_time_step}",

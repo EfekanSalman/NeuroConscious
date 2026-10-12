@@ -132,6 +132,13 @@ class DecisionMaker:
         # For simplicity, we'll iterate and find the most relevant one based on a simple heuristic.
         # A more robust solution would involve a proper planning algorithm.
         for goal in uncompleted_goals:
+            # A 'clear_path' sub-goal with no known obstacle is not actionable yet. Without
+            # this guard its parent-boosted priority outranks the parent goal and its only
+            # fallback is 'explore', which stalls the agent in place. The parent's movement
+            # logic below activates the sub-goal (sets obstacle_location) when a path is blocked.
+            if goal["type"] == "clear_path" and not goal.get("obstacle_location"):
+                continue
+
             # Check prerequisites: A goal is only considered if its prerequisites are met.
             prerequisites_met = True
             for prereq_id in goal.get("prerequisites", []):

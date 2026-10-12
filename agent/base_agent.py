@@ -33,7 +33,7 @@ from core.learning.dqn_learner import DQNLearner  # Changed: Import DQNLearner
 from core.emotion.emotion_state import EmotionState
 from core.emotion.basic_emotion import BasicEmotionStrategy
 from core.motivation.basic_motivation import BasicMotivationEngine  # If you're using this one
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
 
 # Import Consciousness States
 from core.consciousness.base import ConsciousnessState
@@ -699,6 +699,95 @@ class Agent:
         """
         self.current_consciousness_state.act(action)
 
+    # Row/column offset of each move action; also its index offset in the 3x3 local view.
+    _MOVE_OFFSETS = {
+        "move_up": (-1, 0),
+        "move_down": (1, 0),
+        "move_left": (0, -1),
+        "move_right": (0, 1),
+    }
+
+    def _passable_moves(self) -> List[Tuple[str, Tuple[int, int]]]:
+        """
+        Returns the move actions that look passable, with the cell each leads to.
+
+        Uses the agent's *perceived* 3x3 local view rather than the true grid, so a cell
+        perceived as 'unknown' (sensory noise) is treated as passable.
+        """
+        grid_size = len(self.environment.grid)
+        view = self.perception.get("local_grid_view") or []
+        moves = []
+        for move, (d_row, d_col) in self._MOVE_OFFSETS.items():
+            cell = (self.pos_x + d_row, self.pos_y + d_col)
+            if not (0 <= cell[0] < grid_size and 0 <= cell[1] < grid_size):
+                continue
+            if len(view) == 3 and len(view[1 + d_row]) == 3 and view[1 + d_row][1 + d_col] == 'obstacle':
+                continue
+            moves.append((move, cell))
+        return moves
+
+    def _recall_resource_location(self, resource: str) -> Optional[Tuple[int, int]]:
+        """
+        Returns the most recently perceived location of a resource ('food' or 'water')
+        from working memory. Entries that the current local view shows to be gone are dropped.
+        """
+        item_type = f"perceived_{resource}"
+        view = self.perception.get("local_grid_view") or []
+        stale = []
+        target = None
+        for item in reversed(self.working_memory_buffer):
+            if item["type"] != item_type:
+                continue
+            location = item["location"]
+            d_row, d_col = location[0] - self.pos_x, location[1] - self.pos_y
+            in_view = abs(d_row) <= 1 and abs(d_col) <= 1 and len(view) == 3 and len(view[1 + d_row]) == 3
+            if in_view and view[1 + d_row][1 + d_col] not in (resource, 'unknown'):
+                stale.append(item)  # Visible and no longer there (consumed, or never was).
+                continue
+            if target is None:
+                target = location
+        for item in stale:
+            self.working_memory_buffer.remove(item)
+        return target
+
+    def _search_resource_action(self, action: str) -> str:
+        """
+        Resolves a 'seek_food' / 'drink_water' intention into the step to execute now.
+
+        These are search actions: the resource is consumed only when standing on it.
+        Otherwise the agent steps toward the closest remembered location, or toward the
+        least-visited neighbouring cell when it remembers none.
+
+        Args:
+            action (str): 'seek_food' or 'drink_water'.
+
+        Returns:
+            str: The action itself (consume here) or a 'move_*' action.
+        """
+        resource = "food" if action == "seek_food" else "water"
+        if self.environment.grid[self.pos_x][self.pos_y] == resource:
+            return action
+
+        here = (self.pos_x, self.pos_y)
+        self.visited_states[f"{here[0]},{here[1]}"] += 1
+
+        moves = self._passable_moves()
+        if not moves:
+            return action
+
+        target = self._recall_resource_location(resource)
+        if target is not None:
+            def distance(cell):
+                return abs(cell[0] - target[0]) + abs(cell[1] - target[1])
+
+            move, cell = min(moves, key=lambda m: distance(m[1]))
+            if distance(cell) < distance(here):
+                return move
+
+        visits = {move: self.visited_states[f"{cell[0]},{cell[1]}"] for move, cell in moves}
+        least = min(visits.values())
+        return random.choice([move for move, count in visits.items() if count == least])
+
     def _act_default(self, action: str):
         """
         Default action execution logic for the agent (used by various ConsciousnessStates).
@@ -718,6 +807,12 @@ class Agent:
         triggered_procedure = self.procedural_memory.get_triggered_procedure(self)
         if triggered_procedure and triggered_procedure["suggested_action"] == action:
             performed_action_id = triggered_procedure["id"]
+
+        # 'seek_food' / 'drink_water' are search actions: learning and memory below keep the
+        # intended action, while the step executed here may be a move toward the resource.
+        intended_action = action
+        if action in ("seek_food", "drink_water"):
+            action = self._search_resource_action(action)
 
         # Perform the selected action and apply its effects.
         if action == "seek_food":
@@ -851,7 +946,7 @@ class Agent:
         adjusted_reward = self.reward_learner.update(
             previous_internal_state_snapshot,  # Pass the snapshot object
             self.internal_state,
-            action,
+            intended_action,
             self.last_action_reward,  # Pass the raw reward
             self.internal_state.mood_value  # Pass the current mood value
         )
@@ -864,7 +959,7 @@ class Agent:
             previous_internal_state_snapshot['hunger'],
             previous_internal_state_snapshot['fatigue'],
             previous_internal_state_snapshot['thirst'],
-            action,
+            intended_action,
             self.last_action_reward,  # Use the adjusted reward here
             self.internal_state.hunger, self.internal_state.fatigue, self.internal_state.thirst
         )
@@ -875,7 +970,7 @@ class Agent:
             step=self.current_time_step,
             perception=self.perception,
             internal_state=self.internal_state,  # Pass the InternalState object here
-            action=action,
+            action=intended_action,
             emotions=self.emotion_state
         )
 
