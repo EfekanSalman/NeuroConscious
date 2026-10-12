@@ -788,6 +788,46 @@ class Agent:
         least = min(visits.values())
         return random.choice([move for move, count in visits.items() if count == least])
 
+    def _push_adjacent_obstacle(self) -> Optional[Tuple[Tuple[int, int], Tuple[int, int]]]:
+        """
+        Pushes a neighbouring obstacle one cell away from the agent.
+
+        An agent can never stand on an obstacle, so the obstacle to move is one of the
+        up-to-8 surrounding cells (the same adjacency DecisionMaker uses to choose this
+        action). Orthogonal neighbours are tried before diagonal ones, and each obstacle
+        is pushed to the free cell farthest from the agent. A cell occupied by any
+        agent, including this one, is never a destination.
+
+        Returns:
+            Optional[Tuple[Tuple[int, int], Tuple[int, int]]]: ((from_x, from_y), (to_x, to_y))
+                if an obstacle was moved, otherwise None.
+        """
+        grid = self.environment.grid
+        grid_size = len(grid)
+        here = (self.pos_x, self.pos_y)
+
+        def distance_from_agent(cell):
+            return abs(cell[0] - here[0]) + abs(cell[1] - here[1])
+
+        obstacles = [
+            (row, col)
+            for row in range(here[0] - 1, here[0] + 2)
+            for col in range(here[1] - 1, here[1] + 2)
+            if 0 <= row < grid_size and 0 <= col < grid_size and grid[row][col] == 'obstacle'
+        ]
+        occupied = {(a.pos_x, a.pos_y) for a in self.environment.agents}
+
+        for obstacle in sorted(obstacles, key=distance_from_agent):
+            destinations = [(obstacle[0] + d_row, obstacle[1] + d_col)
+                            for d_row, d_col in ((0, 1), (1, 0), (0, -1), (-1, 0))]
+            for destination in sorted(destinations, key=distance_from_agent, reverse=True):
+                if destination == here or destination in occupied:
+                    continue
+                if self.environment.move_object_at_position(obstacle[0], obstacle[1],
+                                                            destination[0], destination[1]):
+                    return obstacle, destination
+        return None
+
     def _act_default(self, action: str):
         """
         Default action execution logic for the agent (used by various ConsciousnessStates).
@@ -872,7 +912,9 @@ class Agent:
             if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id, success=False)
 
         # --- Movement Actions ---
-        elif action.startswith("move_"):
+        # Match the four directions explicitly: "move_object" also starts with "move_" and
+        # would otherwise be swallowed here as a zero-length move that never reaches its own branch.
+        elif action in self._MOVE_OFFSETS:
             new_pos_x, new_pos_y = self.pos_x, self.pos_y
             if action == "move_up":
                 new_pos_x -= 1
@@ -907,30 +949,19 @@ class Agent:
 
         # --- New: Move Object Action ---
         elif action == "move_object":
-            target_obj_x, target_obj_y = self.pos_x, self.pos_y
+            pushed = self._push_adjacent_obstacle()
 
-            possible_new_positions = [
-                (target_obj_x, target_obj_y + 1),  # Right
-                (target_obj_x + 1, target_obj_y),  # Down
-                (target_obj_x, target_obj_y - 1),  # Left
-                (target_obj_x - 1, target_obj_y)  # Up
-            ]
-
-            moved_successfully = False
-            for new_obj_x, new_obj_y in possible_new_positions:
-                if self.environment.move_object_at_position(target_obj_x, target_obj_y, new_obj_x, new_obj_y):
-                    self.last_action_reward = 0.3  # Positive reward for moving an object
-                    print(
-                        f"{self.name} successfully moved object from ({target_obj_x},{target_obj_y}) to ({new_obj_x},{new_obj_y}).")
-                    moved_successfully = True
-                    if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
-                                                                                            success=True)
-                    break
-
-            if not moved_successfully:
+            if pushed:
+                (from_x, from_y), (to_x, to_y) = pushed
+                self.last_action_reward = 0.3  # Positive reward for moving an object
+                print(f"{self.name} successfully moved object from ({from_x},{from_y}) to ({to_x},{to_y}).")
+                if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
+                                                                                        success=True)
+            else:
                 self.last_action_reward = -0.2  # Penalty for failing to move object
                 print(
-                    f"{self.name} tried to move an object at ({target_obj_x},{target_obj_y}) but failed (no object or no empty adjacent cell).")
+                    f"{self.name} tried to move an object near ({self.pos_x},{self.pos_y}) but failed "
+                    f"(no adjacent obstacle or no free cell to push it to).")
                 if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,
                                                                                         success=False)
 

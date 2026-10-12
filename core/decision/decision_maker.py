@@ -254,9 +254,10 @@ class DecisionMaker:
                         agent.internal_monologue += f"DELIBERATIVE: Obstacle at ({obs_x},{obs_y}) is gone. 'Clear Path' goal completed. "
                         # Fallback to parent goal or exploration
                         chosen_action = "explore"
-                    elif agent.pos_x == obs_x and agent.pos_y == obs_y:
+                    elif abs(agent.pos_x - obs_x) <= 1 and abs(agent.pos_y - obs_y) <= 1:
+                        # An agent cannot stand on an obstacle; it moves it from a neighbouring cell.
                         chosen_action = "move_object"
-                        agent.internal_monologue += f"DELIBERATIVE: At obstacle location ({obs_x},{obs_y}), attempting to move object. "
+                        agent.internal_monologue += f"DELIBERATIVE: Next to obstacle at ({obs_x},{obs_y}), attempting to move object. "
                     else:
                         # Move towards the obstacle
                         if abs(agent.pos_x - obs_x) > abs(agent.pos_y - obs_y):
