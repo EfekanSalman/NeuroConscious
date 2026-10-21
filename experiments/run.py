@@ -10,7 +10,9 @@ Nothing is written unless --out is given; the simulation's own console output is
 """
 
 import argparse
+import ast
 import contextlib
+import importlib
 import json
 import multiprocessing
 import os
@@ -33,8 +35,34 @@ SCHEMA_VERSION = 1
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-def run_once(seed: int, steps: int) -> Dict[str, Any]:
+def apply_params(params: Dict[str, Any]) -> None:
+    """Patches module-level constants, keyed 'module.path:NAME', before the world is built.
+
+    The module must be the one that *uses* the constant (e.g. 'core.state:DEFAULT_THIRST_INCREASE',
+    'environment.world:MAX_WATER_ITEMS'), because `from x import NAME` copies the value at import.
+    """
+    for key, value in params.items():
+        module_name, _, attribute = key.partition(":")
+        module = importlib.import_module(module_name)
+        if not attribute or not hasattr(module, attribute):
+            raise ValueError(f"Unknown parameter {key!r}: {module_name} has no attribute {attribute!r}")
+        setattr(module, attribute, value)
+
+
+def parse_params(specs: List[str]) -> Dict[str, Any]:
+    """Parses ['module:NAME=value', ...]; values are Python literals (0.5, 3, 'text')."""
+    params: Dict[str, Any] = {}
+    for spec in specs:
+        key, separator, raw = spec.partition("=")
+        if not separator:
+            raise ValueError(f"--param expects module:NAME=value, got {spec!r}")
+        params[key] = ast.literal_eval(raw)
+    return params
+
+
+def run_once(seed: int, steps: int, params: Dict[str, Any] = None) -> Dict[str, Any]:
     """Runs one seeded simulation and returns per-agent metrics."""
+    apply_params(params or {})
     torch.set_num_threads(1)
     random.seed(seed)
     np.random.seed(seed)
@@ -102,23 +130,27 @@ def main(argv: List[str] = None) -> int:
     parser.add_argument("--seeds", default="0-9", help="e.g. 7, 0,3,5 or 0-9 (default: 0-9)")
     parser.add_argument("--steps", type=int, default=1000, help="simulation steps per run (default: 1000)")
     parser.add_argument("--jobs", type=int, default=min(4, os.cpu_count() or 1), help="parallel processes")
+    parser.add_argument("--param", action="append", default=[], metavar="MODULE:NAME=VALUE",
+                        help="override a module constant, e.g. environment.world:MAX_WATER_ITEMS=5 (repeatable)")
     parser.add_argument("--out", type=Path, help="write the full results as JSON to this path")
     args = parser.parse_args(argv)
 
     seeds = parse_seeds(args.seeds)
+    params = parse_params(args.param)
+    apply_params(params)  # fail fast on a typo, before any worker starts
     print(f"Running {len(seeds)} seed(s) x {args.steps} steps on {args.jobs} process(es)...", flush=True)
 
     # 'spawn' gives each worker a clean interpreter, so seeding is the only source of randomness.
     context = multiprocessing.get_context("spawn")
     with ProcessPoolExecutor(max_workers=args.jobs, mp_context=context) as pool:
-        runs = list(pool.map(run_once, seeds, [args.steps] * len(seeds)))
+        runs = list(pool.map(run_once, seeds, [args.steps] * len(seeds), [params] * len(seeds)))
 
     summary = aggregate(runs)
     _print_summary(summary)
 
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
-        payload = {"schema": SCHEMA_VERSION, "steps": args.steps, "seeds": seeds, "git": _git_state(),
+        payload = {"schema": SCHEMA_VERSION, "steps": args.steps, "seeds": seeds, "params": params, "git": _git_state(),
                    "summary": summary, "runs": runs}
         args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
         print(f"\nWrote {args.out}")

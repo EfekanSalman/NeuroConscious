@@ -23,8 +23,12 @@
 # SOFTWARE.
 
 # Internal state increment constants
-DEFAULT_HUNGER_INCREASE = 0.1  # Amount hunger increases per time step (e.g., 0.0 to 1.0 where 1.0 is max hunger)
-DEFAULT_FATIGUE_INCREASE = 0.05 # Amount fatigue increases per time step
+# Amount each need rises per InternalState.update(delta_time=1.0) call (0.0 to 1.0, where 1.0 is the maximum).
+# Note: a normal awake step calls update() twice (once in thinking, once in acting), so the
+# effective rise per simulation step is double these values.
+DEFAULT_HUNGER_INCREASE = 0.01
+DEFAULT_FATIGUE_INCREASE = 0.015
+DEFAULT_THIRST_INCREASE = 0.02
 
 # Mood threshold values
 MOOD_HAPPY_THRESHOLD = 0.3    # Mood values above this indicate a happy state. Range: -1.0 (sad) to 1.0 (happy)

@@ -22,6 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from config.constants import DEFAULT_HUNGER_INCREASE, DEFAULT_FATIGUE_INCREASE, DEFAULT_THIRST_INCREASE
 from core.mood.base import MoodStrategy
 from typing import Dict, Any
 
@@ -57,9 +58,9 @@ class InternalState:
                                 the rate of hunger and fatigue increase.
         """
         # Hunger and fatigue increase over time
-        self.hunger = min(1.0, self.hunger + (0.01 * delta_time))
-        self.fatigue = min(1.0, self.fatigue + (0.015 * delta_time))
-        self.thirst = min(1.0, self.thirst + (0.02 * delta_time)) # New: Thirst increases over time
+        self.hunger = min(1.0, self.hunger + (DEFAULT_HUNGER_INCREASE * delta_time))
+        self.fatigue = min(1.0, self.fatigue + (DEFAULT_FATIGUE_INCREASE * delta_time))
+        self.thirst = min(1.0, self.thirst + (DEFAULT_THIRST_INCREASE * delta_time)) # New: Thirst increases over time
 
         # Recalculate mood based on updated internal states
         self._update_mood()
