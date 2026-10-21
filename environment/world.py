@@ -34,7 +34,7 @@ FOOD_SPAWN_CHANCE = 0.1  # Chance for food to appear in an empty cell per update
 MAX_FOOD_ITEMS = 5  # Maximum number of food items that can exist on the grid at once
 
 WATER_SPAWN_CHANCE = 0.05  # Chance for water to appear
-MAX_WATER_ITEMS = 3  # Maximum number of water items
+MAX_WATER_ITEMS = 5  # Maximum number of water items (equal to MAX_FOOD_ITEMS: water is as plentiful as food)
 
 OBSTACLE_SPAWN_CHANCE = 0.01  # Chance for obstacles to appear
 MAX_OBSTACLES = 2  # Maximum number of obstacles

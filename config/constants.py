@@ -28,7 +28,9 @@
 # effective rise per simulation step is double these values.
 DEFAULT_HUNGER_INCREASE = 0.01
 DEFAULT_FATIGUE_INCREASE = 0.015
-DEFAULT_THIRST_INCREASE = 0.02
+# Thirst rises at the same rate as hunger so water is as available, relative to need, as food.
+# At 0.02 agents were in critical thirst (> 0.85) for 57% of steps, which saturates experiments.
+DEFAULT_THIRST_INCREASE = 0.01
 
 # Mood threshold values
 MOOD_HAPPY_THRESHOLD = 0.3    # Mood values above this indicate a happy state. Range: -1.0 (sad) to 1.0 (happy)
