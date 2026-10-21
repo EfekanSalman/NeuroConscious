@@ -32,6 +32,12 @@ DEFAULT_FATIGUE_INCREASE = 0.015
 # At 0.02 agents were in critical thirst (> 0.85) for 57% of steps, which saturates experiments.
 DEFAULT_THIRST_INCREASE = 0.01
 
+# Global workspace (Global Workspace Theory). Off by default: the rule-based DecisionMaker decides.
+USE_GLOBAL_WORKSPACE = False
+WORKSPACE_CAPACITY = 1       # Bids admitted and broadcast per step.
+WORKSPACE_PERSISTENCE = 0.15 # Salience bonus for the topic that won the previous step.
+WORKSPACE_FEEDBACK = True    # Whether the broadcast steers perceptual attention.
+
 # Mood threshold values
 MOOD_HAPPY_THRESHOLD = 0.3    # Mood values above this indicate a happy state. Range: -1.0 (sad) to 1.0 (happy)
 MOOD_SAD_THRESHOLD = 0.8      # Mood values below this indicate a sad state. Range: -1.0 (sad) to 1.0 (happy)

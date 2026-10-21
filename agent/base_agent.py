@@ -47,6 +47,9 @@ from core.memory.procedural_memory import ProceduralMemory
 
 # Import DecisionMaker
 from core.decision.decision_maker import DecisionMaker
+from core.workspace import GlobalWorkspace
+from config.constants import (
+    USE_GLOBAL_WORKSPACE, WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK)
 
 # New: Import Cognitive Modules
 from core.cognitive_modules.base_module import CognitiveModule
@@ -132,6 +135,10 @@ class Agent:
 
         # High-level decision maker
         self.decision_maker: DecisionMaker = DecisionMaker()
+        # Optional global workspace; when set it replaces the DecisionMaker's rule chain.
+        self.workspace: Optional[GlobalWorkspace] = (
+            GlobalWorkspace.default(WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK)
+            if USE_GLOBAL_WORKSPACE else None)
 
         # Learner for generic reward-based learning (e.g., policy gradients - though not fully implemented here).
         self.reward_learner: RewardLearner = RewardLearner()
@@ -637,7 +644,10 @@ class Agent:
                 self.internal_monologue += f"Semantic Memory informs me that 'shelter' provides safety in bad weather. "
 
         # --- Decision Maker determines the final action based on the mode ---
-        final_action = self.decision_maker.decide_final_action(self, decision_mode)
+        if self.workspace is not None:
+            final_action = self.workspace.decide(self)
+        else:
+            final_action = self.decision_maker.decide_final_action(self, decision_mode)
 
         self.internal_monologue += f"Therefore, I have decided to {final_action}. "
         self._last_performed_action = final_action

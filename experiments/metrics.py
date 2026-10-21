@@ -101,6 +101,10 @@ class AgentTracker:
         result["reach_center_step"] = self.reach_center_step
         result["action_counts"] = dict(self.actions)
         result["consciousness_steps"] = dict(self.states)
+        workspace = getattr(self.agent, "workspace", None)
+        if workspace is not None:
+            result["opportunistic_actions"] = workspace.opportunistic_actions
+            result["workspace_winners"] = dict(workspace.winner_counts)
         return result
 
 
@@ -122,7 +126,9 @@ def aggregate(runs: List[Dict[str, Any]]) -> Dict[str, Any]:
         "mean_step": mean(completed) if completed else None,
     }
 
-    for key in ("action_counts", "consciousness_steps"):
+    for key in ("action_counts", "consciousness_steps", "workspace_winners"):
+        if key not in samples[0]:
+            continue
         names = sorted({name for s in samples for name in s[key]})
         summary[key] = {name: mean(s[key].get(name, 0) for s in samples) for name in names}
     return summary

@@ -30,8 +30,8 @@ from agent.base_agent import Agent
 from core.mood.basic_mood import BasicMoodStrategy
 from environment.world import GRID_SIZE, World
 from experiments.metrics import AgentTracker, EventCounter, aggregate
+from experiments.resultfile import SCHEMA_VERSION
 
-SCHEMA_VERSION = 1
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 

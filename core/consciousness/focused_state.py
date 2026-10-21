@@ -82,6 +82,11 @@ class FocusedState(ConsciousnessState):
         selected_action = self.agent._think_default(decision_mode="deliberative") # Get action from default logic (DQN, goals, etc.)
         self.agent.internal_monologue = initial_monologue_part # Reset monologue to add focused thoughts
 
+        # With a global workspace, attention is set by the broadcast; the rule-based focus overrides
+        # below would overwrite the workspace's decision.
+        if self.agent.workspace is not None:
+            return selected_action
+
         # Now, apply focus-specific overrides
         if self.agent.attention_focus == 'food' and self.agent.internal_state.hunger > 0.3:
             if selected_action != "seek_food" and not selected_action.startswith("move_"):
