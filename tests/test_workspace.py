@@ -297,6 +297,24 @@ class WorkspaceMemoryTest(unittest.TestCase):
 
 
 class AgentIntegrationTest(unittest.TestCase):
+    def test_consumption_levels_record_the_need_at_the_moment_of_eating(self):
+        import io
+        import contextlib
+        with contextlib.redirect_stdout(io.StringIO()):
+            from agent.base_agent import Agent
+            from core.mood.basic_mood import BasicMoodStrategy
+            from environment.world import World
+            world = World()
+            for row in world.grid:
+                row[:] = ["empty"] * len(row)
+            agent = Agent(name="T", mood_strategy=BasicMoodStrategy())
+            world.add_agent(agent, start_pos=(2, 2))
+            world.grid[2][2] = "food"
+            agent.internal_state.hunger = 0.6
+            agent._act_default("seek_food")
+        self.assertEqual(agent.consumption_levels["hunger"], [0.6])
+        self.assertEqual(agent.consumption_levels["thirst"], [])
+
     def test_workspace_is_off_by_default(self):
         import io
         import contextlib

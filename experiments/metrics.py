@@ -3,11 +3,15 @@
 import io
 import re
 from collections import Counter, defaultdict
-from statistics import mean, pstdev
+from statistics import mean, median, pstdev
 from typing import Any, Dict, List, Optional
+
+from core.homeostasis import drive_of_state
 
 # Level at which DecisionMaker treats a need as critical (hunger/thirst/fatigue > 0.85).
 CRITICAL_LEVEL = 0.85
+# Drive is also reported per block of this many steps, to show change over a long run (learning).
+DRIVE_BLOCK = 500
 
 # The simulation reports discrete events only through print(). These patterns match those
 # messages (agent/base_agent.py::_act_default), so they must change together with them.
@@ -57,6 +61,8 @@ class AgentTracker:
         self.actions: Counter = Counter()
         self.states: Counter = Counter()
         self.reach_center_step: Optional[int] = None
+        self.drive_sum = 0.0
+        self.drive_blocks: List[float] = []
         self.steps = 0
 
     def observe(self, step: int) -> None:
@@ -75,6 +81,12 @@ class AgentTracker:
             self.level_sums[need] += level
             if level > CRITICAL_LEVEL:
                 self.critical_steps[need] += 1
+
+        level = drive_of_state(agent.internal_state)
+        self.drive_sum += level
+        if self.steps % DRIVE_BLOCK == 0:
+            self.drive_blocks.append(0.0)
+        self.drive_blocks[-1] += level
 
         self.actions[agent._last_performed_action] += 1
         self.states[agent.current_consciousness_state.get_state_name()] += 1
@@ -99,6 +111,14 @@ class AgentTracker:
             result[f"{need}_critical_steps"] = self.critical_steps[need]
             result[f"{need}_final"] = getattr(state, need)
         result["reach_center_step"] = self.reach_center_step
+        blocks = [total / min(DRIVE_BLOCK, self.steps - i * DRIVE_BLOCK) for i, total in enumerate(self.drive_blocks)]
+        result["drive_mean"] = self.drive_sum / steps
+        # Anticipation: the need level at which the agent eats / drinks (None if it never did).
+        for need, name in (("hunger", "hunger_at_meal_median"), ("thirst", "thirst_at_drink_median")):
+            levels = self.agent.consumption_levels[need]
+            result[name] = median(levels) if levels else None
+        result["drive_last_block"] = blocks[-1] if blocks else 0.0
+        result["drive_by_block"] = blocks
         result["action_counts"] = dict(self.actions)
         result["consciousness_steps"] = dict(self.states)
         workspace = getattr(self.agent, "workspace", None)
@@ -113,10 +133,10 @@ def aggregate(runs: List[Dict[str, Any]]) -> Dict[str, Any]:
     samples = [metrics for run in runs for metrics in run["agents"].values()]
     summary: Dict[str, Any] = {"agent_runs": len(samples)}
 
-    scalar_keys = [k for k, v in samples[0].items()
-                   if isinstance(v, (int, float)) and k != "reach_center_step"]
+    scalar_keys = sorted({k for s in samples for k, v in s.items()
+                          if isinstance(v, (int, float)) and k != "reach_center_step"})
     for key in scalar_keys:
-        values = [s[key] for s in samples]
+        values = [s[key] for s in samples if isinstance(s.get(key), (int, float))]
         summary[key] = {"mean": mean(values), "std": pstdev(values),
                         "min": min(values), "max": max(values)}
 
@@ -125,6 +145,11 @@ def aggregate(runs: List[Dict[str, Any]]) -> Dict[str, Any]:
         "completed_rate": len(completed) / len(samples),
         "mean_step": mean(completed) if completed else None,
     }
+
+    blocks = [s["drive_by_block"] for s in samples if "drive_by_block" in s]
+    if blocks:
+        longest = max(len(b) for b in blocks)
+        summary["drive_by_block"] = [mean(b[i] for b in blocks if len(b) > i) for i in range(longest)]
 
     for key in ("action_counts", "consciousness_steps", "workspace_winners"):
         if key not in samples[0]:

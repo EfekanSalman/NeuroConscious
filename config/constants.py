@@ -53,6 +53,20 @@ SIGHTING_MEMORY_SLOTS = 0
 SIGHTING_MEMORY_POLICY = "salience"
 SIGHTING_MEMORY_RECALL = "nearest"
 
+# Homeostatic drive D(H) = (sum |h* - h|^n)^(1/m) over hunger, thirst and fatigue (set points all 0).
+DRIVE_EXPONENT_N = 4
+DRIVE_EXPONENT_M = 2
+
+# Homeostatic controller: a learner that picks which need to attend to by drive-reduction reward.
+# Off by default; when on it replaces the rule-based DecisionMaker (and cannot be combined with the workspace).
+USE_HOMEOSTATIC_CONTROLLER = False
+CONTROLLER_GAMMA = 0.95
+CONTROLLER_LEARNING_RATE = 0.001
+CONTROLLER_EPSILON_DECAY = 0.999   # Per update; 1.0 keeps the choice random (a control).
+CONTROLLER_EPSILON_MIN = 0.05
+CONTROLLER_REWARD_N = 4            # Exponents of the drive used as reward. The reported metric always uses
+CONTROLLER_REWARD_M = 2            # DRIVE_EXPONENT_N / _M so conditions stay comparable.
+
 # Mood threshold values
 MOOD_HAPPY_THRESHOLD = 0.3    # Mood values above this indicate a happy state. Range: -1.0 (sad) to 1.0 (happy)
 MOOD_SAD_THRESHOLD = 0.8      # Mood values below this indicate a sad state. Range: -1.0 (sad) to 1.0 (happy)

@@ -21,7 +21,7 @@ from typing import Dict, List, Optional
 from experiments.resultfile import load_results
 
 CRITICAL_KEYS = ("hunger_critical_steps", "thirst_critical_steps", "fatigue_critical_steps")
-DEFAULT_METRICS = ["meals", "drinks", "total_critical_steps", "hunger_critical_steps", "thirst_critical_steps",
+DEFAULT_METRICS = ["drive_mean", "hunger_at_meal_median", "thirst_at_drink_median", "meals", "drinks", "total_critical_steps", "hunger_critical_steps", "thirst_critical_steps",
                    "fatigue_critical_steps", "moves", "failed_pushes", "reach_center_step", "opportunistic_actions"]
 
 

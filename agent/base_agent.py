@@ -47,11 +47,14 @@ from core.memory.procedural_memory import ProceduralMemory
 
 # Import DecisionMaker
 from core.decision.decision_maker import DecisionMaker
+from core.homeostasis import HomeostaticController
 from core.workspace import GlobalWorkspace, WorkspaceMemory
 from config.constants import (
     USE_GLOBAL_WORKSPACE, WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK, PERCEPTION_ACCURACY,
     WORKING_MEMORY_CAPACITY, WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL,
-    SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL)
+    SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL,
+    USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
+    CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
 # New: Import Cognitive Modules
 from core.cognitive_modules.base_module import CognitiveModule
@@ -142,6 +145,13 @@ class Agent:
             GlobalWorkspace.default(WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK,
                                     WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL)
             if USE_GLOBAL_WORKSPACE else None)
+        # Optional learned homeostatic controller; when set it replaces the DecisionMaker's rule chain.
+        if USE_HOMEOSTATIC_CONTROLLER and USE_GLOBAL_WORKSPACE:
+            raise ValueError("The homeostatic controller and the global workspace each replace the decision rules; enable one.")
+        self.controller: Optional[HomeostaticController] = (
+            HomeostaticController.default(CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
+                                          CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
+            if USE_HOMEOSTATIC_CONTROLLER else None)
         # Optional competitive sighting memory that does not depend on the workspace (control condition).
         self.sighting_memory: Optional[WorkspaceMemory] = (
             WorkspaceMemory(SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL)
@@ -200,6 +210,8 @@ class Agent:
         # Stores recent important perceptions or thoughts for short-term recall.
         # Max length of 5 items, oldest items are discarded when new ones are added.
         self.working_memory_buffer: deque = deque(maxlen=WORKING_MEMORY_CAPACITY)
+        # Need level at the moment each resource was consumed (for measuring anticipation).
+        self.consumption_levels: Dict[str, List[float]] = {"hunger": [], "thirst": []}
 
         # New: Attention System
         # What the agent is currently focusing its attention on.
@@ -657,6 +669,8 @@ class Agent:
         # --- Decision Maker determines the final action based on the mode ---
         if self.workspace is not None:
             final_action = self.workspace.decide(self)
+        elif self.controller is not None:
+            final_action = self.controller.decide(self)
         else:
             final_action = self.decision_maker.decide_final_action(self, decision_mode)
 
@@ -746,6 +760,11 @@ class Agent:
                 continue
             moves.append((move, cell))
         return moves
+
+    @property
+    def has_external_policy(self) -> bool:
+        """Whether a workspace or a learned controller, not the rule chain, chooses the action."""
+        return self.workspace is not None or self.controller is not None
 
     def _sighting_store(self) -> Optional[WorkspaceMemory]:
         """The competitive memory recall uses: the workspace's own, else the standalone one, else None (FIFO buffer)."""
@@ -906,6 +925,7 @@ class Agent:
         if action == "seek_food":
             # Check if there's food at the agent's current location
             if self.environment.grid[self.pos_x][self.pos_y] == 'food':
+                self.consumption_levels["hunger"].append(self.internal_state.hunger)
                 self.internal_state.hunger = max(0.0, self.internal_state.hunger - 0.7)
                 self.last_action_reward = 0.5  # Positive reward for successfully finding food.
                 self.environment.grid[self.pos_x][self.pos_y] = 'empty'  # Consume food
@@ -926,6 +946,7 @@ class Agent:
         elif action == "drink_water":  # New: Handle drink_water action
             # Check if there's water at the agent's current location
             if self.environment.grid[self.pos_x][self.pos_y] == 'water':
+                self.consumption_levels["thirst"].append(self.internal_state.thirst)
                 self.internal_state.thirst = max(0.0, self.internal_state.thirst - 0.8)  # Reduce thirst significantly
                 self.last_action_reward = 0.6  # Positive reward for successfully drinking water
                 self.environment.grid[self.pos_x][self.pos_y] = 'empty'  # Consume water
@@ -1042,6 +1063,9 @@ class Agent:
             self.last_action_reward,  # Use the adjusted reward here
             self.internal_state.hunger, self.internal_state.fatigue, self.internal_state.thirst
         )
+
+        if self.controller is not None:
+            self.controller.learn(previous_internal_state_snapshot, intended_action, self.internal_state)
 
         # Store the episode in episodic memory with emotional weighting
         # FIX: Pass the InternalState object itself, not the snapshot dictionary

@@ -84,7 +84,7 @@ class FocusedState(ConsciousnessState):
 
         # With a global workspace, attention is set by the broadcast; the rule-based focus overrides
         # below would overwrite the workspace's decision.
-        if self.agent.workspace is not None:
+        if self.agent.has_external_policy:
             return selected_action
 
         # Now, apply focus-specific overrides
