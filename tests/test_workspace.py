@@ -306,6 +306,24 @@ class AgentIntegrationTest(unittest.TestCase):
             agent = Agent(name="T", mood_strategy=BasicMoodStrategy())
         self.assertIsNone(agent.workspace)
 
+    def test_standalone_sighting_memory_works_without_a_workspace(self):
+        import io
+        import contextlib
+        from unittest import mock
+        with contextlib.redirect_stdout(io.StringIO()):
+            import agent.base_agent as base_agent
+            from core.mood.basic_mood import BasicMoodStrategy
+            from environment.world import World
+            with mock.patch.object(base_agent, "SIGHTING_MEMORY_SLOTS", 3), \
+                    mock.patch.object(base_agent, "SIGHTING_MEMORY_POLICY", "relevance"):
+                world = World()
+                agent = base_agent.Agent(name="T", mood_strategy=BasicMoodStrategy(), perception_accuracy=1.0)
+            world.add_agent(agent, start_pos=(4, 4))
+        self.assertIsNone(agent.workspace)
+        self.assertEqual((agent.sighting_memory.slots, agent.sighting_memory.policy), (3, "relevance"))
+        agent.sighting_memory.sightings = [__import__("core.workspace", fromlist=["Sighting"]).Sighting("water", (9, 9), 0)]
+        self.assertEqual(agent._recall_resource_location("water"), (9, 9))   # recall reads the standalone memory
+
     def test_search_gives_up_a_target_whose_approach_is_blocked(self):
         """Regression: a remembered target behind an obstacle trapped the agent in an endless back-and-forth."""
         import io

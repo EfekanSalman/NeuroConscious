@@ -47,6 +47,12 @@ WORKSPACE_MEMORY_SLOTS = 0   # Sightings the workspace keeps in mind; 0 = use th
 WORKSPACE_MEMORY_POLICY = "salience"  # How sightings enter a full memory: 'salience', 'relevance' or 'fifo' (control).
 WORKSPACE_MEMORY_RECALL = "nearest"   # Which remembered location is used: 'nearest' or 'recent'.
 
+# The same competitive sighting memory, attached to the agent without a global workspace (an experimental
+# control for the workspace). 0 = off. Ignored when the workspace has its own memory.
+SIGHTING_MEMORY_SLOTS = 0
+SIGHTING_MEMORY_POLICY = "salience"
+SIGHTING_MEMORY_RECALL = "nearest"
+
 # Mood threshold values
 MOOD_HAPPY_THRESHOLD = 0.3    # Mood values above this indicate a happy state. Range: -1.0 (sad) to 1.0 (happy)
 MOOD_SAD_THRESHOLD = 0.8      # Mood values below this indicate a sad state. Range: -1.0 (sad) to 1.0 (happy)

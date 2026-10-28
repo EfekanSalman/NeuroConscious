@@ -47,10 +47,11 @@ from core.memory.procedural_memory import ProceduralMemory
 
 # Import DecisionMaker
 from core.decision.decision_maker import DecisionMaker
-from core.workspace import GlobalWorkspace
+from core.workspace import GlobalWorkspace, WorkspaceMemory
 from config.constants import (
     USE_GLOBAL_WORKSPACE, WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK, PERCEPTION_ACCURACY,
-    WORKING_MEMORY_CAPACITY, WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL)
+    WORKING_MEMORY_CAPACITY, WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL,
+    SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL)
 
 # New: Import Cognitive Modules
 from core.cognitive_modules.base_module import CognitiveModule
@@ -141,6 +142,10 @@ class Agent:
             GlobalWorkspace.default(WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK,
                                     WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL)
             if USE_GLOBAL_WORKSPACE else None)
+        # Optional competitive sighting memory that does not depend on the workspace (control condition).
+        self.sighting_memory: Optional[WorkspaceMemory] = (
+            WorkspaceMemory(SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL)
+            if SIGHTING_MEMORY_SLOTS > 0 else None)
 
         # Learner for generic reward-based learning (e.g., policy gradients - though not fully implemented here).
         self.reward_learner: RewardLearner = RewardLearner()
@@ -520,6 +525,10 @@ class Agent:
         Returns:
             str: The chosen action.
         """
+        # Offer what is currently in view to the standalone sighting memory (the workspace feeds its own).
+        if self.sighting_memory is not None and not (self.workspace is not None and self.workspace.memory is not None):
+            self.sighting_memory.observe(self)
+
         # 1. Update physiological state (e.g., hunger, fatigue, thirst increases over time).
         time_delta_factor = 1.5 if self.perception["time_of_day"] == "night" else 1.0
         self.internal_state.update(delta_time=time_delta_factor)
@@ -738,14 +747,21 @@ class Agent:
             moves.append((move, cell))
         return moves
 
+    def _sighting_store(self) -> Optional[WorkspaceMemory]:
+        """The competitive memory recall uses: the workspace's own, else the standalone one, else None (FIFO buffer)."""
+        if self.workspace is not None and self.workspace.memory is not None:
+            return self.workspace.memory
+        return self.sighting_memory
+
     def _recall_resource_location(self, resource: str) -> Optional[Tuple[int, int]]:
         """
         Returns the most recently perceived location of a resource ('food' or 'water')
         from working memory. Entries that the current local view shows to be gone are dropped.
         With a global workspace that has its own memory, that memory is used instead of the FIFO buffer.
         """
-        if self.workspace is not None and self.workspace.memory is not None:
-            return self.workspace.memory.recall(resource, self)
+        memory = self._sighting_store()
+        if memory is not None:
+            return memory.recall(resource, self)
 
         item_type = f"perceived_{resource}"
         view = self.perception.get("local_grid_view") or []
@@ -768,8 +784,9 @@ class Agent:
 
     def _forget_resource_location(self, resource: str, location: Tuple[int, int]) -> None:
         """Removes a remembered resource location from whichever memory recall uses."""
-        if self.workspace is not None and self.workspace.memory is not None:
-            self.workspace.memory.forget(resource, location)
+        memory = self._sighting_store()
+        if memory is not None:
+            memory.forget(resource, location)
             return
         item_type = f"perceived_{resource}"
         remaining = [item for item in self.working_memory_buffer
