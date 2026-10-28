@@ -1,6 +1,7 @@
 from collections import Counter
 from typing import List, Optional, Sequence
 
+from core.workspace.memory import WorkspaceMemory
 from core.workspace.proposal import Proposal
 from core.workspace.specialists import (
     GoalSpecialist, HabitSpecialist, NeedSpecialist, Specialist)
@@ -24,30 +25,41 @@ class GlobalWorkspace:
         capacity (int): How many bids are admitted and broadcast per step.
         persistence (float): Salience bonus for the topic that won the previous step.
         feedback (bool): Whether the broadcast steers the agent's perceptual attention.
+        memory (WorkspaceMemory, optional): Sustained content that new percepts compete to enter.
+            When set, the agent recalls resource locations from it instead of its FIFO buffer.
     """
 
     def __init__(self, specialists: Sequence[Specialist], capacity: int = 1,
-                 persistence: float = 0.15, feedback: bool = True):
+                 persistence: float = 0.15, feedback: bool = True,
+                 memory: Optional[WorkspaceMemory] = None):
         if capacity < 1:
             raise ValueError("capacity must be at least 1")
         self.specialists = list(specialists)
         self.capacity = capacity
         self.persistence = persistence
         self.feedback = feedback
+        self.memory = memory
         self.contents: List[Proposal] = []
         self.winner_counts: Counter = Counter()
         self.opportunistic_actions = 0
         self._last_winner_key = None
 
     @classmethod
-    def default(cls, capacity: int = 1, persistence: float = 0.15, feedback: bool = True) -> "GlobalWorkspace":
-        """The standard specialist set: one per need, one for goals, and the learned habit."""
+    def default(cls, capacity: int = 1, persistence: float = 0.15, feedback: bool = True,
+                memory_slots: int = 0, memory_policy: str = "salience",
+                memory_recall: str = "nearest") -> "GlobalWorkspace":
+        """The standard specialist set: one per need, one for goals, and the learned habit.
+
+        memory_slots > 0 adds a WorkspaceMemory of that many sightings with the given policy."""
         specialists = [NeedSpecialist("hunger"), NeedSpecialist("thirst"), NeedSpecialist("fatigue"),
                        GoalSpecialist(), HabitSpecialist()]
-        return cls(specialists, capacity, persistence, feedback)
+        memory = WorkspaceMemory(memory_slots, memory_policy, memory_recall) if memory_slots > 0 else None
+        return cls(specialists, capacity, persistence, feedback, memory)
 
     def decide(self, agent) -> str:
         """Runs one competition and returns the action chosen from the broadcast content."""
+        if self.memory is not None:
+            self.memory.observe(agent)
         proposals = [p for p in (s.propose(agent) for s in self.specialists) if p is not None]
 
         def effective_salience(proposal: Proposal) -> float:

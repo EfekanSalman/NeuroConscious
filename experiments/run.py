@@ -28,9 +28,11 @@ import torch
 
 from agent.base_agent import Agent
 from core.mood.basic_mood import BasicMoodStrategy
-from environment.world import GRID_SIZE, World
+from environment import world as world_module
+from environment.world import World
 from experiments.metrics import AgentTracker, EventCounter, aggregate
 from experiments.resultfile import SCHEMA_VERSION
+from experiments.scenarios import SCENARIOS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -69,13 +71,14 @@ def run_once(seed: int, steps: int, params: Dict[str, Any] = None) -> Dict[str, 
     torch.manual_seed(seed)
 
     events = EventCounter()
+    grid_size = world_module.GRID_SIZE  # read after apply_params: GRID_SIZE may be overridden
     with contextlib.redirect_stdout(events):
         world = World()
         mood_strategy = BasicMoodStrategy()
         agents = [Agent(name="SimBot-1", mood_strategy=mood_strategy),
                   Agent(name="SimBot-2", mood_strategy=mood_strategy)]
         world.add_agent(agents[0], start_pos=(0, 0))
-        world.add_agent(agents[1], start_pos=(GRID_SIZE - 1, GRID_SIZE - 1))
+        world.add_agent(agents[1], start_pos=(grid_size - 1, grid_size - 1))
         trackers = [AgentTracker(agent) for agent in agents]
 
         for step in range(steps):
@@ -85,7 +88,7 @@ def run_once(seed: int, steps: int, params: Dict[str, Any] = None) -> Dict[str, 
 
     return {
         "seed": seed,
-        "agents": {t.agent.name: t.result(events.counts[t.agent.name], GRID_SIZE) for t in trackers},
+        "agents": {t.agent.name: t.result(events.counts[t.agent.name], grid_size) for t in trackers},
     }
 
 
@@ -130,13 +133,15 @@ def main(argv: List[str] = None) -> int:
     parser.add_argument("--seeds", default="0-9", help="e.g. 7, 0,3,5 or 0-9 (default: 0-9)")
     parser.add_argument("--steps", type=int, default=1000, help="simulation steps per run (default: 1000)")
     parser.add_argument("--jobs", type=int, default=min(4, os.cpu_count() or 1), help="parallel processes")
+    parser.add_argument("--scenario", default="default", choices=sorted(SCENARIOS),
+                        help="named parameter bundle applied before --param overrides (default: default)")
     parser.add_argument("--param", action="append", default=[], metavar="MODULE:NAME=VALUE",
                         help="override a module constant, e.g. environment.world:MAX_WATER_ITEMS=5 (repeatable)")
     parser.add_argument("--out", type=Path, help="write the full results as JSON to this path")
     args = parser.parse_args(argv)
 
     seeds = parse_seeds(args.seeds)
-    params = parse_params(args.param)
+    params = {**SCENARIOS[args.scenario], **parse_params(args.param)}
     apply_params(params)  # fail fast on a typo, before any worker starts
     print(f"Running {len(seeds)} seed(s) x {args.steps} steps on {args.jobs} process(es)...", flush=True)
 
@@ -150,7 +155,7 @@ def main(argv: List[str] = None) -> int:
 
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
-        payload = {"schema": SCHEMA_VERSION, "steps": args.steps, "seeds": seeds, "params": params, "git": _git_state(),
+        payload = {"schema": SCHEMA_VERSION, "steps": args.steps, "seeds": seeds, "scenario": args.scenario, "params": params, "git": _git_state(),
                    "summary": summary, "runs": runs}
         args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
         print(f"\nWrote {args.out}")

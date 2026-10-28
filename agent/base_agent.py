@@ -49,7 +49,8 @@ from core.memory.procedural_memory import ProceduralMemory
 from core.decision.decision_maker import DecisionMaker
 from core.workspace import GlobalWorkspace
 from config.constants import (
-    USE_GLOBAL_WORKSPACE, WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK)
+    USE_GLOBAL_WORKSPACE, WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK, PERCEPTION_ACCURACY,
+    WORKING_MEMORY_CAPACITY, WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL)
 
 # New: Import Cognitive Modules
 from core.cognitive_modules.base_module import CognitiveModule
@@ -80,7 +81,7 @@ class Agent:
     This version also includes 'thirst' as a physiological need and the ability to perceive and drink water.
     """
 
-    def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: float = 0.95):
+    def __init__(self, name: str, mood_strategy: MoodStrategy, perception_accuracy: Optional[float] = None):
         """
         Initializes a new Agent instance.
 
@@ -89,7 +90,7 @@ class Agent:
             mood_strategy (MoodStrategy): The strategy used to calculate the agent's mood.
             perception_accuracy (float, optional): The probability (0.0 to 1.0) that the agent
                                                   will correctly perceive an item in its view.
-                                                  Defaults to 0.95 (95% accurate).
+                                                  Defaults to config.constants.PERCEPTION_ACCURACY (0.95).
         """
         self.name: str = name
         # Manages physiological states like hunger and fatigue, and mood.
@@ -137,7 +138,8 @@ class Agent:
         self.decision_maker: DecisionMaker = DecisionMaker()
         # Optional global workspace; when set it replaces the DecisionMaker's rule chain.
         self.workspace: Optional[GlobalWorkspace] = (
-            GlobalWorkspace.default(WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK)
+            GlobalWorkspace.default(WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK,
+                                    WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL)
             if USE_GLOBAL_WORKSPACE else None)
 
         # Learner for generic reward-based learning (e.g., policy gradients - though not fully implemented here).
@@ -166,7 +168,7 @@ class Agent:
         self.emotion_strategy: BasicEmotionStrategy = BasicEmotionStrategy(self.emotion_state)
 
         # New: Perception accuracy for sensory noise
-        self.perception_accuracy: float = perception_accuracy
+        self.perception_accuracy: float = PERCEPTION_ACCURACY if perception_accuracy is None else perception_accuracy
 
         # New: Track visited states for curiosity
         self.visited_states: Dict[str, int] = defaultdict(int)  # Counts how many times a state has been visited
@@ -192,7 +194,7 @@ class Agent:
         # New: Working Memory Buffer
         # Stores recent important perceptions or thoughts for short-term recall.
         # Max length of 5 items, oldest items are discarded when new ones are added.
-        self.working_memory_buffer: deque = deque(maxlen=5)
+        self.working_memory_buffer: deque = deque(maxlen=WORKING_MEMORY_CAPACITY)
 
         # New: Attention System
         # What the agent is currently focusing its attention on.
@@ -740,7 +742,11 @@ class Agent:
         """
         Returns the most recently perceived location of a resource ('food' or 'water')
         from working memory. Entries that the current local view shows to be gone are dropped.
+        With a global workspace that has its own memory, that memory is used instead of the FIFO buffer.
         """
+        if self.workspace is not None and self.workspace.memory is not None:
+            return self.workspace.memory.recall(resource, self)
+
         item_type = f"perceived_{resource}"
         view = self.perception.get("local_grid_view") or []
         stale = []
@@ -759,6 +765,17 @@ class Agent:
         for item in stale:
             self.working_memory_buffer.remove(item)
         return target
+
+    def _forget_resource_location(self, resource: str, location: Tuple[int, int]) -> None:
+        """Removes a remembered resource location from whichever memory recall uses."""
+        if self.workspace is not None and self.workspace.memory is not None:
+            self.workspace.memory.forget(resource, location)
+            return
+        item_type = f"perceived_{resource}"
+        remaining = [item for item in self.working_memory_buffer
+                     if not (item["type"] == item_type and item["location"] == location)]
+        self.working_memory_buffer.clear()
+        self.working_memory_buffer.extend(remaining)
 
     def _search_resource_action(self, action: str) -> str:
         """
@@ -793,6 +810,10 @@ class Agent:
             move, cell = min(moves, key=lambda m: distance(m[1]))
             if distance(cell) < distance(here):
                 return move
+            # Every move that gets closer is blocked: stepping toward the target is stuck in a dead
+            # end. Give the location up instead of oscillating around it (the exploring step below
+            # moves away, and the next step would otherwise pull the agent straight back).
+            self._forget_resource_location(resource, target)
 
         visits = {move: self.visited_states[f"{cell[0]},{cell[1]}"] for move, cell in moves}
         least = min(visits.values())

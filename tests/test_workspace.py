@@ -3,7 +3,8 @@
 import unittest
 from types import SimpleNamespace
 
-from core.workspace import GlobalWorkspace, GoalSpecialist, NeedSpecialist, Proposal, Specialist
+from core.workspace import (GlobalWorkspace, GoalSpecialist, NeedSpecialist, Proposal, Specialist,
+                            WorkspaceMemory)
 
 MOVE_OFFSETS = {"move_up": (-1, 0), "move_down": (1, 0), "move_left": (0, -1), "move_right": (0, 1)}
 
@@ -19,10 +20,12 @@ def view(centre="empty", **cells):
     return grid
 
 
-def make_agent(hunger=0.0, thirst=0.0, fatigue=0.0, local_view=None, goals=(), pos=(5, 5)):
+def make_agent(hunger=0.0, thirst=0.0, fatigue=0.0, local_view=None, goals=(), pos=(5, 5), step=0, others=()):
     return SimpleNamespace(
         internal_state=SimpleNamespace(hunger=hunger, thirst=thirst, fatigue=fatigue),
-        perception={"local_grid_view": local_view or view()},
+        perception={"local_grid_view": local_view or view(),
+                    "other_agents_in_sight": [{"pos_x": r, "pos_y": c} for r, c in others]},
+        current_time_step=step,
         active_goals=list(goals), pos_x=pos[0], pos_y=pos[1],
         internal_monologue="", attention_focus=None, _MOVE_OFFSETS=MOVE_OFFSETS)
 
@@ -166,6 +169,133 @@ class GlobalWorkspaceTest(unittest.TestCase):
         self.assertEqual(dict(ws.winner_counts), {"a": 3})
 
 
+class WorkspaceMemoryTest(unittest.TestCase):
+    def full_of(self, memory, kind, count, seen=0):
+        from core.workspace import Sighting
+        memory.sightings = [Sighting(kind, (0, i), seen) for i in range(count)]
+
+    def test_sightings_get_absolute_locations(self):
+        memory = WorkspaceMemory(slots=9)
+        memory.observe(make_agent(pos=(5, 5), local_view=view(up="food", right="water", left="obstacle"), others=[(6, 6)]))
+        found = {(s.kind, s.location) for s in memory.sightings}
+        self.assertEqual(found, {("food", (4, 5)), ("water", (5, 6)), ("obstacle", (5, 4)), ("agent", (6, 6))})
+
+    def test_fills_up_to_capacity(self):
+        memory = WorkspaceMemory(slots=2)
+        memory.observe(make_agent(local_view=view(up="food", down="food", left="food")))
+        self.assertEqual(len(memory.sightings), 2)
+
+    def test_seeing_something_again_refreshes_it(self):
+        memory = WorkspaceMemory(slots=5)
+        memory.observe(make_agent(local_view=view(up="food"), step=1))
+        memory.observe(make_agent(local_view=view(up="food"), step=9))
+        self.assertEqual([(s.location, s.seen) for s in memory.sightings], [((4, 5), 9)])
+
+    def test_fifo_evicts_the_oldest_sighting(self):
+        memory = WorkspaceMemory(slots=2, policy="fifo")
+        memory.observe(make_agent(pos=(1, 1), local_view=view(up="food"), step=1))     # (0, 1)
+        memory.observe(make_agent(pos=(3, 3), local_view=view(up="food"), step=2))     # (2, 3)
+        memory.observe(make_agent(pos=(7, 7), local_view=view(up="water"), step=3))    # (6, 7) evicts (0, 1)
+        self.assertEqual(sorted(s.location for s in memory.sightings), [(2, 3), (6, 7)])
+
+    def test_salience_admits_what_the_current_need_values(self):
+        memory = WorkspaceMemory(slots=2)
+        self.full_of(memory, "obstacle", 2)
+        memory.observe(make_agent(hunger=0.9, local_view=view(up="food")))
+        self.assertIn("food", [s.kind for s in memory.sightings])
+
+    def test_salience_rejects_a_less_valuable_newcomer(self):
+        memory = WorkspaceMemory(slots=2)
+        self.full_of(memory, "food", 2)
+        memory.observe(make_agent(hunger=0.9, others=[(4, 4)]))
+        self.assertEqual([s.kind for s in memory.sightings], ["food", "food"])
+
+    def test_fifo_does_not_discriminate(self):
+        memory = WorkspaceMemory(slots=2, policy="fifo")
+        self.full_of(memory, "food", 2)
+        memory.observe(make_agent(hunger=0.9, others=[(4, 4)], step=5))
+        self.assertIn("agent", [s.kind for s in memory.sightings])
+
+    def test_old_sightings_are_worth_less(self):
+        from core.workspace import Sighting
+        memory = WorkspaceMemory(slots=1)
+        state = SimpleNamespace(hunger=0.5, thirst=0.0)
+        self.assertGreater(memory.worth(Sighting("food", (0, 0), 90), state, 100),
+                           memory.worth(Sighting("food", (0, 0), 0), state, 100))
+
+    def test_recall_returns_the_nearest_of_the_requested_kind(self):
+        from core.workspace import Sighting
+        memory = WorkspaceMemory(slots=5)
+        memory.sightings = [Sighting("food", (5, 9), 0), Sighting("food", (7, 5), 0), Sighting("water", (5, 6), 0)]
+        agent = make_agent(pos=(5, 5), local_view=view())
+        self.assertEqual(memory.recall("food", agent), (7, 5))
+        self.assertIsNone(memory.recall("obstacle", agent))
+
+    def test_recall_forgets_what_the_view_contradicts(self):
+        from core.workspace import Sighting
+        memory = WorkspaceMemory(slots=5)
+        memory.sightings = [Sighting("food", (5, 6), 0)]
+        self.assertIsNone(memory.recall("food", make_agent(pos=(5, 5), local_view=view(right="empty"))))
+        self.assertEqual(memory.sightings, [])
+
+    def test_recall_keeps_a_sighting_that_is_merely_unseen(self):
+        from core.workspace import Sighting
+        memory = WorkspaceMemory(slots=5)
+        memory.sightings = [Sighting("food", (5, 6), 0)]
+        self.assertEqual(memory.recall("food", make_agent(pos=(5, 5), local_view=view(right="unknown"))), (5, 6))
+
+    def test_relevance_policy_keeps_resources_over_distractors(self):
+        memory = WorkspaceMemory(slots=2, policy="relevance")
+        self.full_of(memory, "food", 2)
+        memory.observe(make_agent(hunger=0.0, local_view=view(up="obstacle", down="obstacle"), others=[(4, 4)]))
+        self.assertEqual([s.kind for s in memory.sightings], ["food", "food"])
+
+    def test_relevance_policy_ignores_the_current_need_that_salience_follows(self):
+        thirsty = dict(thirst=0.9, hunger=0.0, local_view=view(up="water"))
+        relevance, salience = WorkspaceMemory(slots=2, policy="relevance"), WorkspaceMemory(slots=2)
+        for memory in (relevance, salience):
+            self.full_of(memory, "food", 2)
+            memory.observe(make_agent(**thirsty))
+        self.assertEqual([s.kind for s in relevance.sightings], ["food", "food"])   # equal worth: nothing displaced
+        self.assertIn("water", [s.kind for s in salience.sightings])               # thirst makes water worth more
+
+    def test_relevance_policy_replaces_an_older_resource_with_a_newer_one(self):
+        memory = WorkspaceMemory(slots=1, policy="relevance")
+        memory.observe(make_agent(pos=(1, 1), local_view=view(up="food"), step=0))
+        memory.observe(make_agent(pos=(7, 7), local_view=view(up="food"), step=50))
+        self.assertEqual([s.location for s in memory.sightings], [(6, 7)])
+
+    def test_recent_recall_prefers_the_latest_sighting_over_the_nearest(self):
+        from core.workspace import Sighting
+        sightings = [Sighting("food", (5, 6), 1), Sighting("food", (9, 9), 8)]
+        agent = make_agent(pos=(5, 5), local_view=view(right="food"))   # (5, 6) is visible and still there
+        nearest, recent = WorkspaceMemory(5, recall="nearest"), WorkspaceMemory(5, recall="recent")
+        nearest.sightings, recent.sightings = list(sightings), list(sightings)
+        self.assertEqual(nearest.recall("food", agent), (5, 6))
+        self.assertEqual(recent.recall("food", agent), (9, 9))
+
+    def test_forget_drops_only_the_given_sighting(self):
+        from core.workspace import Sighting
+        memory = WorkspaceMemory(slots=5)
+        memory.sightings = [Sighting("food", (1, 1), 0), Sighting("food", (2, 2), 0), Sighting("water", (1, 1), 0)]
+        memory.forget("food", (1, 1))
+        self.assertEqual([(s.kind, s.location) for s in memory.sightings], [("food", (2, 2)), ("water", (1, 1))])
+
+    def test_invalid_configuration_is_rejected(self):
+        with self.assertRaises(ValueError):
+            WorkspaceMemory(slots=3, recall="random")
+        with self.assertRaises(ValueError):
+            WorkspaceMemory(slots=0)
+        with self.assertRaises(ValueError):
+            WorkspaceMemory(slots=3, policy="random")
+
+    def test_workspace_feeds_percepts_into_its_memory(self):
+        memory = WorkspaceMemory(slots=3)
+        ws = GlobalWorkspace([FixedSpecialist(bid("a", 0.5))], memory=memory)
+        ws.decide(make_agent(local_view=view(up="water")))
+        self.assertEqual([s.kind for s in memory.sightings], ["water"])
+
+
 class AgentIntegrationTest(unittest.TestCase):
     def test_workspace_is_off_by_default(self):
         import io
@@ -175,6 +305,29 @@ class AgentIntegrationTest(unittest.TestCase):
             from core.mood.basic_mood import BasicMoodStrategy
             agent = Agent(name="T", mood_strategy=BasicMoodStrategy())
         self.assertIsNone(agent.workspace)
+
+    def test_search_gives_up_a_target_whose_approach_is_blocked(self):
+        """Regression: a remembered target behind an obstacle trapped the agent in an endless back-and-forth."""
+        import io
+        import contextlib
+        with contextlib.redirect_stdout(io.StringIO()):
+            from agent.base_agent import Agent
+            from core.mood.basic_mood import BasicMoodStrategy
+            from environment.world import World
+            world = World()
+            for row in world.grid:
+                row[:] = ["empty"] * len(row)
+            agent = Agent(name="T", mood_strategy=BasicMoodStrategy(), perception_accuracy=1.0)
+            world.add_agent(agent, start_pos=(3, 5))
+        world.grid[3][4] = "obstacle"
+        world.grid[3][3] = "water"
+        agent.working_memory_buffer.append({"type": "perceived_water", "location": (3, 3), "time": 0})
+        with contextlib.redirect_stdout(io.StringIO()):
+            agent.sense()
+        action = agent._search_resource_action("drink_water")
+        self.assertNotEqual(action, "move_left")                      # that cell is an obstacle
+        self.assertNotIn((3, 3), [item["location"] for item in agent.working_memory_buffer
+                                  if item["type"] == "perceived_water"])
 
 
 if __name__ == "__main__":

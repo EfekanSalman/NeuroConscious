@@ -32,11 +32,20 @@ DEFAULT_FATIGUE_INCREASE = 0.015
 # At 0.02 agents were in critical thirst (> 0.85) for 57% of steps, which saturates experiments.
 DEFAULT_THIRST_INCREASE = 0.01
 
+# Probability that each cell in the agent's 3x3 view is perceived correctly (otherwise it reads 'unknown').
+PERCEPTION_ACCURACY = 0.95
+
+# Number of recent percepts the agent's working-memory buffer (FIFO) retains.
+WORKING_MEMORY_CAPACITY = 5
+
 # Global workspace (Global Workspace Theory). Off by default: the rule-based DecisionMaker decides.
 USE_GLOBAL_WORKSPACE = False
 WORKSPACE_CAPACITY = 1       # Bids admitted and broadcast per step.
 WORKSPACE_PERSISTENCE = 0.15 # Salience bonus for the topic that won the previous step.
 WORKSPACE_FEEDBACK = True    # Whether the broadcast steers perceptual attention.
+WORKSPACE_MEMORY_SLOTS = 0   # Sightings the workspace keeps in mind; 0 = use the FIFO working-memory buffer.
+WORKSPACE_MEMORY_POLICY = "salience"  # How sightings enter a full memory: 'salience', 'relevance' or 'fifo' (control).
+WORKSPACE_MEMORY_RECALL = "nearest"   # Which remembered location is used: 'nearest' or 'recent'.
 
 # Mood threshold values
 MOOD_HAPPY_THRESHOLD = 0.3    # Mood values above this indicate a happy state. Range: -1.0 (sad) to 1.0 (happy)
