@@ -25,6 +25,7 @@
 import random
 from collections import defaultdict, deque  # Import deque for working memory
 from core.state import InternalState
+from core.navigation import ObstacleMap, plan_first_step
 from core.motivation.motivation import MotivationEngine  # Or BasicMotivationEngine if you're using that directly
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
@@ -52,7 +53,7 @@ from core.workspace import GlobalWorkspace, WorkspaceMemory
 from config.constants import (
     USE_GLOBAL_WORKSPACE, WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK, PERCEPTION_ACCURACY,
     WORKING_MEMORY_CAPACITY, WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL,
-    SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL,
+    SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL, USE_PATH_PLANNING,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -156,6 +157,9 @@ class Agent:
         self.sighting_memory: Optional[WorkspaceMemory] = (
             WorkspaceMemory(SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL)
             if SIGHTING_MEMORY_SLOTS > 0 else None)
+
+        # Where obstacles have been seen; used to plan paths when USE_PATH_PLANNING is on.
+        self.obstacle_map = ObstacleMap()
 
         # Learner for generic reward-based learning (e.g., policy gradients - though not fully implemented here).
         self.reward_learner: RewardLearner = RewardLearner()
@@ -692,6 +696,8 @@ class Agent:
         Returns:
             str: The chosen action.
         """
+        self.obstacle_map.observe((self.pos_x, self.pos_y), self.perception.get("local_grid_view"))
+
         # Determine if a state transition is needed BEFORE thinking
         if self.internal_state.fatigue > 0.9 and self.current_consciousness_state != self.asleep_state:
             self.transition_to_state(self.asleep_state)
@@ -839,7 +845,15 @@ class Agent:
             return action
 
         target = self._recall_resource_location(resource)
-        if target is not None:
+        if target is not None and USE_PATH_PLANNING:
+            step = plan_first_step(here, target, self.obstacle_map.blocked, len(self.environment.grid))
+            if step is not None and step != here:
+                for move, cell in moves:
+                    if cell == step:
+                        return move
+            if step is None:
+                self._forget_resource_location(resource, target)  # Walled off as far as the agent knows.
+        elif target is not None:
             def distance(cell):
                 return abs(cell[0] - target[0]) + abs(cell[1] - target[1])
 

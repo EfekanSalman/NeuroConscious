@@ -70,3 +70,7 @@ CONTROLLER_REWARD_M = 2            # DRIVE_EXPONENT_N / _M so conditions stay co
 # Mood threshold values
 MOOD_HAPPY_THRESHOLD = 0.3    # Mood values above this indicate a happy state. Range: -1.0 (sad) to 1.0 (happy)
 MOOD_SAD_THRESHOLD = 0.8      # Mood values below this indicate a sad state. Range: -1.0 (sad) to 1.0 (happy)
+
+# Navigation. Off by default: the agent steps greedily toward a remembered target and gives it up when every
+# closer step is blocked. When on, it plans a shortest path around the obstacles it has seen (breadth-first).
+USE_PATH_PLANNING = False
