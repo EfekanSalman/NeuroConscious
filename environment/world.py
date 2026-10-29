@@ -36,6 +36,10 @@ MAX_FOOD_ITEMS = 5  # Maximum number of food items that can exist on the grid at
 WATER_SPAWN_CHANCE = 0.05  # Chance for water to appear
 MAX_WATER_ITEMS = 5  # Maximum number of water items (equal to MAX_FOOD_ITEMS: water is as plentiful as food)
 
+# Order in which empty cells get a chance to receive regenerated food/water: 'uniform' (random order, so
+# resources reappear anywhere) or 'row_major' (legacy: top rows first, which piles resources into the top rows).
+RESPAWN_ORDER = "uniform"
+
 OBSTACLE_SPAWN_CHANCE = 0.01  # Chance for obstacles to appear
 MAX_OBSTACLES = 2  # Maximum number of obstacles
 
@@ -166,38 +170,31 @@ class World:
                 agent.pos_y = col
                 break
 
+    def _regenerate(self, kind: str, max_items: int, chance: float) -> int:
+        """Gives empty cells a chance to grow `kind`, up to `max_items`; returns how many exist afterwards."""
+        count = sum(row.count(kind) for row in self.grid)
+        if count >= max_items:
+            return count
+        cells = [(r, c) for r in range(GRID_SIZE) for c in range(GRID_SIZE) if self.grid[r][c] == 'empty']
+        if RESPAWN_ORDER == "uniform":
+            random.shuffle(cells)
+        elif RESPAWN_ORDER != "row_major":
+            raise ValueError(f"unknown RESPAWN_ORDER {RESPAWN_ORDER!r}")
+        for r, c in cells:
+            if random.random() < chance:
+                self.grid[r][c] = kind
+                count += 1
+                if count >= max_items:
+                    break
+        return count
+
     def update_environment(self):
         """
         Updates the environmental conditions for the current time step,
         including food/water regeneration, day/night cycle, and weather.
         """
-        # Regenerate food in empty cells with a certain chance, up to MAX_FOOD_ITEMS
-        current_food_count = sum(row.count('food') for row in self.grid)
-        if current_food_count < MAX_FOOD_ITEMS:
-            for r in range(GRID_SIZE):
-                for c in range(GRID_SIZE):
-                    if self.grid[r][c] == 'empty' and random.random() < FOOD_SPAWN_CHANCE:
-                        self.grid[r][c] = 'food'
-                        current_food_count += 1
-                        if current_food_count >= MAX_FOOD_ITEMS:
-                            break
-                if current_food_count >= MAX_FOOD_ITEMS:
-                    break
-        self.food_available = current_food_count > 0
-
-        # Regenerate water in empty cells
-        current_water_count = sum(row.count('water') for row in self.grid)
-        if current_water_count < MAX_WATER_ITEMS:
-            for r in range(GRID_SIZE):
-                for c in range(GRID_SIZE):
-                    if self.grid[r][c] == 'empty' and random.random() < WATER_SPAWN_CHANCE:
-                        self.grid[r][c] = 'water'
-                        current_water_count += 1
-                        if current_water_count >= MAX_WATER_ITEMS:
-                            break
-                if current_water_count >= MAX_WATER_ITEMS:
-                    break
-        self.water_available = current_water_count > 0
+        self.food_available = self._regenerate('food', MAX_FOOD_ITEMS, FOOD_SPAWN_CHANCE) > 0
+        self.water_available = self._regenerate('water', MAX_WATER_ITEMS, WATER_SPAWN_CHANCE) > 0
 
         # Dynamic obstacle spawning (simple random placement)
         current_obstacle_count = sum(row.count('obstacle') for row in self.grid)
