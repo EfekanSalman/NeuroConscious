@@ -2,7 +2,7 @@
 
 import unittest
 
-from core.navigation import ObstacleMap, plan_first_step
+from core.navigation import ObstacleMap, first_step_to_nearest, plan_first_step
 
 
 class PlanFirstStepTest(unittest.TestCase):
@@ -33,6 +33,20 @@ class PlanFirstStepTest(unittest.TestCase):
         self.assertEqual(plan_first_step((2, 2), (2, 2), set(), 5), (2, 2))
 
 
+class FirstStepToNearestTest(unittest.TestCase):
+    def test_heads_for_the_nearest_of_several_goals(self):
+        self.assertEqual(first_step_to_nearest((2, 2), {(2, 4), (0, 2)}, set(), 5), (1, 2))
+
+    def test_goes_around_obstacles_to_reach_the_nearest_reachable_goal(self):
+        wall = {(1, 0), (1, 1), (1, 2), (1, 3)}
+        self.assertEqual(first_step_to_nearest((0, 0), {(2, 0)}, wall, 5), (0, 1))
+
+    def test_none_without_reachable_goals(self):
+        self.assertIsNone(first_step_to_nearest((0, 0), set(), set(), 3))
+        self.assertIsNone(first_step_to_nearest((0, 0), {(0, 0)}, set(), 3))
+        self.assertIsNone(first_step_to_nearest((0, 0), {(2, 2)}, {(0, 1), (1, 0)}, 3))
+
+
 class ObstacleMapTest(unittest.TestCase):
     @staticmethod
     def view(**cells):
@@ -57,6 +71,14 @@ class ObstacleMapTest(unittest.TestCase):
         known.observe((5, 5), self.view(c00="obstacle"))
         known.observe((5, 5), self.view(c00="unknown"))
         self.assertEqual(known.blocked, {(4, 4)})
+
+    def test_remembers_when_each_cell_was_last_in_view(self):
+        known = ObstacleMap()
+        known.observe((5, 5), self.view(), now=7)
+        known.observe((5, 6), self.view(), now=9)
+        self.assertEqual(known.last_seen[(4, 4)], 7)
+        self.assertEqual(known.last_seen[(5, 6)], 9)
+        self.assertNotIn((9, 9), known.last_seen)
 
     def test_malformed_view_is_ignored(self):
         known = ObstacleMap()

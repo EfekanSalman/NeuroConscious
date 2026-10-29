@@ -74,3 +74,8 @@ MOOD_SAD_THRESHOLD = 0.8      # Mood values below this indicate a sad state. Ran
 # Navigation. Off by default: the agent steps greedily toward a remembered target and gives it up when every
 # closer step is blocked. When on, it plans a shortest path around the obstacles it has seen (breadth-first).
 USE_PATH_PLANNING = False
+
+# Exploration. Off by default: with nothing remembered the agent takes the least-visited neighbouring cell.
+# When on, it walks to the nearest cell that has not been in view for EXPLORATION_REVISIT_STEPS (or never).
+USE_FRONTIER_EXPLORATION = False
+EXPLORATION_REVISIT_STEPS = 100

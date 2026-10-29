@@ -25,7 +25,7 @@
 import random
 from collections import defaultdict, deque  # Import deque for working memory
 from core.state import InternalState
-from core.navigation import ObstacleMap, plan_first_step
+from core.navigation import ObstacleMap, first_step_to_nearest, plan_first_step
 from core.motivation.motivation import MotivationEngine  # Or BasicMotivationEngine if you're using that directly
 from core.mood.base import MoodStrategy
 from core.memory.episodic import EpisodicMemory
@@ -54,6 +54,7 @@ from config.constants import (
     USE_GLOBAL_WORKSPACE, WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK, PERCEPTION_ACCURACY,
     WORKING_MEMORY_CAPACITY, WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL,
     SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL, USE_PATH_PLANNING,
+    USE_FRONTIER_EXPLORATION, EXPLORATION_REVISIT_STEPS,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -696,7 +697,7 @@ class Agent:
         Returns:
             str: The chosen action.
         """
-        self.obstacle_map.observe((self.pos_x, self.pos_y), self.perception.get("local_grid_view"))
+        self.obstacle_map.observe((self.pos_x, self.pos_y), self.perception.get("local_grid_view"), self.current_time_step)
 
         # Determine if a state transition is needed BEFORE thinking
         if self.internal_state.fatigue > 0.9 and self.current_consciousness_state != self.asleep_state:
@@ -819,6 +820,18 @@ class Agent:
         self.working_memory_buffer.clear()
         self.working_memory_buffer.extend(remaining)
 
+    def _frontier_move(self, moves, here: Tuple[int, int]) -> Optional[str]:
+        """The move toward the nearest cell not in view for EXPLORATION_REVISIT_STEPS, or None if there is none."""
+        size = len(self.environment.grid)
+        now = self.current_time_step
+        seen = self.obstacle_map.last_seen
+        stale = [(r, c) for r in range(size) for c in range(size)
+                 if (r, c) not in self.obstacle_map.blocked and now - seen.get((r, c), -10 ** 9) > EXPLORATION_REVISIT_STEPS]
+        step = first_step_to_nearest(here, stale, self.obstacle_map.blocked, size)
+        if step is None:
+            return None
+        return next((move for move, cell in moves if cell == step), None)
+
     def _search_resource_action(self, action: str) -> str:
         """
         Resolves a 'seek_food' / 'drink_water' intention into the step to execute now.
@@ -864,6 +877,11 @@ class Agent:
             # end. Give the location up instead of oscillating around it (the exploring step below
             # moves away, and the next step would otherwise pull the agent straight back).
             self._forget_resource_location(resource, target)
+
+        if USE_FRONTIER_EXPLORATION:
+            move = self._frontier_move(moves, here)
+            if move is not None:
+                return move
 
         visits = {move: self.visited_states[f"{cell[0]},{cell[1]}"] for move, cell in moves}
         least = min(visits.values())
