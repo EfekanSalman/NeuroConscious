@@ -40,6 +40,13 @@ MAX_WATER_ITEMS = 5  # Maximum number of water items (equal to MAX_FOOD_ITEMS: w
 # resources reappear anywhere) or 'row_major' (legacy: top rows first, which piles resources into the top rows).
 RESPAWN_ORDER = "uniform"
 
+# Fixed resource sites (0 = off, the default: resources then regenerate anywhere). With N sites a kind of
+# resource only ever grows on N cells chosen once per world, and a consumed one regrows in the same cell
+# after SITE_REGROW_STEPS, so where food and water are stays worth remembering.
+FOOD_SITES = 0
+WATER_SITES = 0
+SITE_REGROW_STEPS = 50
+
 OBSTACLE_SPAWN_CHANCE = 0.01  # Chance for obstacles to appear
 MAX_OBSTACLES = 2  # Maximum number of obstacles
 
@@ -75,8 +82,17 @@ class World:
         # Each cell can contain 'empty', 'food', 'water', 'obstacle', etc.
         self.grid: List[List[str]] = [['empty' for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
 
-        self._place_initial_food()  # Place some food at the start
-        self._place_initial_water()  # Place some water at the start
+        self._sites = {'food': [], 'water': []}  # Fixed sites per kind (empty lists: regenerate anywhere).
+        self._empty_since = {}  # Site cell -> time step at which its resource was last found consumed.
+
+        if FOOD_SITES > 0:
+            self._place_sites('food', FOOD_SITES)
+        else:
+            self._place_initial_food()  # Place some food at the start
+        if WATER_SITES > 0:
+            self._place_sites('water', WATER_SITES)
+        else:
+            self._place_initial_water()  # Place some water at the start
         self._place_initial_obstacles()  # Place some obstacles at the start
 
     def _place_initial_food(self):
@@ -170,8 +186,33 @@ class World:
                 agent.pos_y = col
                 break
 
+    def _place_sites(self, kind: str, count: int) -> None:
+        """Chooses `count` distinct empty cells as the permanent sites of `kind` and fills them."""
+        cells = [(r, c) for r in range(GRID_SIZE) for c in range(GRID_SIZE) if self.grid[r][c] == 'empty']
+        self._sites[kind] = random.sample(cells, min(count, len(cells)))
+        for r, c in self._sites[kind]:
+            self.grid[r][c] = kind
+        print(f"World: Placed {len(self._sites[kind])} fixed {kind} sites.")
+
+    def _regrow_sites(self, kind: str) -> int:
+        """Regrows consumed resources on their own sites once SITE_REGROW_STEPS have passed."""
+        for cell in self._sites[kind]:
+            row, col = cell
+            if self.grid[row][col] == kind:
+                self._empty_since.pop(cell, None)
+            elif self.grid[row][col] == 'empty' and not any(a.pos_x == row and a.pos_y == col for a in self.agents):
+                since = self._empty_since.setdefault(cell, self.time_step)
+                if self.time_step - since >= SITE_REGROW_STEPS:
+                    self.grid[row][col] = kind
+                    del self._empty_since[cell]
+            else:
+                self._empty_since.pop(cell, None)  # Blocked by an obstacle or an agent: the clock restarts.
+        return sum(row.count(kind) for row in self.grid)
+
     def _regenerate(self, kind: str, max_items: int, chance: float) -> int:
         """Gives empty cells a chance to grow `kind`, up to `max_items`; returns how many exist afterwards."""
+        if self._sites[kind]:
+            return self._regrow_sites(kind)
         count = sum(row.count(kind) for row in self.grid)
         if count >= max_items:
             return count

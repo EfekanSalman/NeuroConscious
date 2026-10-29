@@ -15,4 +15,14 @@ SCENARIOS: Dict[str, Dict[str, Any]] = {
         "environment.world:MAX_OBSTACLES": 15,
         "environment.world:OBSTACLE_SPAWN_CHANCE": 0.05,
     },
+    # The distractors world, but food and water only grow on 6 fixed sites each and regrow in place after
+    # 50 steps, so a remembered location stays valid. Tests whether memory has any value once it can.
+    "sites": {
+        "environment.world:GRID_SIZE": 20,
+        "environment.world:MAX_OBSTACLES": 15,
+        "environment.world:OBSTACLE_SPAWN_CHANCE": 0.05,
+        "environment.world:FOOD_SITES": 6,
+        "environment.world:WATER_SITES": 6,
+        "environment.world:SITE_REGROW_STEPS": 50,
+    },
 }

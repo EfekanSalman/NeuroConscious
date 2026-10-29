@@ -50,5 +50,54 @@ class RegenerationTests(unittest.TestCase):
                 world.update_environment()
 
 
+class FixedSiteTests(unittest.TestCase):
+    def make_world(self, sites=3, regrow=5):
+        random.seed(1)
+        patches = (mock.patch.object(world_module, "FOOD_SITES", sites), mock.patch.object(world_module, "SITE_REGROW_STEPS", regrow))
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+        with contextlib.redirect_stdout(io.StringIO()):
+            return World()
+
+    @staticmethod
+    def update(world):
+        with contextlib.redirect_stdout(io.StringIO()):
+            world.update_environment()
+
+    def test_resources_start_on_the_sites(self):
+        world = self.make_world()
+        cells = {(r, c) for r in range(GRID_SIZE) for c in range(GRID_SIZE) if world.grid[r][c] == "food"}
+        self.assertEqual(cells, set(world._sites["food"]))
+        self.assertEqual(len(cells), 3)
+
+    def test_consumed_resource_regrows_on_its_own_site_after_the_delay(self):
+        world = self.make_world(regrow=5)
+        row, col = world._sites["food"][0]
+        world.grid[row][col] = "empty"
+        for step in range(5):
+            world.time_step = step
+            self.update(world)
+            self.assertEqual(world.grid[row][col], "empty", f"regrew early at step {step}")
+        world.time_step = 5
+        self.update(world)
+        self.assertEqual(world.grid[row][col], "food")
+
+    def test_food_never_appears_off_the_sites(self):
+        world = self.make_world(regrow=1)
+        sites = set(world._sites["food"])
+        for step in range(100):
+            world.time_step = step
+            for r, c in sites:
+                world.grid[r][c] = "empty"
+            self.update(world)
+            on_grid = {(r, c) for r in range(GRID_SIZE) for c in range(GRID_SIZE) if world.grid[r][c] == "food"}
+            self.assertTrue(on_grid <= sites)
+
+    def test_water_still_regenerates_anywhere_when_only_food_has_sites(self):
+        world = self.make_world()
+        self.assertEqual(world._sites["water"], [])
+
+
 if __name__ == "__main__":
     unittest.main()
