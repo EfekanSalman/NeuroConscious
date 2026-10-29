@@ -1,6 +1,7 @@
 """Unit tests for the global workspace. Run from the repository root: python -m unittest discover tests"""
 
 import unittest
+from unittest import mock
 from types import SimpleNamespace
 
 from core.workspace import (GlobalWorkspace, GoalSpecialist, NeedSpecialist, Proposal, Specialist,
@@ -57,6 +58,21 @@ class NeedSpecialistTest(unittest.TestCase):
 
     def test_critical_need_gets_bonus(self):
         self.assertAlmostEqual(NeedSpecialist("hunger").propose(make_agent(hunger=0.9)).salience, 0.81 + 0.5)
+
+    def test_critical_needs_are_ranked_by_level_by_default(self):
+        agent = make_agent(hunger=0.9, thirst=0.99)
+        self.assertGreater(NeedSpecialist("thirst").propose(agent).salience, NeedSpecialist("hunger").propose(agent).salience)
+
+    def test_fixed_priority_ranks_critical_needs_hunger_first(self):
+        agent = make_agent(hunger=0.9, thirst=0.99, fatigue=1.0)
+        with mock.patch("core.workspace.specialists.FIXED_NEED_PRIORITY", True):
+            bids = {n: NeedSpecialist(n).propose(agent).salience for n in ("hunger", "thirst", "fatigue")}
+        self.assertGreater(bids["hunger"], bids["thirst"])
+        self.assertGreater(bids["thirst"], bids["fatigue"])
+
+    def test_fixed_priority_leaves_non_critical_needs_alone(self):
+        with mock.patch("core.workspace.specialists.FIXED_NEED_PRIORITY", True):
+            self.assertAlmostEqual(NeedSpecialist("hunger").propose(make_agent(hunger=0.5)).salience, 0.25)
 
     def test_consume_here_follows_the_perceived_cell(self):
         on_water = make_agent(thirst=0.5, local_view=view(centre="water"))

@@ -8,6 +8,10 @@ NEED_THRESHOLD = 0.3
 # Matches DecisionMaker's critical-need override (> 0.85): such a need pre-empts everything else.
 CRITICAL_LEVEL = 0.85
 CRITICAL_BONUS = 0.5
+# Experimental switch: when True, critical needs outrank each other in DecisionMaker's fixed order (hunger,
+# then thirst, then fatigue) instead of by how high each level is. Off by default.
+FIXED_NEED_PRIORITY = False
+_FIXED_RANK = {"hunger": 2.0, "thirst": 1.0, "fatigue": 0.0}
 # Goals compete at priority * GOAL_WEIGHT, so a need above ~sqrt(0.45) = 0.67 outbids a priority-0.9 goal.
 GOAL_WEIGHT = 0.5
 # The learned DQN policy is the fallback when nothing more specific bids higher.
@@ -54,6 +58,8 @@ class NeedSpecialist(Specialist):
         if level < NEED_THRESHOLD:
             return None
         salience = level ** 2 + (CRITICAL_BONUS if level > CRITICAL_LEVEL else 0.0)
+        if FIXED_NEED_PRIORITY and level > CRITICAL_LEVEL:
+            salience += _FIXED_RANK[self.need]
         consume_here = self.resource is not None and perceived_here(agent) == self.resource
         return Proposal(self.name, self.action, salience,
                         {"need": self.need, "level": level, "consume_here": consume_here})
