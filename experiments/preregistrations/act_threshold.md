@@ -27,3 +27,11 @@ Total critical steps (mean over 100 seeds): rules 0.85/0.6/0.3 = 1262/1215/1195;
 - **B3 held:** needs 0.85 - needs 0.3 = +469 [+449, +489].
 - Acting earlier explains about a fifth of the gap. Drinks: rules 9.8-10.9 at every threshold vs needs-only 18.5-20.2,
   even needs-only at 0.85 (18.5), so the drinking gap does not depend on the threshold at all.
+
+## Correction (found after the first run)
+My runner gave the rule-based agents no sighting memory (they used the FIFO buffer), while the needs-only
+workspace used `nearest`/salience10 memory; `specialist_ablation` had matched them (`SIGHTING_MEMORY_*`). The
+first results are therefore confounded for every rules-vs-needs comparison (B2) and are kept as
+`rules_fifo_*.json`. B3 and the needs-only rows are unaffected. The rule conditions are re-run with
+`agent.base_agent:SIGHTING_MEMORY_POLICY='salience'`, `SIGHTING_MEMORY_RECALL='nearest'`, `SIGHTING_MEMORY_SLOTS=10`
+as `rules_0.85/0.6/0.3.json`, same seeds. B1 and B2 are judged on the matched re-run; no new predictions added.
