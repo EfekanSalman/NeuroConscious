@@ -185,6 +185,24 @@ class GlobalWorkspaceTest(unittest.TestCase):
         self.assertEqual(dict(ws.winner_counts), {"a": 3})
 
 
+class SpecialistAblationTest(unittest.TestCase):
+    def test_default_set_has_a_specialist_per_need_plus_goal_and_habit(self):
+        names = [s.name for s in GlobalWorkspace.default().specialists]
+        self.assertEqual(names, ["need:hunger", "need:thirst", "need:fatigue", "goal", "habit"])
+
+    def test_disabled_specialists_are_left_out(self):
+        with mock.patch("core.workspace.workspace.DISABLED_SPECIALISTS", ("habit", "goal")):
+            names = [s.name for s in GlobalWorkspace.default().specialists]
+        self.assertEqual(names, ["need:hunger", "need:thirst", "need:fatigue"])
+
+    def test_idles_when_nothing_bids(self):
+        workspace = GlobalWorkspace([NeedSpecialist("hunger")])
+        agent = make_agent(hunger=0.1)
+        self.assertEqual(workspace.decide(agent), "explore")
+        self.assertEqual(workspace.contents, [])
+        self.assertEqual(workspace.winner_counts["none"], 1)
+
+
 class WorkspaceMemoryTest(unittest.TestCase):
     def full_of(self, memory, kind, count, seen=0):
         from core.workspace import Sighting

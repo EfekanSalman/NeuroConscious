@@ -6,6 +6,9 @@ from core.workspace.proposal import Proposal
 from core.workspace.specialists import (
     GoalSpecialist, HabitSpecialist, NeedSpecialist, Specialist)
 
+# Experimental switch for ablations: names of specialists left out of the default set ('goal', 'habit').
+DISABLED_SPECIALISTS: tuple = ()
+
 # Which input channel the agent's perception should favour when a given need wins the workspace.
 _ATTENTION_FOR_NEED = {"hunger": "food", "thirst": "water", "fatigue": "rest"}
 
@@ -53,6 +56,7 @@ class GlobalWorkspace:
         memory_slots > 0 adds a WorkspaceMemory of that many sightings with the given policy."""
         specialists = [NeedSpecialist("hunger"), NeedSpecialist("thirst"), NeedSpecialist("fatigue"),
                        GoalSpecialist(), HabitSpecialist()]
+        specialists = [s for s in specialists if s.name not in DISABLED_SPECIALISTS]
         memory = WorkspaceMemory(memory_slots, memory_policy, memory_recall) if memory_slots > 0 else None
         return cls(specialists, capacity, persistence, feedback, memory)
 
@@ -61,6 +65,11 @@ class GlobalWorkspace:
         if self.memory is not None:
             self.memory.observe(agent)
         proposals = [p for p in (s.propose(agent) for s in self.specialists) if p is not None]
+        if not proposals:  # Nothing is pressing and no habit fills in: the agent idles.
+            self.contents = []
+            self.winner_counts["none"] += 1
+            agent.internal_monologue += "Global workspace: nothing bid, idling. "
+            return "explore"
 
         def effective_salience(proposal: Proposal) -> float:
             bonus = self.persistence if proposal.key == self._last_winner_key else 0.0
