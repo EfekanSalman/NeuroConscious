@@ -29,6 +29,8 @@ from typing import Dict, Any, Tuple
 # A need above this level pre-empts every other consideration. Lowering it is an experimental switch
 # (the default matches the level at which metrics count a need as critical).
 CRITICAL_OVERRIDE_LEVEL = 0.85
+# Which pressing need is served first: 'fixed' (hunger, then thirst, then fatigue) or 'neediest' (the highest level).
+CRITICAL_OVERRIDE_ORDER = "fixed"
 
 
 class DecisionMaker:
@@ -69,20 +71,18 @@ class DecisionMaker:
         # --- Decision Hierarchy ---
 
         # 1. Critical Needs Override (Highest Priority in both modes, but more immediate in Reactive)
-        if agent.internal_state.hunger > CRITICAL_OVERRIDE_LEVEL:
-            chosen_action = "seek_food"
-            agent.internal_monologue += "CRITICAL: Extreme hunger detected, prioritizing 'seek_food'. "
-            return chosen_action  # Override and return immediately
-
-        if agent.internal_state.thirst > CRITICAL_OVERRIDE_LEVEL:  # New: Critical thirst override
-            chosen_action = "drink_water"
-            agent.internal_monologue += "CRITICAL: Extreme thirst detected, prioritizing 'drink_water'. "
-            return chosen_action  # Override and return immediately
-
-        if agent.internal_state.fatigue > CRITICAL_OVERRIDE_LEVEL:
-            chosen_action = "rest"
-            agent.internal_monologue += "CRITICAL: Extreme fatigue detected, prioritizing 'rest'. "
-            return chosen_action  # Override and return immediately
+        state = agent.internal_state
+        critical_checks = [
+            (state.hunger, "seek_food", "Extreme hunger detected"),
+            (state.thirst, "drink_water", "Extreme thirst detected"),
+            (state.fatigue, "rest", "Extreme fatigue detected"),
+        ]
+        if CRITICAL_OVERRIDE_ORDER == "neediest":
+            critical_checks.sort(key=lambda check: -check[0])  # stable: ties keep the fixed order
+        for level, critical_action, reason in critical_checks:
+            if level > CRITICAL_OVERRIDE_LEVEL:
+                agent.internal_monologue += f"CRITICAL: {reason}, prioritizing '{critical_action}'. "
+                return critical_action  # Override and return immediately
 
         # 2. Procedural Memory Override (Stronger in Reactive Mode)
         triggered_procedure = agent.procedural_memory.get_triggered_procedure(agent)
