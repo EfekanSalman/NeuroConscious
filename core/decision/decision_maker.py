@@ -26,6 +26,11 @@ import random
 from typing import Dict, Any, Tuple
 
 
+# A need above this level pre-empts every other consideration. Lowering it is an experimental switch
+# (the default matches the level at which metrics count a need as critical).
+CRITICAL_OVERRIDE_LEVEL = 0.85
+
+
 class DecisionMaker:
     """
     Manages the agent's high-level decision-making process, acting as a central
@@ -64,17 +69,17 @@ class DecisionMaker:
         # --- Decision Hierarchy ---
 
         # 1. Critical Needs Override (Highest Priority in both modes, but more immediate in Reactive)
-        if agent.internal_state.hunger > 0.85:
+        if agent.internal_state.hunger > CRITICAL_OVERRIDE_LEVEL:
             chosen_action = "seek_food"
             agent.internal_monologue += "CRITICAL: Extreme hunger detected, prioritizing 'seek_food'. "
             return chosen_action  # Override and return immediately
 
-        if agent.internal_state.thirst > 0.85:  # New: Critical thirst override
+        if agent.internal_state.thirst > CRITICAL_OVERRIDE_LEVEL:  # New: Critical thirst override
             chosen_action = "drink_water"
             agent.internal_monologue += "CRITICAL: Extreme thirst detected, prioritizing 'drink_water'. "
             return chosen_action  # Override and return immediately
 
-        if agent.internal_state.fatigue > 0.85:
+        if agent.internal_state.fatigue > CRITICAL_OVERRIDE_LEVEL:
             chosen_action = "rest"
             agent.internal_monologue += "CRITICAL: Extreme fatigue detected, prioritizing 'rest'. "
             return chosen_action  # Override and return immediately
