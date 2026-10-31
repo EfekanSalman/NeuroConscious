@@ -35,3 +35,12 @@ first results are therefore confounded for every rules-vs-needs comparison (B2) 
 `rules_fifo_*.json`. B3 and the needs-only rows are unaffected. The rule conditions are re-run with
 `agent.base_agent:SIGHTING_MEMORY_POLICY='salience'`, `SIGHTING_MEMORY_RECALL='nearest'`, `SIGHTING_MEMORY_SLOTS=10`
 as `rules_0.85/0.6/0.3.json`, same seeds. B1 and B2 are judged on the matched re-run; no new predictions added.
+
+## Result of the matched-memory re-run (commit of the worktree: the correction commit, dirty=false)
+Total critical steps, rules with sighting memory at override 0.85/0.6/0.3: 1135/1064/1077; needs-only 0.3: 942.
+- **B1 failed on size:** rules 0.3 - rules 0.85 = -58 [-82, -35]; rules 0.6 - 0.85 = -71 [-96, -46] (predicted at least 100).
+- **B2 failed:** rules 0.3 - needs 0.3 = +135 [+107, +161]; rules 0.85 - needs 0.3 = +193 [+165, +221]. Acting earlier
+  closes about 30% (58-71 of 193); about 135 remain.
+- Memory mismatch was worth 126 [104, 150] for the rule agent (1261 -> 1135); the earlier "252" was inflated by it.
+- Drinks stay lower for rules (14.4 at 0.3) than for needs-only (20.2, even 18.5 at 0.85); thirst-critical 541 vs 410.
+- B3 held (unchanged, needs-only does not depend on the rules' memory).
