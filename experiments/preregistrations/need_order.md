@@ -25,3 +25,17 @@ steps) and the DQN's rests; both stay in the rule chain.
 - **C3 (60%):** with 'neediest', 0.3 is better than 0.85 by at least 100 (the threshold works once thirst is no longer starved).
 - Reading: C1 and C2 hold -> the lead is balancing needs by level, not the workspace. C1 holds, C2 fails -> balancing
   explains part and the focus lock, DQN rests or something else explains the rest. C1 fails -> order is not the cause.
+
+## Result (`experiments/results/need_order/`, commit 80d19ad, dirty=false; reference runs from `act_threshold`)
+Total critical steps (mean, 100 seeds): fixed 0.85/0.6/0.3 = 1135/1064/1077; neediest 0.85/0.6/0.3 = 1135/1058/1003;
+needs-only workspace 0.3 = 942.
+- **C1 failed, trivially:** neediest 0.85 - fixed 0.85 = 0.0 [0.0, 0.0] in every seed. Cause found afterwards:
+  `FocusedState.think` rewrites the decision after the DecisionMaker (a food focus turns 'drink_water' into
+  'seek_food'), so at 0.85 the order never changes what is executed. The prediction ignored that the order switch sits
+  upstream of the focus lock, although I had named the lock myself as not changed.
+- **C2 failed narrowly:** neediest 0.3 - needs-only 0.3 = +61 [+31, +89] (predicted within 60). The gap to the need
+  arbiter fell from 193 (fixed 0.85) to 61; of the 132 steps gained, threshold and order contribute about 58 and 74.
+- **C3 held:** neediest 0.3 - neediest 0.85 = -132 [-158, -107].
+- Caveat on earlier tables: `action_counts` record the decision made in `_think_default` (`_last_performed_action`),
+  before the focused-state rewrite, so they are decision labels, not executed actions. The diagnostic run used the
+  final action and is unaffected. The 'seek_food 895 / drink_water 75' figures at override 0.3 therefore understate food.
