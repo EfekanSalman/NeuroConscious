@@ -58,6 +58,25 @@ class BeaconWorldTest(unittest.TestCase):
             seen.add(world.active_half)
         self.assertEqual(seen, {"left", "right"})
 
+    def test_cycle_lengths_are_regular_without_jitter_and_vary_with_it(self):
+        def redraw_times(jitter):
+            world, patches = beacon_world(seed=3)
+            patches = {**patches, "BEACON_CYCLE_JITTER": jitter}
+            times = []
+            with contextlib.redirect_stdout(io.StringIO()), mock.patch.multiple(world_module, **patches):
+                for _ in range(400):
+                    before = world._next_redraw
+                    world.update_environment()
+                    if world._next_redraw != before:
+                        times.append(world.time_step)
+                    world.time_step += 1
+            return times
+        regular = redraw_times(0.0)
+        self.assertEqual([b - a for a, b in zip(regular, regular[1:])], [10] * (len(regular) - 1))
+        gaps = [b - a for a, b in zip(*(lambda t: (t, t[1:]))(redraw_times(0.7)))]
+        self.assertGreater(len(set(gaps)), 3)
+        self.assertTrue(all(3 <= gap <= 17 for gap in gaps))
+
     def test_no_regime_by_default(self):
         random.seed(0)
         with contextlib.redirect_stdout(io.StringIO()):

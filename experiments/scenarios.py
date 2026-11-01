@@ -36,4 +36,15 @@ SCENARIOS: Dict[str, Dict[str, Any]] = {
         "environment.world:SITE_REGROW_STEPS": 50,
         "environment.world:BEACON_CYCLE": 150,
     },
+    # The beacon world with irregular redraws: cycles last 50-250 steps, so the agent cannot count on a period.
+    "beacon_irregular": {
+        "environment.world:GRID_SIZE": 20,
+        "environment.world:MAX_OBSTACLES": 15,
+        "environment.world:OBSTACLE_SPAWN_CHANCE": 0.05,
+        "environment.world:FOOD_SITES": 6,
+        "environment.world:WATER_SITES": 6,
+        "environment.world:SITE_REGROW_STEPS": 50,
+        "environment.world:BEACON_CYCLE": 150,
+        "environment.world:BEACON_CYCLE_JITTER": 0.67,
+    },
 }

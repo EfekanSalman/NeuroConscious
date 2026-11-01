@@ -51,6 +51,8 @@ SITE_REGROW_STEPS = 50
 # below GRID_SIZE / 2 = 'left', the rest 'right') hold resources; every BEACON_CYCLE steps the active half is
 # redrawn at random and the sites of the other half are emptied. Which half is active is the cue.
 BEACON_CYCLE = 0
+# Irregular redraws: each cycle lasts BEACON_CYCLE * uniform(1 - jitter, 1 + jitter) steps (0 = every BEACON_CYCLE steps).
+BEACON_CYCLE_JITTER = 0.0
 
 OBSTACLE_SPAWN_CHANCE = 0.01  # Chance for obstacles to appear
 MAX_OBSTACLES = 2  # Maximum number of obstacles
@@ -94,6 +96,7 @@ class World:
         self._sites = {'food': [], 'water': []}  # Fixed sites per kind (empty lists: regenerate anywhere).
         self._empty_since = {}  # Site cell -> time step at which its resource was last found consumed.
         self.active_half: Optional[str] = random.choice(('left', 'right')) if BEACON_CYCLE > 0 else None
+        self._next_redraw = 0  # Time step of the next beacon redraw.
 
         if FOOD_SITES > 0:
             self._place_sites('food', FOOD_SITES)
@@ -262,8 +265,12 @@ class World:
         Updates the environmental conditions for the current time step,
         including food/water regeneration, day/night cycle, and weather.
         """
-        if BEACON_CYCLE > 0 and self.time_step % BEACON_CYCLE == 0:
+        if BEACON_CYCLE > 0 and self.time_step >= self._next_redraw:
             self._redraw_active_half()
+            length = BEACON_CYCLE
+            if BEACON_CYCLE_JITTER > 0:
+                length = max(1, round(BEACON_CYCLE * random.uniform(1 - BEACON_CYCLE_JITTER, 1 + BEACON_CYCLE_JITTER)))
+            self._next_redraw = self.time_step + length
         self.food_available = self._regenerate('food', MAX_FOOD_ITEMS, FOOD_SPAWN_CHANCE) > 0
         self.water_available = self._regenerate('water', MAX_WATER_ITEMS, WATER_SPAWN_CHANCE) > 0
 
