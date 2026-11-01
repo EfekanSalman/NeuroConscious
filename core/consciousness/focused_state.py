@@ -25,6 +25,10 @@
 from core.consciousness.base import ConsciousnessState
 import random
 
+# Experimental switch: whether the focus rewrites the decision (a food focus turns 'drink_water' into 'seek_food').
+# The default keeps the original behaviour.
+FOCUS_REWRITES_DECISION = True
+
 class FocusedState(ConsciousnessState):
     """
     Represents the agent's focused state of consciousness.
@@ -84,7 +88,7 @@ class FocusedState(ConsciousnessState):
 
         # With a global workspace, attention is set by the broadcast; the rule-based focus overrides
         # below would overwrite the workspace's decision.
-        if self.agent.has_external_policy:
+        if self.agent.has_external_policy or not FOCUS_REWRITES_DECISION:
             return selected_action
 
         # Now, apply focus-specific overrides
