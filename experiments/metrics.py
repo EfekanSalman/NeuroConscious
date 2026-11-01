@@ -64,6 +64,8 @@ class AgentTracker:
         self.drive_sum = 0.0
         self.drive_blocks: List[float] = []
         self.steps = 0
+        self.cue_steps = 0
+        self.cue_correct_steps = 0
 
     def observe(self, step: int) -> None:
         agent = self.agent
@@ -88,6 +90,10 @@ class AgentTracker:
             self.drive_blocks.append(0.0)
         self.drive_blocks[-1] += level
 
+        half = getattr(agent.environment, "active_half", None)
+        if half is not None and agent.regime_cue is not None:
+            self.cue_steps += 1
+            self.cue_correct_steps += agent.regime_cue == half
         self.actions[agent._last_performed_action] += 1
         self.states[agent.current_consciousness_state.get_state_name()] += 1
 
@@ -121,6 +127,9 @@ class AgentTracker:
         result["drive_by_block"] = blocks
         result["action_counts"] = dict(self.actions)
         result["consciousness_steps"] = dict(self.states)
+        if getattr(self.agent.environment, "active_half", None) is not None:
+            result["cue_steps"] = self.cue_steps
+            result["cue_correct_steps"] = self.cue_correct_steps
         workspace = getattr(self.agent, "workspace", None)
         if workspace is not None:
             result["opportunistic_actions"] = workspace.opportunistic_actions

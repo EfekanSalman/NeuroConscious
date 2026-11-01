@@ -17,6 +17,11 @@ GOAL_WEIGHT = 0.5
 # The learned DQN policy is the fallback when nothing more specific bids higher.
 HABIT_SALIENCE = 0.3
 
+# The beacon cue competes for a workspace slot at this salience (it never acts by itself).
+BEACON_SALIENCE = 0.6
+# Experimental control: report the wrong half. The cue then carries content, but misleading content.
+BEACON_INVERT = False
+
 # need -> (resource it is satisfied by, action that consumes/searches for it)
 _NEEDS = {
     "hunger": ("food", "seek_food"),
@@ -43,6 +48,26 @@ class Specialist(ABC):
     @abstractmethod
     def propose(self, agent) -> Optional[Proposal]:
         """Returns this specialist's bid for the current step, or None to stay silent."""
+
+
+def read_regime(agent) -> Optional[str]:
+    """The beacon sensor: which half of the world holds resources now (None without the regime)."""
+    half = getattr(agent.environment, "active_half", None)
+    if half is not None and BEACON_INVERT:
+        return "right" if half == "left" else "left"
+    return half
+
+
+class BeaconSpecialist(Specialist):
+    """The only reader of the beacon sensor. Its cue reaches other modules only if it wins a workspace slot."""
+
+    name = "beacon"
+
+    def propose(self, agent) -> Optional[Proposal]:
+        cue = read_regime(agent)
+        if cue is None:
+            return None
+        return Proposal(self.name, "none", BEACON_SALIENCE, {"cue": cue})
 
 
 class NeedSpecialist(Specialist):

@@ -79,3 +79,7 @@ USE_PATH_PLANNING = False
 # When on, it walks to the nearest cell that has not been in view for EXPLORATION_REVISIT_STEPS (or never).
 USE_FRONTIER_EXPLORATION = False
 EXPLORATION_REVISIT_STEPS = 100
+# How the beacon regime's cue (which half of the grid holds resources) reaches the consumers of the cue (memory
+# recall, exploration): 'none' (it never does), 'wired' (every consumer reads the sensor directly) or 'broadcast'
+# (only through the global workspace, when the cue wins a slot). Has an effect only when World's BEACON_CYCLE > 0.
+BEACON_ACCESS = "none"

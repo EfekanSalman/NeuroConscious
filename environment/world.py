@@ -25,8 +25,9 @@
 # environment/world.py
 
 import random
-from typing import List, Tuple, Any
+from typing import List, Optional, Tuple, Any
 from agent.base_agent import Agent
+from core.navigation.regions import half_of as _half_of
 
 # --- World Configuration Constants ---
 GRID_SIZE = 10  # The world will be a 10x10 grid
@@ -46,11 +47,19 @@ RESPAWN_ORDER = "uniform"
 FOOD_SITES = 0
 WATER_SITES = 0
 SITE_REGROW_STEPS = 50
+# Beacon regime (0 = off, the default): with fixed sites, only the sites in one half of the grid (columns
+# below GRID_SIZE / 2 = 'left', the rest 'right') hold resources; every BEACON_CYCLE steps the active half is
+# redrawn at random and the sites of the other half are emptied. Which half is active is the cue.
+BEACON_CYCLE = 0
 
 OBSTACLE_SPAWN_CHANCE = 0.01  # Chance for obstacles to appear
 MAX_OBSTACLES = 2  # Maximum number of obstacles
 
 WEATHER_TYPES = ["sunny", "rainy", "stormy"]  # Possible weather conditions
+
+
+def half_of(col: int) -> str:
+    return _half_of(col, GRID_SIZE)
 
 
 class World:
@@ -84,6 +93,7 @@ class World:
 
         self._sites = {'food': [], 'water': []}  # Fixed sites per kind (empty lists: regenerate anywhere).
         self._empty_since = {}  # Site cell -> time step at which its resource was last found consumed.
+        self.active_half: Optional[str] = random.choice(('left', 'right')) if BEACON_CYCLE > 0 else None
 
         if FOOD_SITES > 0:
             self._place_sites('food', FOOD_SITES)
@@ -189,15 +199,33 @@ class World:
     def _place_sites(self, kind: str, count: int) -> None:
         """Chooses `count` distinct empty cells as the permanent sites of `kind` and fills them."""
         cells = [(r, c) for r in range(GRID_SIZE) for c in range(GRID_SIZE) if self.grid[r][c] == 'empty']
-        self._sites[kind] = random.sample(cells, min(count, len(cells)))
+        if BEACON_CYCLE > 0:  # Both halves get sites, so either can be the active one.
+            chosen = []
+            for half in ('left', 'right'):
+                in_half = [cell for cell in cells if half_of(cell[1]) == half]
+                chosen += random.sample(in_half, min(count // 2, len(in_half)))
+            self._sites[kind] = chosen
+        else:
+            self._sites[kind] = random.sample(cells, min(count, len(cells)))
         for r, c in self._sites[kind]:
             self.grid[r][c] = kind
         print(f"World: Placed {len(self._sites[kind])} fixed {kind} sites.")
+
+    def _redraw_active_half(self) -> None:
+        """Picks the active half afresh and empties every site of the other half."""
+        self.active_half = random.choice(('left', 'right'))
+        for kind in ('food', 'water'):
+            for row, col in self._sites[kind]:
+                if half_of(col) != self.active_half and self.grid[row][col] == kind:
+                    self.grid[row][col] = 'empty'
+                self._empty_since.pop((row, col), None)
 
     def _regrow_sites(self, kind: str) -> int:
         """Regrows consumed resources on their own sites once SITE_REGROW_STEPS have passed."""
         for cell in self._sites[kind]:
             row, col = cell
+            if self.active_half is not None and half_of(col) != self.active_half:
+                continue  # Dormant half: nothing grows here.
             if self.grid[row][col] == kind:
                 self._empty_since.pop(cell, None)
             elif self.grid[row][col] == 'empty' and not any(a.pos_x == row and a.pos_y == col for a in self.agents):
@@ -234,6 +262,8 @@ class World:
         Updates the environmental conditions for the current time step,
         including food/water regeneration, day/night cycle, and weather.
         """
+        if BEACON_CYCLE > 0 and self.time_step % BEACON_CYCLE == 0:
+            self._redraw_active_half()
         self.food_available = self._regenerate('food', MAX_FOOD_ITEMS, FOOD_SPAWN_CHANCE) > 0
         self.water_available = self._regenerate('water', MAX_WATER_ITEMS, WATER_SPAWN_CHANCE) > 0
 

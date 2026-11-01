@@ -49,12 +49,14 @@ from core.memory.procedural_memory import ProceduralMemory
 # Import DecisionMaker
 from core.decision.decision_maker import DecisionMaker
 from core.homeostasis import HomeostaticController
+from core.navigation.regions import half_of
 from core.workspace import GlobalWorkspace, WorkspaceMemory
+from core.workspace.specialists import read_regime
 from config.constants import (
     USE_GLOBAL_WORKSPACE, WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK, PERCEPTION_ACCURACY,
     WORKING_MEMORY_CAPACITY, WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL,
     SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL, USE_PATH_PLANNING,
-    USE_FRONTIER_EXPLORATION, EXPLORATION_REVISIT_STEPS,
+    USE_FRONTIER_EXPLORATION, EXPLORATION_REVISIT_STEPS, BEACON_ACCESS,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -145,8 +147,11 @@ class Agent:
         # Optional global workspace; when set it replaces the DecisionMaker's rule chain.
         self.workspace: Optional[GlobalWorkspace] = (
             GlobalWorkspace.default(WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK,
-                                    WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL)
+                                    WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL,
+                                    beacon=BEACON_ACCESS == "broadcast")
             if USE_GLOBAL_WORKSPACE else None)
+        # Which half of the grid holds resources, as far as this agent's consumers (recall, exploration) know.
+        self.regime_cue: Optional[str] = None
         # Optional learned homeostatic controller; when set it replaces the DecisionMaker's rule chain.
         if USE_HOMEOSTATIC_CONTROLLER and USE_GLOBAL_WORKSPACE:
             raise ValueError("The homeostatic controller and the global workspace each replace the decision rules; enable one.")
@@ -671,6 +676,9 @@ class Agent:
                     "context") == "bad_weather":
                 self.internal_monologue += f"Semantic Memory informs me that 'shelter' provides safety in bad weather. "
 
+        if BEACON_ACCESS == "wired":
+            self.regime_cue = read_regime(self)
+
         # --- Decision Maker determines the final action based on the mode ---
         if self.workspace is not None:
             final_action = self.workspace.decide(self)
@@ -779,6 +787,10 @@ class Agent:
             return self.workspace.memory
         return self.sighting_memory
 
+    def cue_allows(self, cell: Tuple[int, int]) -> bool:
+        """False for a cell the regime cue says is dormant; True when there is no cue."""
+        return self.regime_cue is None or half_of(cell[1], len(self.environment.grid)) == self.regime_cue
+
     def _recall_resource_location(self, resource: str) -> Optional[Tuple[int, int]]:
         """
         Returns the most recently perceived location of a resource ('food' or 'water')
@@ -797,6 +809,8 @@ class Agent:
             if item["type"] != item_type:
                 continue
             location = item["location"]
+            if not self.cue_allows(location):
+                continue
             d_row, d_col = location[0] - self.pos_x, location[1] - self.pos_y
             in_view = abs(d_row) <= 1 and abs(d_col) <= 1 and len(view) == 3 and len(view[1 + d_row]) == 3
             if in_view and view[1 + d_row][1 + d_col] not in (resource, 'unknown'):
@@ -827,6 +841,7 @@ class Agent:
         seen = self.obstacle_map.last_seen
         stale = [(r, c) for r in range(size) for c in range(size)
                  if (r, c) not in self.obstacle_map.blocked and now - seen.get((r, c), -10 ** 9) > EXPLORATION_REVISIT_STEPS]
+        stale = [cell for cell in stale if self.cue_allows(cell)] or stale
         step = first_step_to_nearest(here, stale, self.obstacle_map.blocked, size)
         if step is None:
             return None
@@ -883,7 +898,8 @@ class Agent:
             if move is not None:
                 return move
 
-        visits = {move: self.visited_states[f"{cell[0]},{cell[1]}"] for move, cell in moves}
+        allowed = [(move, cell) for move, cell in moves if self.cue_allows(cell)]
+        visits = {move: self.visited_states[f"{cell[0]},{cell[1]}"] for move, cell in allowed or moves}
         least = min(visits.values())
         return random.choice([move for move, count in visits.items() if count == least])
 

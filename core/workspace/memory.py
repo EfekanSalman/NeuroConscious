@@ -68,9 +68,10 @@ class WorkspaceMemory:
         """The nearest remembered location of a resource, forgetting any the current view contradicts."""
         view = agent.perception.get("local_grid_view") or []
         here = (agent.pos_x, agent.pos_y)
+        allows = getattr(agent, "cue_allows", lambda cell: True)  # Cells the regime cue calls dormant are skipped.
         best, best_key = None, None
         for sighting in list(self.sightings):
-            if sighting.kind != kind:
+            if sighting.kind != kind or not allows(sighting.location):
                 continue
             d_row, d_col = sighting.location[0] - here[0], sighting.location[1] - here[1]
             in_view = abs(d_row) <= 1 and abs(d_col) <= 1 and len(view) == 3 and len(view[1 + d_row]) == 3

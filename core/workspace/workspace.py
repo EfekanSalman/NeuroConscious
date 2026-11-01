@@ -4,7 +4,7 @@ from typing import List, Optional, Sequence
 from core.workspace.memory import WorkspaceMemory
 from core.workspace.proposal import Proposal
 from core.workspace.specialists import (
-    GoalSpecialist, HabitSpecialist, NeedSpecialist, Specialist)
+    BeaconSpecialist, GoalSpecialist, HabitSpecialist, NeedSpecialist, Specialist)
 
 # Experimental switch for ablations: names of specialists left out of the default set ('goal', 'habit').
 DISABLED_SPECIALISTS: tuple = ()
@@ -50,13 +50,15 @@ class GlobalWorkspace:
     @classmethod
     def default(cls, capacity: int = 1, persistence: float = 0.15, feedback: bool = True,
                 memory_slots: int = 0, memory_policy: str = "salience",
-                memory_recall: str = "nearest") -> "GlobalWorkspace":
+                memory_recall: str = "nearest", beacon: bool = False) -> "GlobalWorkspace":
         """The standard specialist set: one per need, one for goals, and the learned habit.
 
         memory_slots > 0 adds a WorkspaceMemory of that many sightings with the given policy."""
         specialists = [NeedSpecialist("hunger"), NeedSpecialist("thirst"), NeedSpecialist("fatigue"),
                        GoalSpecialist(), HabitSpecialist()]
         specialists = [s for s in specialists if s.name not in DISABLED_SPECIALISTS]
+        if beacon:
+            specialists.append(BeaconSpecialist())
         memory = WorkspaceMemory(memory_slots, memory_policy, memory_recall) if memory_slots > 0 else None
         return cls(specialists, capacity, persistence, feedback, memory)
 
@@ -65,8 +67,10 @@ class GlobalWorkspace:
         if self.memory is not None:
             self.memory.observe(agent)
         proposals = [p for p in (s.propose(agent) for s in self.specialists) if p is not None]
-        if not proposals:  # Nothing is pressing and no habit fills in: the agent idles.
+        acting = [p for p in proposals if "cue" not in p.content]
+        if not acting:  # Nothing is pressing and no habit fills in: the agent idles.
             self.contents = []
+            self._broadcast_cue(agent)
             self.winner_counts["none"] += 1
             agent.internal_monologue += "Global workspace: nothing bid, idling. "
             return "explore"
@@ -76,7 +80,10 @@ class GlobalWorkspace:
             return proposal.salience + bonus
 
         self.contents = sorted(proposals, key=effective_salience, reverse=True)[:self.capacity]
-        winner = self.contents[0]
+        if not any("cue" not in p.content for p in self.contents):  # A cue never wins the action by itself.
+            self.contents = [max(acting, key=effective_salience)]
+        winner = next(p for p in self.contents if "cue" not in p.content)
+        self._broadcast_cue(agent)
         self._last_winner_key = winner.key
         self.winner_counts[winner.source] += 1
 
@@ -89,10 +96,16 @@ class GlobalWorkspace:
             f"winner '{winner.source}'. ")
         return action
 
+    def _broadcast_cue(self, agent) -> None:
+        """The cue is available to the rest of the agent only on steps when it holds a workspace slot."""
+        if any(s.name == "beacon" for s in self.specialists):
+            cues = [p.content["cue"] for p in self.contents if "cue" in p.content]
+            agent.regime_cue = cues[0] if cues else None
+
     def _select_action(self, winner: Proposal) -> str:
         """The winner's action, unless another admitted need can be satisfied right here, right now."""
         if not winner.content.get("consume_here"):
-            for item in self.contents[1:]:
+            for item in (p for p in self.contents if p is not winner):
                 if item.content.get("consume_here"):
                     self.opportunistic_actions += 1
                     return item.action
