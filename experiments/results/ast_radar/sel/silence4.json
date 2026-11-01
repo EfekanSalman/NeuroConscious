@@ -1,0 +1,3471 @@
+{
+  "git": {
+    "commit": "7a7f33e8be556439d5b75586dd5a69c6b93aa4d6",
+    "dirty": false
+  },
+  "params": {
+    "agent.base_agent:ATTENTION_CAPTURE_RATE": 0.05,
+    "agent.base_agent:ATTENTION_GATE": true,
+    "agent.base_agent:ATTENTION_HIGH": 0.9,
+    "agent.base_agent:ATTENTION_INTERVAL": 20,
+    "agent.base_agent:ATTENTION_LOW": 0.0,
+    "agent.base_agent:ATTENTION_ORIENT_FREE": false,
+    "agent.base_agent:ATTENTION_POLICY": "silence",
+    "agent.base_agent:ATTENTION_RADAR_RANGE": 8,
+    "agent.base_agent:ATTENTION_SILENCE": 4,
+    "agent.base_agent:USE_FRONTIER_EXPLORATION": true,
+    "agent.base_agent:USE_GLOBAL_WORKSPACE": true,
+    "agent.base_agent:WORKSPACE_CAPACITY": 3,
+    "agent.base_agent:WORKSPACE_MEMORY_POLICY": "salience",
+    "agent.base_agent:WORKSPACE_MEMORY_RECALL": "nearest",
+    "agent.base_agent:WORKSPACE_MEMORY_SLOTS": 10,
+    "core.workspace.specialists:NEED_THRESHOLD": 0.3,
+    "core.workspace.workspace:DISABLED_SPECIALISTS": [
+      "habit",
+      "goal"
+    ],
+    "environment.world:FOOD_SITES": 6,
+    "environment.world:GRID_SIZE": 20,
+    "environment.world:MAX_OBSTACLES": 15,
+    "environment.world:OBSTACLE_SPAWN_CHANCE": 0.05,
+    "environment.world:SITE_REGROW_STEPS": 50,
+    "environment.world:WATER_SITES": 6
+  },
+  "runs": [
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 385,
+            "explore": 241,
+            "rest": 27,
+            "seek_food": 347
+          },
+          "attention_correct_steps": 833,
+          "attention_intended_steps": 924,
+          "attention_orients": 221,
+          "consciousness_steps": {
+            "Asleep": 42,
+            "Awake": 214,
+            "Focused": 744
+          },
+          "coverage": 0.3325,
+          "distinct_cells": 133,
+          "drinks": 26,
+          "drive_by_block": [
+            1.002830164333531,
+            1.0384344014978562
+          ],
+          "drive_last_block": 1.0384344014978562,
+          "drive_mean": 1.0206322829156937,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 87,
+          "fatigue_final": 0.42250000000000465,
+          "fatigue_mean": 0.5228175000000013,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 523,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.7579650000000002,
+          "meals": 26,
+          "moves": 652,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 347,
+          "thirst_at_drink_median": 0.9925000000000003,
+          "thirst_critical_steps": 447,
+          "thirst_final": 0.8950000000000005,
+          "thirst_mean": 0.7060599999999999,
+          "workspace_winners": {
+            "need:fatigue": 27,
+            "need:hunger": 443,
+            "need:thirst": 482,
+            "none": 6
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 329,
+            "explore": 250,
+            "rest": 14,
+            "seek_food": 407
+          },
+          "attention_correct_steps": 831,
+          "attention_intended_steps": 928,
+          "attention_orients": 223,
+          "consciousness_steps": {
+            "Asleep": 52,
+            "Awake": 90,
+            "Focused": 858
+          },
+          "coverage": 0.4675,
+          "distinct_cells": 187,
+          "drinks": 23,
+          "drive_by_block": [
+            1.14738863367538,
+            1.090378036658416
+          ],
+          "drive_last_block": 1.090378036658416,
+          "drive_mean": 1.118883335166898,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 111,
+          "fatigue_final": 0.5425000000000013,
+          "fatigue_mean": 0.5506325000000033,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 575,
+          "hunger_final": 0.47000000000000064,
+          "hunger_mean": 0.7972400000000001,
+          "meals": 24,
+          "moves": 659,
+          "obstacle_bumps": 1,
+          "opportunistic_actions": 1,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 340,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 539,
+          "thirst_final": 0.8900000000000005,
+          "thirst_mean": 0.7692900000000003,
+          "workspace_winners": {
+            "need:fatigue": 15,
+            "need:hunger": 516,
+            "need:thirst": 413,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3000
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 277,
+            "explore": 257,
+            "rest": 42,
+            "seek_food": 424
+          },
+          "attention_correct_steps": 801,
+          "attention_intended_steps": 901,
+          "attention_orients": 220,
+          "consciousness_steps": {
+            "Asleep": 34,
+            "Awake": 410,
+            "Focused": 556
+          },
+          "coverage": 0.3525,
+          "distinct_cells": 141,
+          "drinks": 37,
+          "drive_by_block": [
+            0.8000865224878352,
+            0.8170882814707924
+          ],
+          "drive_last_block": 0.8170882814707924,
+          "drive_mean": 0.8085874019793143,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 67,
+          "fatigue_final": 0.7475000000000017,
+          "fatigue_mean": 0.46284250000000093,
+          "hunger_at_meal_median": 0.8850000000000005,
+          "hunger_critical_steps": 320,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.6402700000000002,
+          "meals": 37,
+          "moves": 608,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 144,
+          "stationary_steps": 391,
+          "thirst_at_drink_median": 0.8050000000000004,
+          "thirst_critical_steps": 315,
+          "thirst_final": 0.7600000000000003,
+          "thirst_mean": 0.5992400000000001,
+          "workspace_winners": {
+            "need:fatigue": 42,
+            "need:hunger": 547,
+            "need:thirst": 355,
+            "none": 22
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 302,
+            "explore": 254,
+            "rest": 23,
+            "seek_food": 421
+          },
+          "attention_correct_steps": 809,
+          "attention_intended_steps": 922,
+          "attention_orients": 224,
+          "consciousness_steps": {
+            "Asleep": 46,
+            "Awake": 159,
+            "Focused": 795
+          },
+          "coverage": 0.47,
+          "distinct_cells": 188,
+          "drinks": 28,
+          "drive_by_block": [
+            1.0468094733642186,
+            1.0159183953294233
+          ],
+          "drive_last_block": 1.0159183953294233,
+          "drive_mean": 1.0313639343468213,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 88,
+          "fatigue_final": 0.19,
+          "fatigue_mean": 0.5205125000000038,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 528,
+          "hunger_final": 0.325,
+          "hunger_mean": 0.7677250000000001,
+          "meals": 28,
+          "moves": 642,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 357,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 471,
+          "thirst_final": 0.185,
+          "thirst_mean": 0.7148899999999999,
+          "workspace_winners": {
+            "need:fatigue": 23,
+            "need:hunger": 539,
+            "need:thirst": 383,
+            "none": 9
+          }
+        }
+      },
+      "seed": 3001
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 314,
+            "explore": 256,
+            "rest": 15,
+            "seek_food": 415
+          },
+          "attention_correct_steps": 810,
+          "attention_intended_steps": 923,
+          "attention_orients": 222,
+          "consciousness_steps": {
+            "Asleep": 52,
+            "Awake": 137,
+            "Focused": 811
+          },
+          "coverage": 0.435,
+          "distinct_cells": 174,
+          "drinks": 23,
+          "drive_by_block": [
+            1.0755887247499578,
+            1.1434916868096898
+          ],
+          "drive_last_block": 1.1434916868096898,
+          "drive_mean": 1.1095402057798265,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 104,
+          "fatigue_final": 0.8,
+          "fatigue_mean": 0.5396075000000062,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 605,
+          "hunger_final": 0.9200000000000005,
+          "hunger_mean": 0.8023649999999996,
+          "meals": 23,
+          "moves": 656,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 890,
+          "stationary_steps": 343,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 545,
+          "thirst_final": 0.44000000000000056,
+          "thirst_mean": 0.7579650000000008,
+          "workspace_winners": {
+            "need:fatigue": 15,
+            "need:hunger": 525,
+            "need:thirst": 399,
+            "none": 9
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 351,
+            "explore": 252,
+            "rest": 13,
+            "seek_food": 384
+          },
+          "attention_correct_steps": 796,
+          "attention_intended_steps": 928,
+          "attention_orients": 223,
+          "consciousness_steps": {
+            "Asleep": 53,
+            "Awake": 78,
+            "Focused": 869
+          },
+          "coverage": 0.515,
+          "distinct_cells": 206,
+          "drinks": 23,
+          "drive_by_block": [
+            1.1278986819662504,
+            1.1450934468610654
+          ],
+          "drive_last_block": 1.1450934468610654,
+          "drive_mean": 1.1364960644136581,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 107,
+          "fatigue_final": 0.4775000000000026,
+          "fatigue_mean": 0.5561325000000032,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 610,
+          "hunger_final": 0.7000000000000003,
+          "hunger_mean": 0.8192799999999999,
+          "meals": 23,
+          "moves": 660,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 1,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 339,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 554,
+          "thirst_final": 0.335,
+          "thirst_mean": 0.7678550000000004,
+          "workspace_winners": {
+            "need:fatigue": 13,
+            "need:hunger": 487,
+            "need:thirst": 442,
+            "none": 5
+          }
+        }
+      },
+      "seed": 3002
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 25,
+            "explore": 262,
+            "rest": 3,
+            "seek_food": 710
+          },
+          "attention_correct_steps": 823,
+          "attention_intended_steps": 932,
+          "attention_orients": 233,
+          "consciousness_steps": {
+            "Asleep": 60,
+            "Awake": 23,
+            "Focused": 917
+          },
+          "coverage": 0.13,
+          "distinct_cells": 52,
+          "drinks": 3,
+          "drive_by_block": [
+            1.3537092404103828,
+            1.4850040282939585
+          ],
+          "drive_last_block": 1.4850040282939585,
+          "drive_mean": 1.4193566343521713,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 128,
+          "fatigue_final": 0.9250000000000199,
+          "fatigue_mean": 0.57056000000001,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 933,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.96774,
+          "meals": 3,
+          "moves": 694,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 305,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 923,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.960155,
+          "workspace_winners": {
+            "need:fatigue": 3,
+            "need:hunger": 901,
+            "need:thirst": 32,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 221,
+            "explore": 256,
+            "rest": 13,
+            "seek_food": 510
+          },
+          "attention_correct_steps": 814,
+          "attention_intended_steps": 927,
+          "attention_orients": 227,
+          "consciousness_steps": {
+            "Asleep": 53,
+            "Awake": 71,
+            "Focused": 876
+          },
+          "coverage": 0.3675,
+          "distinct_cells": 147,
+          "drinks": 14,
+          "drive_by_block": [
+            0.9963577794261856,
+            1.4838295258478684
+          ],
+          "drive_last_block": 1.4838295258478684,
+          "drive_mean": 1.2400936526370276,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 106,
+          "fatigue_final": 0.3825000000000139,
+          "fatigue_mean": 0.5504825000000049,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 751,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8814900000000003,
+          "meals": 14,
+          "moves": 673,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 326,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 701,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.8490450000000003,
+          "workspace_winners": {
+            "need:fatigue": 13,
+            "need:hunger": 649,
+            "need:thirst": 279,
+            "none": 6
+          }
+        }
+      },
+      "seed": 3003
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 453,
+            "explore": 248,
+            "rest": 15,
+            "seek_food": 284
+          },
+          "attention_correct_steps": 812,
+          "attention_intended_steps": 927,
+          "attention_orients": 222,
+          "consciousness_steps": {
+            "Asleep": 52,
+            "Awake": 85,
+            "Focused": 863
+          },
+          "coverage": 0.5875,
+          "distinct_cells": 235,
+          "drinks": 21,
+          "drive_by_block": [
+            1.1810246838907592,
+            1.0757698541883767
+          ],
+          "drive_last_block": 1.0757698541883767,
+          "drive_mean": 1.1283972690395674,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 100,
+          "fatigue_final": 0.45750000000000174,
+          "fatigue_mean": 0.5366375000000018,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 609,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8131950000000014,
+          "meals": 22,
+          "moves": 663,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 95,
+          "stationary_steps": 336,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 574,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.7793350000000007,
+          "workspace_winners": {
+            "need:fatigue": 15,
+            "need:hunger": 356,
+            "need:thirst": 572,
+            "none": 5
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 404,
+            "explore": 251,
+            "rest": 17,
+            "seek_food": 328
+          },
+          "attention_correct_steps": 843,
+          "attention_intended_steps": 923,
+          "attention_orients": 220,
+          "consciousness_steps": {
+            "Asleep": 51,
+            "Awake": 149,
+            "Focused": 800
+          },
+          "coverage": 0.415,
+          "distinct_cells": 166,
+          "drinks": 24,
+          "drive_by_block": [
+            0.968620431118562,
+            1.1820466596218966
+          ],
+          "drive_last_block": 1.1820466596218966,
+          "drive_mean": 1.075333545370229,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 101,
+          "fatigue_final": 0.45500000000000473,
+          "fatigue_mean": 0.5302250000000013,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 563,
+          "hunger_final": 0.6150000000000002,
+          "hunger_mean": 0.7767800000000005,
+          "meals": 25,
+          "moves": 655,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 899,
+          "stationary_steps": 344,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 520,
+          "thirst_final": 0.9500000000000005,
+          "thirst_mean": 0.7456700000000009,
+          "workspace_winners": {
+            "need:fatigue": 17,
+            "need:hunger": 416,
+            "need:thirst": 508,
+            "none": 8
+          }
+        }
+      },
+      "seed": 3004
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 373,
+            "explore": 256,
+            "rest": 10,
+            "seek_food": 361
+          },
+          "attention_correct_steps": 828,
+          "attention_intended_steps": 931,
+          "attention_orients": 227,
+          "consciousness_steps": {
+            "Asleep": 54,
+            "Awake": 37,
+            "Focused": 909
+          },
+          "coverage": 0.195,
+          "distinct_cells": 78,
+          "drinks": 14,
+          "drive_by_block": [
+            1.2678159267971219,
+            1.2368115997905038
+          ],
+          "drive_last_block": 1.2368115997905038,
+          "drive_mean": 1.252313763293812,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 112,
+          "fatigue_final": 0.7400000000000191,
+          "fatigue_mean": 0.5667375000000097,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 731,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8718050000000003,
+          "meals": 15,
+          "moves": 676,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 34,
+          "stationary_steps": 323,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 700,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.8497750000000003,
+          "workspace_winners": {
+            "need:fatigue": 10,
+            "need:hunger": 454,
+            "need:thirst": 478,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 634,
+            "explore": 259,
+            "rest": 9,
+            "seek_food": 98
+          },
+          "attention_correct_steps": 849,
+          "attention_intended_steps": 929,
+          "attention_orients": 229,
+          "consciousness_steps": {
+            "Asleep": 56,
+            "Awake": 35,
+            "Focused": 909
+          },
+          "coverage": 0.2725,
+          "distinct_cells": 109,
+          "drinks": 8,
+          "drive_by_block": [
+            1.1677942857878845,
+            1.483551158117298
+          ],
+          "drive_last_block": 1.483551158117298,
+          "drive_mean": 1.3256727219525932,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 120,
+          "fatigue_final": 0.8000000000000153,
+          "fatigue_mean": 0.5671400000000063,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 812,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.9010600000000001,
+          "meals": 10,
+          "moves": 683,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 3,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 121,
+          "stationary_steps": 316,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 832,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.9141300000000001,
+          "workspace_winners": {
+            "need:fatigue": 9,
+            "need:hunger": 123,
+            "need:thirst": 807,
+            "none": 5
+          }
+        }
+      },
+      "seed": 3005
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 372,
+            "explore": 247,
+            "rest": 20,
+            "seek_food": 361
+          },
+          "attention_correct_steps": 806,
+          "attention_intended_steps": 926,
+          "attention_orients": 225,
+          "consciousness_steps": {
+            "Asleep": 47,
+            "Awake": 135,
+            "Focused": 818
+          },
+          "coverage": 0.37,
+          "distinct_cells": 148,
+          "drinks": 26,
+          "drive_by_block": [
+            1.0681241118339175,
+            1.0582745907187316
+          ],
+          "drive_last_block": 1.0582745907187316,
+          "drive_mean": 1.0631993512763256,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 103,
+          "fatigue_final": 0.6225000000000006,
+          "fatigue_mean": 0.5406700000000033,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 529,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.7740700000000005,
+          "meals": 27,
+          "moves": 650,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 1,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 349,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 493,
+          "thirst_final": 0.31,
+          "thirst_mean": 0.7375500000000006,
+          "workspace_winners": {
+            "need:fatigue": 21,
+            "need:hunger": 456,
+            "need:thirst": 471,
+            "none": 5
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 307,
+            "explore": 251,
+            "rest": 15,
+            "seek_food": 427
+          },
+          "attention_correct_steps": 816,
+          "attention_intended_steps": 926,
+          "attention_orients": 225,
+          "consciousness_steps": {
+            "Asleep": 51,
+            "Awake": 94,
+            "Focused": 855
+          },
+          "coverage": 0.445,
+          "distinct_cells": 178,
+          "drinks": 21,
+          "drive_by_block": [
+            1.0333761706722606,
+            1.2158355152925662
+          ],
+          "drive_last_block": 1.2158355152925662,
+          "drive_mean": 1.1246058429824137,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 103,
+          "fatigue_final": 0.4600000000000048,
+          "fatigue_mean": 0.5329600000000031,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 608,
+          "hunger_final": 0.31000000000000005,
+          "hunger_mean": 0.8043849999999999,
+          "meals": 23,
+          "moves": 658,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 3,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 341,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 574,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.781670000000001,
+          "workspace_winners": {
+            "need:fatigue": 15,
+            "need:hunger": 542,
+            "need:thirst": 385,
+            "none": 7
+          }
+        }
+      },
+      "seed": 3006
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 403,
+            "explore": 244,
+            "rest": 28,
+            "seek_food": 325
+          },
+          "attention_correct_steps": 809,
+          "attention_intended_steps": 918,
+          "attention_orients": 217,
+          "consciousness_steps": {
+            "Asleep": 42,
+            "Awake": 221,
+            "Focused": 737
+          },
+          "coverage": 0.405,
+          "distinct_cells": 162,
+          "drinks": 28,
+          "drive_by_block": [
+            0.902641663015081,
+            1.0704175759548298
+          ],
+          "drive_last_block": 1.0704175759548298,
+          "drive_mean": 0.9865296194849559,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 87,
+          "fatigue_final": 0.1025,
+          "fatigue_mean": 0.5148775000000017,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 503,
+          "hunger_final": 0.11,
+          "hunger_mean": 0.7328250000000006,
+          "meals": 30,
+          "moves": 644,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 355,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 447,
+          "thirst_final": 0.4950000000000001,
+          "thirst_mean": 0.6935750000000004,
+          "workspace_winners": {
+            "need:fatigue": 28,
+            "need:hunger": 409,
+            "need:thirst": 510,
+            "none": 11
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 353,
+            "explore": 249,
+            "rest": 44,
+            "seek_food": 354
+          },
+          "attention_correct_steps": 812,
+          "attention_intended_steps": 899,
+          "attention_orients": 214,
+          "consciousness_steps": {
+            "Asleep": 32,
+            "Awake": 410,
+            "Focused": 558
+          },
+          "coverage": 0.3625,
+          "distinct_cells": 145,
+          "drinks": 37,
+          "drive_by_block": [
+            0.8112541821820821,
+            0.7931494124153146
+          ],
+          "drive_last_block": 0.7931494124153146,
+          "drive_mean": 0.8022017972986981,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 67,
+          "fatigue_final": 0.290000000000001,
+          "fatigue_mean": 0.47191500000000036,
+          "hunger_at_meal_median": 0.8150000000000004,
+          "hunger_critical_steps": 358,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.6429999999999997,
+          "meals": 37,
+          "moves": 612,
+          "obstacle_bumps": 1,
+          "opportunistic_actions": 1,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 343,
+          "stationary_steps": 387,
+          "thirst_at_drink_median": 0.9600000000000005,
+          "thirst_critical_steps": 270,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.58662,
+          "workspace_winners": {
+            "need:fatigue": 45,
+            "need:hunger": 448,
+            "need:thirst": 452,
+            "none": 23
+          }
+        }
+      },
+      "seed": 3007
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 471,
+            "explore": 256,
+            "rest": 13,
+            "seek_food": 260
+          },
+          "attention_correct_steps": 855,
+          "attention_intended_steps": 927,
+          "attention_orients": 225,
+          "consciousness_steps": {
+            "Asleep": 53,
+            "Awake": 168,
+            "Focused": 779
+          },
+          "coverage": 0.305,
+          "distinct_cells": 122,
+          "drinks": 25,
+          "drive_by_block": [
+            0.9424001356422677,
+            1.2225719499593566
+          ],
+          "drive_last_block": 1.2225719499593566,
+          "drive_mean": 1.082486042800811,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 113,
+          "fatigue_final": 0.5550000000000024,
+          "fatigue_mean": 0.5502375000000058,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 544,
+          "hunger_final": 0.4100000000000001,
+          "hunger_mean": 0.7681749999999998,
+          "meals": 26,
+          "moves": 652,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 39,
+          "stationary_steps": 347,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 518,
+          "thirst_final": 0.9250000000000005,
+          "thirst_mean": 0.7560900000000008,
+          "workspace_winners": {
+            "need:fatigue": 13,
+            "need:hunger": 334,
+            "need:thirst": 594,
+            "none": 6
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 347,
+            "explore": 233,
+            "rest": 49,
+            "seek_food": 371
+          },
+          "attention_correct_steps": 796,
+          "attention_intended_steps": 923,
+          "attention_orients": 223,
+          "consciousness_steps": {
+            "Asleep": 23,
+            "Awake": 478,
+            "Focused": 499
+          },
+          "coverage": 0.1675,
+          "distinct_cells": 67,
+          "drinks": 39,
+          "drive_by_block": [
+            0.7104784408942492,
+            0.7579173768731534
+          ],
+          "drive_last_block": 0.7579173768731534,
+          "drive_mean": 0.7341979088837015,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 51,
+          "fatigue_final": 0.5425000000000011,
+          "fatigue_mean": 0.4695499999999999,
+          "hunger_at_meal_median": 0.8725000000000005,
+          "hunger_critical_steps": 272,
+          "hunger_final": 0.4100000000000001,
+          "hunger_mean": 0.6069300000000003,
+          "meals": 40,
+          "moves": 621,
+          "obstacle_bumps": 1,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 378,
+          "thirst_at_drink_median": 0.9250000000000058,
+          "thirst_critical_steps": 154,
+          "thirst_final": 0.8650000000000043,
+          "thirst_mean": 0.5455450000000014,
+          "workspace_winners": {
+            "need:fatigue": 49,
+            "need:hunger": 476,
+            "need:thirst": 448,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3008
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 309,
+            "explore": 253,
+            "rest": 8,
+            "seek_food": 430
+          },
+          "attention_correct_steps": 838,
+          "attention_intended_steps": 930,
+          "attention_orients": 228,
+          "consciousness_steps": {
+            "Asleep": 57,
+            "Awake": 23,
+            "Focused": 920
+          },
+          "coverage": 0.47,
+          "distinct_cells": 188,
+          "drinks": 22,
+          "drive_by_block": [
+            1.1744337005657153,
+            1.1558071106553298
+          ],
+          "drive_last_block": 1.1558071106553298,
+          "drive_mean": 1.1651204056105213,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 118,
+          "fatigue_final": 0.7975000000000074,
+          "fatigue_mean": 0.5648950000000044,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 626,
+          "hunger_final": 0.4100000000000001,
+          "hunger_mean": 0.8311749999999996,
+          "meals": 23,
+          "moves": 658,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 341,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 573,
+          "thirst_final": 0.8750000000000004,
+          "thirst_mean": 0.7829950000000012,
+          "workspace_winners": {
+            "need:fatigue": 8,
+            "need:hunger": 548,
+            "need:thirst": 383,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 381,
+            "explore": 252,
+            "rest": 9,
+            "seek_food": 358
+          },
+          "attention_correct_steps": 787,
+          "attention_intended_steps": 930,
+          "attention_orients": 226,
+          "consciousness_steps": {
+            "Asleep": 56,
+            "Awake": 29,
+            "Focused": 915
+          },
+          "coverage": 0.325,
+          "distinct_cells": 130,
+          "drinks": 20,
+          "drive_by_block": [
+            1.1365365768881024,
+            1.2442835193136854
+          ],
+          "drive_last_block": 1.2442835193136854,
+          "drive_mean": 1.1904100481008952,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 111,
+          "fatigue_final": 0.7775000000000093,
+          "fatigue_mean": 0.5632600000000035,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 647,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8360449999999997,
+          "meals": 20,
+          "moves": 665,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 334,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 614,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.8031200000000009,
+          "workspace_winners": {
+            "need:fatigue": 9,
+            "need:hunger": 454,
+            "need:thirst": 477,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3009
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 431,
+            "explore": 240,
+            "rest": 20,
+            "seek_food": 309
+          },
+          "attention_correct_steps": 850,
+          "attention_intended_steps": 928,
+          "attention_orients": 218,
+          "consciousness_steps": {
+            "Asleep": 47,
+            "Awake": 109,
+            "Focused": 844
+          },
+          "coverage": 0.34,
+          "distinct_cells": 136,
+          "drinks": 26,
+          "drive_by_block": [
+            0.9830033219909822,
+            1.1189021860596007
+          ],
+          "drive_last_block": 1.1189021860596007,
+          "drive_mean": 1.05095275402529,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 97,
+          "fatigue_final": 0.34000000000000113,
+          "fatigue_mean": 0.5359250000000019,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 514,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.7659349999999998,
+          "meals": 28,
+          "moves": 657,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 342,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 482,
+          "thirst_final": 0.32,
+          "thirst_mean": 0.721095000000001,
+          "workspace_winners": {
+            "need:fatigue": 20,
+            "need:hunger": 381,
+            "need:thirst": 548,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 349,
+            "explore": 239,
+            "rest": 21,
+            "seek_food": 391
+          },
+          "attention_correct_steps": 816,
+          "attention_intended_steps": 927,
+          "attention_orients": 217,
+          "consciousness_steps": {
+            "Asleep": 47,
+            "Awake": 167,
+            "Focused": 786
+          },
+          "coverage": 0.395,
+          "distinct_cells": 158,
+          "drinks": 28,
+          "drive_by_block": [
+            0.9671383914520529,
+            1.0218753077303142
+          ],
+          "drive_last_block": 1.0218753077303142,
+          "drive_mean": 0.9945068495911843,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 91,
+          "fatigue_final": 0.5025000000000002,
+          "fatigue_mean": 0.5215225000000016,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 455,
+          "hunger_final": 0.48500000000000054,
+          "hunger_mean": 0.7334299999999999,
+          "meals": 31,
+          "moves": 652,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 347,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 430,
+          "thirst_final": 0.8400000000000004,
+          "thirst_mean": 0.706555000000001,
+          "workspace_winners": {
+            "need:fatigue": 21,
+            "need:hunger": 483,
+            "need:thirst": 445,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3010
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 426,
+            "explore": 247,
+            "rest": 21,
+            "seek_food": 306
+          },
+          "attention_correct_steps": 823,
+          "attention_intended_steps": 928,
+          "attention_orients": 223,
+          "consciousness_steps": {
+            "Asleep": 46,
+            "Awake": 148,
+            "Focused": 806
+          },
+          "coverage": 0.4325,
+          "distinct_cells": 173,
+          "drinks": 23,
+          "drive_by_block": [
+            1.0597911797391733,
+            1.1128881855845574
+          ],
+          "drive_last_block": 1.1128881855845574,
+          "drive_mean": 1.0863396826618639,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 97,
+          "fatigue_final": 0.8075000000000019,
+          "fatigue_mean": 0.5400425000000048,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 567,
+          "hunger_final": 0.0950000000000004,
+          "hunger_mean": 0.7804449999999992,
+          "meals": 25,
+          "moves": 658,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 341,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 543,
+          "thirst_final": 0.4050000000000001,
+          "thirst_mean": 0.7618850000000006,
+          "workspace_winners": {
+            "need:fatigue": 21,
+            "need:hunger": 389,
+            "need:thirst": 540,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 544,
+            "explore": 256,
+            "rest": 12,
+            "seek_food": 188
+          },
+          "attention_correct_steps": 810,
+          "attention_intended_steps": 930,
+          "attention_orients": 228,
+          "consciousness_steps": {
+            "Asleep": 53,
+            "Awake": 82,
+            "Focused": 865
+          },
+          "coverage": 0.325,
+          "distinct_cells": 130,
+          "drinks": 12,
+          "drive_by_block": [
+            1.0329862908092322,
+            1.48383271831265
+          ],
+          "drive_last_block": 1.48383271831265,
+          "drive_mean": 1.2584095045609427,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 109,
+          "fatigue_final": 0.40000000000001396,
+          "fatigue_mean": 0.5525225000000054,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 760,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.882385,
+          "meals": 13,
+          "moves": 678,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 321,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 742,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.8638500000000003,
+          "workspace_winners": {
+            "need:fatigue": 12,
+            "need:hunger": 241,
+            "need:thirst": 690,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3011
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 284,
+            "explore": 251,
+            "rest": 24,
+            "seek_food": 441
+          },
+          "attention_correct_steps": 840,
+          "attention_intended_steps": 927,
+          "attention_orients": 225,
+          "consciousness_steps": {
+            "Asleep": 43,
+            "Awake": 171,
+            "Focused": 786
+          },
+          "coverage": 0.46,
+          "distinct_cells": 184,
+          "drinks": 26,
+          "drive_by_block": [
+            1.0542707620717184,
+            1.0311608733599085
+          ],
+          "drive_last_block": 1.0311608733599085,
+          "drive_mean": 1.042715817715814,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 99,
+          "fatigue_final": 0.7425000000000026,
+          "fatigue_mean": 0.5344600000000018,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 538,
+          "hunger_final": 0.38500000000000006,
+          "hunger_mean": 0.7687950000000003,
+          "meals": 27,
+          "moves": 649,
+          "obstacle_bumps": 1,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 350,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 484,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.7247099999999997,
+          "workspace_winners": {
+            "need:fatigue": 24,
+            "need:hunger": 565,
+            "need:thirst": 363,
+            "none": 5
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 344,
+            "explore": 243,
+            "rest": 22,
+            "seek_food": 391
+          },
+          "attention_correct_steps": 822,
+          "attention_intended_steps": 926,
+          "attention_orients": 224,
+          "consciousness_steps": {
+            "Asleep": 45,
+            "Awake": 155,
+            "Focused": 800
+          },
+          "coverage": 0.5075,
+          "distinct_cells": 203,
+          "drinks": 25,
+          "drive_by_block": [
+            0.9662270964197399,
+            1.1808629797136059
+          ],
+          "drive_last_block": 1.1808629797136059,
+          "drive_mean": 1.0735450380666736,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 98,
+          "fatigue_final": 0.84000000000001,
+          "fatigue_mean": 0.5400175000000034,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 556,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.7812400000000009,
+          "meals": 25,
+          "moves": 652,
+          "obstacle_bumps": 1,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 347,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 517,
+          "thirst_final": 0.335,
+          "thirst_mean": 0.7436500000000001,
+          "workspace_winners": {
+            "need:fatigue": 22,
+            "need:hunger": 492,
+            "need:thirst": 435,
+            "none": 6
+          }
+        }
+      },
+      "seed": 3012
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 476,
+            "explore": 246,
+            "rest": 37,
+            "seek_food": 241
+          },
+          "attention_correct_steps": 837,
+          "attention_intended_steps": 914,
+          "attention_orients": 222,
+          "consciousness_steps": {
+            "Asleep": 36,
+            "Awake": 238,
+            "Focused": 726
+          },
+          "coverage": 0.3775,
+          "distinct_cells": 151,
+          "drinks": 29,
+          "drive_by_block": [
+            1.1112322010323459,
+            0.8334519882329358
+          ],
+          "drive_last_block": 0.8334519882329358,
+          "drive_mean": 0.9723420946326413,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 79,
+          "fatigue_final": 0.37250000000000155,
+          "fatigue_mean": 0.5141075000000008,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 502,
+          "hunger_final": 0.38500000000000006,
+          "hunger_mean": 0.7430750000000003,
+          "meals": 29,
+          "moves": 635,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 1,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 364,
+          "thirst_at_drink_median": 0.9750000000000005,
+          "thirst_critical_steps": 425,
+          "thirst_final": 0.6200000000000002,
+          "thirst_mean": 0.6795449999999993,
+          "workspace_winners": {
+            "need:fatigue": 37,
+            "need:hunger": 306,
+            "need:thirst": 609,
+            "none": 12
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 514,
+            "explore": 245,
+            "rest": 17,
+            "seek_food": 224
+          },
+          "attention_correct_steps": 856,
+          "attention_intended_steps": 929,
+          "attention_orients": 222,
+          "consciousness_steps": {
+            "Asleep": 49,
+            "Awake": 26,
+            "Focused": 925
+          },
+          "coverage": 0.335,
+          "distinct_cells": 134,
+          "drinks": 16,
+          "drive_by_block": [
+            1.2008354016522755,
+            1.1910182123479702
+          ],
+          "drive_last_block": 1.1910182123479702,
+          "drive_mean": 1.1959268070001234,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 111,
+          "fatigue_final": 0.4975000000000098,
+          "fatigue_mean": 0.5465000000000029,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 684,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8510150000000014,
+          "meals": 18,
+          "moves": 674,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 325,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 657,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.8256250000000003,
+          "workspace_winners": {
+            "need:fatigue": 17,
+            "need:hunger": 275,
+            "need:thirst": 655,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3013
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 421,
+            "explore": 252,
+            "rest": 12,
+            "seek_food": 315
+          },
+          "attention_correct_steps": 849,
+          "attention_intended_steps": 931,
+          "attention_orients": 225,
+          "consciousness_steps": {
+            "Asleep": 52,
+            "Awake": 51,
+            "Focused": 897
+          },
+          "coverage": 0.5025,
+          "distinct_cells": 201,
+          "drinks": 17,
+          "drive_by_block": [
+            1.3057190297765142,
+            1.1110700408526963
+          ],
+          "drive_last_block": 1.1110700408526963,
+          "drive_mean": 1.2083945353146044,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 115,
+          "fatigue_final": 0.8825000000000195,
+          "fatigue_mean": 0.5608650000000096,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 688,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8545099999999993,
+          "meals": 18,
+          "moves": 672,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 1,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 327,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 651,
+          "thirst_final": 0.6600000000000003,
+          "thirst_mean": 0.8223949999999997,
+          "workspace_winners": {
+            "need:fatigue": 12,
+            "need:hunger": 398,
+            "need:thirst": 534,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 288,
+            "explore": 237,
+            "rest": 26,
+            "seek_food": 449
+          },
+          "attention_correct_steps": 813,
+          "attention_intended_steps": 928,
+          "attention_orients": 218,
+          "consciousness_steps": {
+            "Asleep": 41,
+            "Awake": 136,
+            "Focused": 823
+          },
+          "coverage": 0.43,
+          "distinct_cells": 172,
+          "drinks": 30,
+          "drive_by_block": [
+            0.9299981944172069,
+            1.059165524385523
+          ],
+          "drive_last_block": 1.059165524385523,
+          "drive_mean": 0.9945818594013653,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 90,
+          "fatigue_final": 0.7250000000000026,
+          "fatigue_mean": 0.5336725000000022,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 478,
+          "hunger_final": 0.9300000000000005,
+          "hunger_mean": 0.75597,
+          "meals": 30,
+          "moves": 651,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 348,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 373,
+          "thirst_final": 0.36000000000000054,
+          "thirst_mean": 0.6760050000000002,
+          "workspace_winners": {
+            "need:fatigue": 26,
+            "need:hunger": 566,
+            "need:thirst": 363,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3014
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 344,
+            "explore": 249,
+            "rest": 12,
+            "seek_food": 395
+          },
+          "attention_correct_steps": 843,
+          "attention_intended_steps": 930,
+          "attention_orients": 226,
+          "consciousness_steps": {
+            "Asleep": 53,
+            "Awake": 54,
+            "Focused": 893
+          },
+          "coverage": 0.43,
+          "distinct_cells": 172,
+          "drinks": 24,
+          "drive_by_block": [
+            1.1294617260193622,
+            1.1108654197987264
+          ],
+          "drive_last_block": 1.1108654197987264,
+          "drive_mean": 1.1201635729090451,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 109,
+          "fatigue_final": 0.27250000000000124,
+          "fatigue_mean": 0.5538075000000042,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 596,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8118950000000005,
+          "meals": 24,
+          "moves": 657,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 342,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 516,
+          "thirst_final": 0.6200000000000002,
+          "thirst_mean": 0.7557299999999997,
+          "workspace_winners": {
+            "need:fatigue": 12,
+            "need:hunger": 496,
+            "need:thirst": 435,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 243,
+            "explore": 247,
+            "rest": 18,
+            "seek_food": 492
+          },
+          "attention_correct_steps": 816,
+          "attention_intended_steps": 928,
+          "attention_orients": 226,
+          "consciousness_steps": {
+            "Asleep": 49,
+            "Awake": 58,
+            "Focused": 893
+          },
+          "coverage": 0.43,
+          "distinct_cells": 172,
+          "drinks": 27,
+          "drive_by_block": [
+            1.039425079078564,
+            1.0988918720327296
+          ],
+          "drive_last_block": 1.0988918720327296,
+          "drive_mean": 1.0691584755556476,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 108,
+          "fatigue_final": 0.3100000000000026,
+          "fatigue_mean": 0.5507900000000027,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 527,
+          "hunger_final": 0.5800000000000002,
+          "hunger_mean": 0.7831400000000001,
+          "meals": 28,
+          "moves": 648,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 351,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 464,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.733165,
+          "workspace_winners": {
+            "need:fatigue": 18,
+            "need:hunger": 626,
+            "need:thirst": 303,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3015
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 290,
+            "explore": 235,
+            "rest": 29,
+            "seek_food": 446
+          },
+          "attention_correct_steps": 822,
+          "attention_intended_steps": 926,
+          "attention_orients": 212,
+          "consciousness_steps": {
+            "Asleep": 39,
+            "Awake": 189,
+            "Focused": 772
+          },
+          "coverage": 0.39,
+          "distinct_cells": 156,
+          "drinks": 32,
+          "drive_by_block": [
+            0.9481410908201512,
+            0.9467435184130021
+          ],
+          "drive_last_block": 0.9467435184130021,
+          "drive_mean": 0.9474423046165759,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 82,
+          "fatigue_final": 0.8050000000000025,
+          "fatigue_mean": 0.5195650000000008,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 438,
+          "hunger_final": 0.46000000000000013,
+          "hunger_mean": 0.7256499999999996,
+          "meals": 33,
+          "moves": 650,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 349,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 354,
+          "thirst_final": 0.9700000000000005,
+          "thirst_mean": 0.6571900000000007,
+          "workspace_winners": {
+            "need:fatigue": 29,
+            "need:hunger": 566,
+            "need:thirst": 361,
+            "none": 5
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 298,
+            "explore": 238,
+            "rest": 36,
+            "seek_food": 428
+          },
+          "attention_correct_steps": 803,
+          "attention_intended_steps": 916,
+          "attention_orients": 212,
+          "consciousness_steps": {
+            "Asleep": 35,
+            "Awake": 288,
+            "Focused": 677
+          },
+          "coverage": 0.385,
+          "distinct_cells": 154,
+          "drinks": 34,
+          "drive_by_block": [
+            0.7971948272377245,
+            1.0125856916998188
+          ],
+          "drive_last_block": 1.0125856916998188,
+          "drive_mean": 0.9048902594687713,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 72,
+          "fatigue_final": 0.39250000000000007,
+          "fatigue_mean": 0.5103475000000022,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 408,
+          "hunger_final": 0.4550000000000006,
+          "hunger_mean": 0.709305,
+          "meals": 34,
+          "moves": 637,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 362,
+          "thirst_at_drink_median": 0.8400000000000006,
+          "thirst_critical_steps": 338,
+          "thirst_final": 0.135,
+          "thirst_mean": 0.6201099999999995,
+          "workspace_winners": {
+            "need:fatigue": 36,
+            "need:hunger": 541,
+            "need:thirst": 376,
+            "none": 12
+          }
+        }
+      },
+      "seed": 3016
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 520,
+            "explore": 263,
+            "rest": 3,
+            "seek_food": 214
+          },
+          "attention_correct_steps": 831,
+          "attention_intended_steps": 932,
+          "attention_orients": 232,
+          "consciousness_steps": {
+            "Asleep": 60,
+            "Awake": 27,
+            "Focused": 913
+          },
+          "coverage": 0.13,
+          "distinct_cells": 52,
+          "drinks": 4,
+          "drive_by_block": [
+            1.3073861808161038,
+            1.484091140910744
+          ],
+          "drive_last_block": 1.484091140910744,
+          "drive_mean": 1.3957386608634246,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 127,
+          "fatigue_final": 0.9050000000000202,
+          "fatigue_mean": 0.5702875000000105,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 898,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.9483600000000001,
+          "meals": 5,
+          "moves": 692,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 307,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 905,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.94911,
+          "workspace_winners": {
+            "need:fatigue": 3,
+            "need:hunger": 273,
+            "need:thirst": 660,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 381,
+            "explore": 243,
+            "rest": 30,
+            "seek_food": 346
+          },
+          "attention_correct_steps": 806,
+          "attention_intended_steps": 920,
+          "attention_orients": 221,
+          "consciousness_steps": {
+            "Asleep": 41,
+            "Awake": 206,
+            "Focused": 753
+          },
+          "coverage": 0.425,
+          "distinct_cells": 170,
+          "drinks": 27,
+          "drive_by_block": [
+            0.9142432542590346,
+            1.057724376718368
+          ],
+          "drive_last_block": 1.057724376718368,
+          "drive_mean": 0.9859838154887006,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 88,
+          "fatigue_final": 0.1550000000000038,
+          "fatigue_mean": 0.5079225000000005,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 484,
+          "hunger_final": 0.5950000000000002,
+          "hunger_mean": 0.7337749999999995,
+          "meals": 30,
+          "moves": 643,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 356,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 454,
+          "thirst_final": 0.31,
+          "thirst_mean": 0.7097500000000001,
+          "workspace_winners": {
+            "need:fatigue": 30,
+            "need:hunger": 438,
+            "need:thirst": 483,
+            "none": 8
+          }
+        }
+      },
+      "seed": 3017
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 206,
+            "explore": 247,
+            "rest": 20,
+            "seek_food": 527
+          },
+          "attention_correct_steps": 831,
+          "attention_intended_steps": 928,
+          "attention_orients": 225,
+          "consciousness_steps": {
+            "Asleep": 47,
+            "Awake": 73,
+            "Focused": 880
+          },
+          "coverage": 0.45,
+          "distinct_cells": 180,
+          "drinks": 26,
+          "drive_by_block": [
+            1.0387975292754408,
+            1.1107871655007977
+          ],
+          "drive_last_block": 1.1107871655007977,
+          "drive_mean": 1.07479234738812,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 93,
+          "fatigue_final": 0.3925000000000001,
+          "fatigue_mean": 0.5328400000000052,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 562,
+          "hunger_final": 0.9200000000000005,
+          "hunger_mean": 0.7967899999999994,
+          "meals": 26,
+          "moves": 652,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 1,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 347,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 476,
+          "thirst_final": 0.5150000000000001,
+          "thirst_mean": 0.7280050000000002,
+          "workspace_winners": {
+            "need:fatigue": 20,
+            "need:hunger": 667,
+            "need:thirst": 262,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 328,
+            "explore": 249,
+            "rest": 12,
+            "seek_food": 411
+          },
+          "attention_correct_steps": 820,
+          "attention_intended_steps": 929,
+          "attention_orients": 224,
+          "consciousness_steps": {
+            "Asleep": 54,
+            "Awake": 59,
+            "Focused": 887
+          },
+          "coverage": 0.4025,
+          "distinct_cells": 161,
+          "drinks": 23,
+          "drive_by_block": [
+            1.1203664273108502,
+            1.1456094673102368
+          ],
+          "drive_last_block": 1.1456094673102368,
+          "drive_mean": 1.1329879473105429,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 107,
+          "fatigue_final": 0.32750000000000246,
+          "fatigue_mean": 0.5528200000000046,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 605,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8171900000000002,
+          "meals": 23,
+          "moves": 660,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 339,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 532,
+          "thirst_final": 0.9350000000000005,
+          "thirst_mean": 0.7592000000000005,
+          "workspace_winners": {
+            "need:fatigue": 12,
+            "need:hunger": 517,
+            "need:thirst": 413,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3018
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 266,
+            "explore": 249,
+            "rest": 18,
+            "seek_food": 467
+          },
+          "attention_correct_steps": 837,
+          "attention_intended_steps": 928,
+          "attention_orients": 225,
+          "consciousness_steps": {
+            "Asleep": 49,
+            "Awake": 84,
+            "Focused": 867
+          },
+          "coverage": 0.4825,
+          "distinct_cells": 193,
+          "drinks": 22,
+          "drive_by_block": [
+            1.151003619478528,
+            1.1553638351184916
+          ],
+          "drive_last_block": 1.1553638351184916,
+          "drive_mean": 1.153183727298509,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 97,
+          "fatigue_final": 0.4200000000000007,
+          "fatigue_mean": 0.5489250000000035,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 638,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8343899999999996,
+          "meals": 21,
+          "moves": 661,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 1,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 338,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 578,
+          "thirst_final": 0.285,
+          "thirst_mean": 0.7823200000000003,
+          "workspace_winners": {
+            "need:fatigue": 18,
+            "need:hunger": 596,
+            "need:thirst": 333,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 249,
+            "explore": 258,
+            "rest": 15,
+            "seek_food": 478
+          },
+          "attention_correct_steps": 799,
+          "attention_intended_steps": 929,
+          "attention_orients": 226,
+          "consciousness_steps": {
+            "Asleep": 51,
+            "Awake": 73,
+            "Focused": 876
+          },
+          "coverage": 0.4425,
+          "distinct_cells": 177,
+          "drinks": 23,
+          "drive_by_block": [
+            1.0439035543647721,
+            1.1993182196614298
+          ],
+          "drive_last_block": 1.1993182196614298,
+          "drive_mean": 1.121610887013101,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 106,
+          "fatigue_final": 0.3600000000000051,
+          "fatigue_mean": 0.5469375000000022,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 600,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8167949999999999,
+          "meals": 23,
+          "moves": 658,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 341,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 543,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.7612700000000004,
+          "workspace_winners": {
+            "need:fatigue": 15,
+            "need:hunger": 615,
+            "need:thirst": 315,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3019
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 379,
+            "explore": 244,
+            "rest": 36,
+            "seek_food": 341
+          },
+          "attention_correct_steps": 837,
+          "attention_intended_steps": 914,
+          "attention_orients": 215,
+          "consciousness_steps": {
+            "Asleep": 36,
+            "Awake": 284,
+            "Focused": 680
+          },
+          "coverage": 0.2725,
+          "distinct_cells": 109,
+          "drinks": 31,
+          "drive_by_block": [
+            0.8275624126115374,
+            1.0084621124174107
+          ],
+          "drive_last_block": 1.0084621124174107,
+          "drive_mean": 0.9180122625144739,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 74,
+          "fatigue_final": 0.2675000000000028,
+          "fatigue_mean": 0.5036625000000007,
+          "hunger_at_meal_median": 0.9750000000000005,
+          "hunger_critical_steps": 407,
+          "hunger_final": 0.46000000000000013,
+          "hunger_mean": 0.701025,
+          "meals": 33,
+          "moves": 635,
+          "obstacle_bumps": 1,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 19,
+          "stationary_steps": 364,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 377,
+          "thirst_final": 0.8000000000000004,
+          "thirst_mean": 0.6622299999999997,
+          "workspace_winners": {
+            "need:fatigue": 36,
+            "need:hunger": 433,
+            "need:thirst": 482,
+            "none": 13
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 348,
+            "explore": 246,
+            "rest": 34,
+            "seek_food": 372
+          },
+          "attention_correct_steps": 802,
+          "attention_intended_steps": 917,
+          "attention_orients": 223,
+          "consciousness_steps": {
+            "Asleep": 37,
+            "Awake": 256,
+            "Focused": 707
+          },
+          "coverage": 0.3875,
+          "distinct_cells": 155,
+          "drinks": 29,
+          "drive_by_block": [
+            0.9365305726521977,
+            0.989135836083519
+          ],
+          "drive_last_block": 0.989135836083519,
+          "drive_mean": 0.9628332043678581,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 88,
+          "fatigue_final": 0.23000000000000376,
+          "fatigue_mean": 0.5211675000000011,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 462,
+          "hunger_final": 0.7200000000000003,
+          "hunger_mean": 0.7343799999999999,
+          "meals": 30,
+          "moves": 633,
+          "obstacle_bumps": 2,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 79,
+          "stationary_steps": 366,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 404,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.6776549999999998,
+          "workspace_winners": {
+            "need:fatigue": 34,
+            "need:hunger": 473,
+            "need:thirst": 444,
+            "none": 12
+          }
+        }
+      },
+      "seed": 3020
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 590,
+            "explore": 258,
+            "rest": 7,
+            "seek_food": 145
+          },
+          "attention_correct_steps": 815,
+          "attention_intended_steps": 930,
+          "attention_orients": 230,
+          "consciousness_steps": {
+            "Asleep": 58,
+            "Awake": 43,
+            "Focused": 899
+          },
+          "coverage": 0.3375,
+          "distinct_cells": 135,
+          "drinks": 12,
+          "drive_by_block": [
+            1.1229337886846091,
+            1.4255020601415178
+          ],
+          "drive_last_block": 1.4255020601415178,
+          "drive_mean": 1.2742179244130625,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 119,
+          "fatigue_final": 0.8100000000000138,
+          "fatigue_mean": 0.5571575000000049,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 777,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8945750000000001,
+          "meals": 13,
+          "moves": 676,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 323,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 735,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.8640300000000001,
+          "workspace_winners": {
+            "need:fatigue": 7,
+            "need:hunger": 178,
+            "need:thirst": 753,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 598,
+            "explore": 259,
+            "rest": 7,
+            "seek_food": 136
+          },
+          "attention_correct_steps": 856,
+          "attention_intended_steps": 931,
+          "attention_orients": 231,
+          "consciousness_steps": {
+            "Asleep": 57,
+            "Awake": 30,
+            "Focused": 913
+          },
+          "coverage": 0.3025,
+          "distinct_cells": 121,
+          "drinks": 8,
+          "drive_by_block": [
+            1.193485235532781,
+            1.483415276677802
+          ],
+          "drive_last_block": 1.483415276677802,
+          "drive_mean": 1.3384502561052924,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 121,
+          "fatigue_final": 0.6000000000000201,
+          "fatigue_mean": 0.5703125000000097,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 828,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.9159100000000003,
+          "meals": 9,
+          "moves": 684,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 315,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 826,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.9143,
+          "workspace_winners": {
+            "need:fatigue": 7,
+            "need:hunger": 175,
+            "need:thirst": 757,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3021
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 593,
+            "explore": 255,
+            "rest": 20,
+            "seek_food": 132
+          },
+          "attention_correct_steps": 830,
+          "attention_intended_steps": 925,
+          "attention_orients": 226,
+          "consciousness_steps": {
+            "Asleep": 47,
+            "Awake": 192,
+            "Focused": 761
+          },
+          "coverage": 0.1875,
+          "distinct_cells": 75,
+          "drinks": 14,
+          "drive_by_block": [
+            1.0810944544501555,
+            1.2865268660451952
+          ],
+          "drive_last_block": 1.2865268660451952,
+          "drive_mean": 1.1838106602476746,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 98,
+          "fatigue_final": 0.7150000000000023,
+          "fatigue_mean": 0.5231825000000022,
+          "hunger_at_meal_median": 0.9300000000000006,
+          "hunger_critical_steps": 695,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.844275,
+          "meals": 16,
+          "moves": 670,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 329,
+          "thirst_at_drink_median": 0.8500000000000013,
+          "thirst_critical_steps": 686,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.8258350000000004,
+          "workspace_winners": {
+            "need:fatigue": 20,
+            "need:hunger": 168,
+            "need:thirst": 758,
+            "none": 7
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 609,
+            "explore": 253,
+            "rest": 10,
+            "seek_food": 128
+          },
+          "attention_correct_steps": 834,
+          "attention_intended_steps": 930,
+          "attention_orients": 227,
+          "consciousness_steps": {
+            "Asleep": 55,
+            "Awake": 92,
+            "Focused": 853
+          },
+          "coverage": 0.2825,
+          "distinct_cells": 113,
+          "drinks": 11,
+          "drive_by_block": [
+            1.158411037218062,
+            1.3900050656006198
+          ],
+          "drive_last_block": 1.3900050656006198,
+          "drive_mean": 1.2742080514093421,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 112,
+          "fatigue_final": 0.5100000000000142,
+          "fatigue_mean": 0.5598500000000052,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 778,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8921849999999997,
+          "meals": 12,
+          "moves": 681,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 318,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 760,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.8704050000000003,
+          "workspace_winners": {
+            "need:fatigue": 10,
+            "need:hunger": 161,
+            "need:thirst": 770,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3022
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 606,
+            "explore": 260,
+            "rest": 6,
+            "seek_food": 128
+          },
+          "attention_correct_steps": 824,
+          "attention_intended_steps": 931,
+          "attention_orients": 231,
+          "consciousness_steps": {
+            "Asleep": 58,
+            "Awake": 46,
+            "Focused": 896
+          },
+          "coverage": 0.2975,
+          "distinct_cells": 119,
+          "drinks": 10,
+          "drive_by_block": [
+            1.3235262930054792,
+            1.2998318473054138
+          ],
+          "drive_last_block": 1.2998318473054138,
+          "drive_mean": 1.3116790701554457,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 125,
+          "fatigue_final": 0.9175000000000031,
+          "fatigue_mean": 0.5666925000000056,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 804,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.9064950000000005,
+          "meals": 11,
+          "moves": 679,
+          "obstacle_bumps": 1,
+          "opportunistic_actions": 1,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 582,
+          "stationary_steps": 320,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 788,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.8895550000000003,
+          "workspace_winners": {
+            "need:fatigue": 6,
+            "need:hunger": 165,
+            "need:thirst": 767,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 120,
+            "explore": 252,
+            "rest": 18,
+            "seek_food": 610
+          },
+          "attention_correct_steps": 837,
+          "attention_intended_steps": 927,
+          "attention_orients": 227,
+          "consciousness_steps": {
+            "Asleep": 49,
+            "Awake": 151,
+            "Focused": 800
+          },
+          "coverage": 0.14,
+          "distinct_cells": 56,
+          "drinks": 16,
+          "drive_by_block": [
+            1.2117452153263932,
+            1.1774956250844006
+          ],
+          "drive_last_block": 1.1774956250844006,
+          "drive_mean": 1.194620420205396,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 106,
+          "fatigue_final": 0.6075000000000002,
+          "fatigue_mean": 0.5331700000000033,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 729,
+          "hunger_final": 0.9250000000000005,
+          "hunger_mean": 0.8470299999999996,
+          "meals": 15,
+          "moves": 669,
+          "obstacle_bumps": 1,
+          "opportunistic_actions": 1,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 330,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 669,
+          "thirst_final": 0.48500000000000065,
+          "thirst_mean": 0.82138,
+          "workspace_winners": {
+            "need:fatigue": 18,
+            "need:hunger": 774,
+            "need:thirst": 154,
+            "none": 5
+          }
+        }
+      },
+      "seed": 3023
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 487,
+            "explore": 243,
+            "rest": 18,
+            "seek_food": 252
+          },
+          "attention_correct_steps": 823,
+          "attention_intended_steps": 928,
+          "attention_orients": 220,
+          "consciousness_steps": {
+            "Asleep": 49,
+            "Awake": 107,
+            "Focused": 844
+          },
+          "coverage": 0.3225,
+          "distinct_cells": 129,
+          "drinks": 19,
+          "drive_by_block": [
+            1.0620559603554878,
+            1.2402982002965954
+          ],
+          "drive_last_block": 1.2402982002965954,
+          "drive_mean": 1.1511770803260413,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 103,
+          "fatigue_final": 0.3350000000000041,
+          "fatigue_mean": 0.542365000000002,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 648,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.8355249999999996,
+          "meals": 20,
+          "moves": 670,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 19,
+          "stationary_steps": 329,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 599,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.7858650000000007,
+          "workspace_winners": {
+            "need:fatigue": 18,
+            "need:hunger": 315,
+            "need:thirst": 614,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 497,
+            "explore": 255,
+            "rest": 9,
+            "seek_food": 239
+          },
+          "attention_correct_steps": 841,
+          "attention_intended_steps": 931,
+          "attention_orients": 228,
+          "consciousness_steps": {
+            "Asleep": 56,
+            "Awake": 67,
+            "Focused": 877
+          },
+          "coverage": 0.2975,
+          "distinct_cells": 119,
+          "drinks": 13,
+          "drive_by_block": [
+            1.1609419451843623,
+            1.370949760009548
+          ],
+          "drive_last_block": 1.370949760009548,
+          "drive_mean": 1.265945852596955,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 117,
+          "fatigue_final": 0.2600000000000019,
+          "fatigue_mean": 0.559390000000007,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 757,
+          "hunger_final": 0.5400000000000001,
+          "hunger_mean": 0.8882249999999996,
+          "meals": 14,
+          "moves": 675,
+          "obstacle_bumps": 1,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 336,
+          "stationary_steps": 324,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 732,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.857395,
+          "workspace_winners": {
+            "need:fatigue": 9,
+            "need:hunger": 300,
+            "need:thirst": 631,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3024
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 289,
+            "explore": 250,
+            "rest": 12,
+            "seek_food": 449
+          },
+          "attention_correct_steps": 818,
+          "attention_intended_steps": 930,
+          "attention_orients": 226,
+          "consciousness_steps": {
+            "Asleep": 53,
+            "Awake": 58,
+            "Focused": 889
+          },
+          "coverage": 0.4875,
+          "distinct_cells": 195,
+          "drinks": 20,
+          "drive_by_block": [
+            1.1683393259471975,
+            1.176585237633236
+          ],
+          "drive_last_block": 1.176585237633236,
+          "drive_mean": 1.172462281790218,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 114,
+          "fatigue_final": 0.685000000000009,
+          "fatigue_mean": 0.5526200000000051,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 654,
+          "hunger_final": 0.31000000000000005,
+          "hunger_mean": 0.8374300000000001,
+          "meals": 21,
+          "moves": 664,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 335,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 604,
+          "thirst_final": 0.9700000000000005,
+          "thirst_mean": 0.7988500000000004,
+          "workspace_winners": {
+            "need:fatigue": 12,
+            "need:hunger": 567,
+            "need:thirst": 364,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 152,
+            "explore": 256,
+            "rest": 11,
+            "seek_food": 581
+          },
+          "attention_correct_steps": 809,
+          "attention_intended_steps": 929,
+          "attention_orients": 228,
+          "consciousness_steps": {
+            "Asleep": 54,
+            "Awake": 52,
+            "Focused": 894
+          },
+          "coverage": 0.355,
+          "distinct_cells": 142,
+          "drinks": 17,
+          "drive_by_block": [
+            1.1454592792567615,
+            1.2782886170599674
+          ],
+          "drive_last_block": 1.2782886170599674,
+          "drive_mean": 1.2118739481583647,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 113,
+          "fatigue_final": 0.560000000000006,
+          "fatigue_mean": 0.5577850000000039,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 698,
+          "hunger_final": 0.7000000000000003,
+          "hunger_mean": 0.8590500000000004,
+          "meals": 18,
+          "moves": 667,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 332,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 663,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.8221500000000002,
+          "workspace_winners": {
+            "need:fatigue": 11,
+            "need:hunger": 741,
+            "need:thirst": 189,
+            "none": 5
+          }
+        }
+      },
+      "seed": 3025
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 35,
+            "explore": 262,
+            "rest": 3,
+            "seek_food": 700
+          },
+          "attention_correct_steps": 835,
+          "attention_intended_steps": 932,
+          "attention_orients": 231,
+          "consciousness_steps": {
+            "Asleep": 60,
+            "Awake": 20,
+            "Focused": 920
+          },
+          "coverage": 0.1525,
+          "distinct_cells": 61,
+          "drinks": 4,
+          "drive_by_block": [
+            1.3255990517736462,
+            1.482841559161598
+          ],
+          "drive_last_block": 1.482841559161598,
+          "drive_mean": 1.4042203054676228,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 120,
+          "fatigue_final": 0.8400000000000201,
+          "fatigue_mean": 0.5732450000000104,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 911,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.9563050000000001,
+          "meals": 4,
+          "moves": 694,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 129,
+          "stationary_steps": 305,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 907,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.952615,
+          "workspace_winners": {
+            "need:fatigue": 3,
+            "need:hunger": 887,
+            "need:thirst": 46,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 87,
+            "explore": 262,
+            "rest": 3,
+            "seek_food": 648
+          },
+          "attention_correct_steps": 823,
+          "attention_intended_steps": 932,
+          "attention_orients": 231,
+          "consciousness_steps": {
+            "Asleep": 60,
+            "Awake": 30,
+            "Focused": 910
+          },
+          "coverage": 0.17,
+          "distinct_cells": 68,
+          "drinks": 3,
+          "drive_by_block": [
+            1.3613211791338213,
+            1.4764475024100567
+          ],
+          "drive_last_block": 1.4764475024100567,
+          "drive_mean": 1.4188843407719376,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 125,
+          "fatigue_final": 0.8250000000000199,
+          "fatigue_mean": 0.5748875000000095,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 925,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.9627,
+          "meals": 3,
+          "moves": 696,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 303,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 926,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.95878,
+          "workspace_winners": {
+            "need:fatigue": 3,
+            "need:hunger": 824,
+            "need:thirst": 109,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3026
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 101,
+            "explore": 260,
+            "rest": 3,
+            "seek_food": 636
+          },
+          "attention_correct_steps": 833,
+          "attention_intended_steps": 929,
+          "attention_orients": 230,
+          "consciousness_steps": {
+            "Asleep": 61,
+            "Awake": 35,
+            "Focused": 904
+          },
+          "coverage": 0.3275,
+          "distinct_cells": 131,
+          "drinks": 7,
+          "drive_by_block": [
+            1.37908280940792,
+            1.3592301010845178
+          ],
+          "drive_last_block": 1.3592301010845178,
+          "drive_mean": 1.3691564552462203,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 130,
+          "fatigue_final": 0.5100000000000201,
+          "fatigue_mean": 0.5683225000000096,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 874,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.9347749999999998,
+          "meals": 7,
+          "moves": 686,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 313,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 855,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.9236700000000008,
+          "workspace_winners": {
+            "need:fatigue": 3,
+            "need:hunger": 804,
+            "need:thirst": 126,
+            "none": 6
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 101,
+            "explore": 256,
+            "rest": 8,
+            "seek_food": 635
+          },
+          "attention_correct_steps": 828,
+          "attention_intended_steps": 931,
+          "attention_orients": 228,
+          "consciousness_steps": {
+            "Asleep": 56,
+            "Awake": 46,
+            "Focused": 898
+          },
+          "coverage": 0.255,
+          "distinct_cells": 102,
+          "drinks": 9,
+          "drive_by_block": [
+            1.3330512622703237,
+            1.332754201658592
+          ],
+          "drive_last_block": 1.332754201658592,
+          "drive_mean": 1.3329027319644582,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 126,
+          "fatigue_final": 0.8175000000000056,
+          "fatigue_mean": 0.5710975000000059,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 826,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.9110099999999997,
+          "meals": 9,
+          "moves": 686,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 313,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 815,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.9064800000000007,
+          "workspace_winners": {
+            "need:fatigue": 8,
+            "need:hunger": 808,
+            "need:thirst": 124,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3027
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 284,
+            "explore": 244,
+            "rest": 23,
+            "seek_food": 449
+          },
+          "attention_correct_steps": 789,
+          "attention_intended_steps": 929,
+          "attention_orients": 221,
+          "consciousness_steps": {
+            "Asleep": 43,
+            "Awake": 88,
+            "Focused": 869
+          },
+          "coverage": 0.4175,
+          "distinct_cells": 167,
+          "drinks": 29,
+          "drive_by_block": [
+            0.9917260212264667,
+            1.0342240505953888
+          ],
+          "drive_last_block": 1.0342240505953888,
+          "drive_mean": 1.0129750359109275,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 96,
+          "fatigue_final": 0.7475000000000004,
+          "fatigue_mean": 0.5268750000000026,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 479,
+          "hunger_final": 0.7850000000000004,
+          "hunger_mean": 0.7511050000000001,
+          "meals": 29,
+          "moves": 651,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 852,
+          "stationary_steps": 348,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 434,
+          "thirst_final": 0.2350000000000005,
+          "thirst_mean": 0.7156550000000006,
+          "workspace_winners": {
+            "need:fatigue": 23,
+            "need:hunger": 573,
+            "need:thirst": 357,
+            "none": 4
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 340,
+            "explore": 255,
+            "rest": 11,
+            "seek_food": 394
+          },
+          "attention_correct_steps": 798,
+          "attention_intended_steps": 931,
+          "attention_orients": 226,
+          "consciousness_steps": {
+            "Asleep": 53,
+            "Awake": 28,
+            "Focused": 919
+          },
+          "coverage": 0.445,
+          "distinct_cells": 178,
+          "drinks": 19,
+          "drive_by_block": [
+            1.1923973137791861,
+            1.1897751866614064
+          ],
+          "drive_last_block": 1.1897751866614064,
+          "drive_mean": 1.191086250220294,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 110,
+          "fatigue_final": 0.842500000000014,
+          "fatigue_mean": 0.5567650000000053,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 670,
+          "hunger_final": 0.46000000000000013,
+          "hunger_mean": 0.8464600000000002,
+          "meals": 20,
+          "moves": 667,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": 485,
+          "stationary_steps": 332,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 618,
+          "thirst_final": 1.0,
+          "thirst_mean": 0.8067250000000009,
+          "workspace_winners": {
+            "need:fatigue": 11,
+            "need:hunger": 502,
+            "need:thirst": 430,
+            "none": 4
+          }
+        }
+      },
+      "seed": 3028
+    },
+    {
+      "agents": {
+        "SimBot-1": {
+          "action_counts": {
+            "drink_water": 339,
+            "explore": 249,
+            "rest": 15,
+            "seek_food": 397
+          },
+          "attention_correct_steps": 824,
+          "attention_intended_steps": 923,
+          "attention_orients": 220,
+          "consciousness_steps": {
+            "Asleep": 53,
+            "Awake": 200,
+            "Focused": 747
+          },
+          "coverage": 0.3375,
+          "distinct_cells": 135,
+          "drinks": 31,
+          "drive_by_block": [
+            0.9213235722710608,
+            1.0526051801629235
+          ],
+          "drive_last_block": 1.0526051801629235,
+          "drive_mean": 0.9869643762169931,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 104,
+          "fatigue_final": 0.8550000000000008,
+          "fatigue_mean": 0.5351200000000018,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 442,
+          "hunger_final": 0.7350000000000003,
+          "hunger_mean": 0.7324299999999999,
+          "meals": 31,
+          "moves": 642,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 1,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 357,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 406,
+          "thirst_final": 0.20999999999999996,
+          "thirst_mean": 0.688230000000001,
+          "workspace_winners": {
+            "need:fatigue": 15,
+            "need:hunger": 503,
+            "need:thirst": 421,
+            "none": 8
+          }
+        },
+        "SimBot-2": {
+          "action_counts": {
+            "drink_water": 391,
+            "explore": 243,
+            "rest": 25,
+            "seek_food": 341
+          },
+          "attention_correct_steps": 837,
+          "attention_intended_steps": 921,
+          "attention_orients": 218,
+          "consciousness_steps": {
+            "Asleep": 44,
+            "Awake": 208,
+            "Focused": 748
+          },
+          "coverage": 0.45,
+          "distinct_cells": 180,
+          "drinks": 29,
+          "drive_by_block": [
+            0.9693420338402383,
+            1.0117559727572927
+          ],
+          "drive_last_block": 1.0117559727572927,
+          "drive_mean": 0.990549003298766,
+          "failed_pushes": 0,
+          "fatigue_critical_steps": 86,
+          "fatigue_final": 0.7250000000000051,
+          "fatigue_mean": 0.5185775000000018,
+          "hunger_at_meal_median": 1.0,
+          "hunger_critical_steps": 475,
+          "hunger_final": 1.0,
+          "hunger_mean": 0.7300750000000007,
+          "meals": 29,
+          "moves": 646,
+          "obstacle_bumps": 0,
+          "opportunistic_actions": 0,
+          "out_of_bounds": 0,
+          "pushes": 0,
+          "reach_center_step": null,
+          "stationary_steps": 353,
+          "thirst_at_drink_median": 1.0,
+          "thirst_critical_steps": 430,
+          "thirst_final": 0.5950000000000002,
+          "thirst_mean": 0.698465000000001,
+          "workspace_winners": {
+            "need:fatigue": 25,
+            "need:hunger": 427,
+            "need:thirst": 495,
+            "none": 9
+          }
+        }
+      },
+      "seed": 3029
+    }
+  ],
+  "scenario": "sites",
+  "schema": 1,
+  "seeds": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007,
+    3008,
+    3009,
+    3010,
+    3011,
+    3012,
+    3013,
+    3014,
+    3015,
+    3016,
+    3017,
+    3018,
+    3019,
+    3020,
+    3021,
+    3022,
+    3023,
+    3024,
+    3025,
+    3026,
+    3027,
+    3028,
+    3029
+  ],
+  "steps": 1000,
+  "summary": {
+    "action_counts": {
+      "drink_water": 352.65,
+      "explore": 250.38333333333333,
+      "rest": 17.85,
+      "seek_food": 379.1166666666667
+    },
+    "agent_runs": 60,
+    "attention_correct_steps": {
+      "max": 856,
+      "mean": 823.0833333333334,
+      "min": 787,
+      "std": 16.964955709409388
+    },
+    "attention_intended_steps": {
+      "max": 932,
+      "mean": 925.9833333333333,
+      "min": 899,
+      "std": 6.507666419095421
+    },
+    "attention_orients": {
+      "max": 233,
+      "mean": 224.03333333333333,
+      "min": 212,
+      "std": 4.788759987953272
+    },
+    "consciousness_steps": {
+      "Asleep": 49.03333333333333,
+      "Awake": 124.55,
+      "Focused": 826.4166666666666
+    },
+    "coverage": {
+      "max": 0.5875,
+      "mean": 0.3614583333333333,
+      "min": 0.13,
+      "std": 0.10470622759522101
+    },
+    "distinct_cells": {
+      "max": 235,
+      "mean": 144.58333333333334,
+      "min": 52,
+      "std": 41.8824910380884
+    },
+    "drinks": {
+      "max": 39,
+      "mean": 21.116666666666667,
+      "min": 3,
+      "std": 8.824382257258705
+    },
+    "drive_by_block": [
+      1.0813703908608534,
+      1.1708002184710204
+    ],
+    "drive_last_block": {
+      "max": 1.4850040282939585,
+      "mean": 1.1708002184710204,
+      "min": 0.7579173768731534,
+      "std": 0.1813078828587195
+    },
+    "drive_mean": {
+      "max": 1.4193566343521713,
+      "mean": 1.126085304665937,
+      "min": 0.7341979088837015,
+      "std": 0.15292616130970577
+    },
+    "failed_pushes": {
+      "max": 0,
+      "mean": 0,
+      "min": 0,
+      "std": 0.0
+    },
+    "fatigue_critical_steps": {
+      "max": 130,
+      "mean": 102.43333333333334,
+      "min": 51,
+      "std": 16.45839873404727
+    },
+    "fatigue_final": {
+      "max": 0.9250000000000199,
+      "mean": 0.5699583333333397,
+      "min": 0.1025,
+      "std": 0.22445280297623862
+    },
+    "fatigue_mean": {
+      "max": 0.5748875000000095,
+      "mean": 0.5404802500000041,
+      "min": 0.46284250000000093,
+      "std": 0.024823325907385483
+    },
+    "hunger_at_meal_median": {
+      "max": 1.0,
+      "mean": 0.9912916666666667,
+      "min": 0.8150000000000004,
+      "std": 0.032833201141865755
+    },
+    "hunger_critical_steps": {
+      "max": 933,
+      "mean": 616.4,
+      "min": 272,
+      "std": 152.67232886151962
+    },
+    "hunger_final": {
+      "max": 1.0,
+      "mean": 0.7767500000000002,
+      "min": 0.0950000000000004,
+      "std": 0.2782577117829201
+    },
+    "hunger_mean": {
+      "max": 0.96774,
+      "mean": 0.8111429166666667,
+      "min": 0.6069300000000003,
+      "std": 0.07953382024486849
+    },
+    "meals": {
+      "max": 40,
+      "mean": 21.85,
+      "min": 3,
+      "std": 8.869094279199727
+    },
+    "moves": {
+      "max": 696,
+      "mean": 659.8,
+      "min": 608,
+      "std": 18.858066355452955
+    },
+    "obstacle_bumps": {
+      "max": 2,
+      "mean": 0.18333333333333332,
+      "min": 0,
+      "std": 0.42784992176644787
+    },
+    "opportunistic_actions": {
+      "max": 3,
+      "mean": 0.2833333333333333,
+      "min": 0,
+      "std": 0.6348665651580303
+    },
+    "out_of_bounds": {
+      "max": 0,
+      "mean": 0,
+      "min": 0,
+      "std": 0.0
+    },
+    "pushes": {
+      "max": 0,
+      "mean": 0,
+      "min": 0,
+      "std": 0.0
+    },
+    "reach_center": {
+      "completed_rate": 0.26666666666666666,
+      "mean_step": 316.625
+    },
+    "stationary_steps": {
+      "max": 391,
+      "mean": 339.2,
+      "min": 303,
+      "std": 18.858066355452955
+    },
+    "thirst_at_drink_median": {
+      "max": 1.0,
+      "mean": 0.9891250000000001,
+      "min": 0.8050000000000004,
+      "std": 0.03806470642209099
+    },
+    "thirst_critical_steps": {
+      "max": 926,
+      "mean": 574.3666666666667,
+      "min": 154,
+      "std": 170.91235245652146
+    },
+    "thirst_final": {
+      "max": 1.0,
+      "mean": 0.7755000000000002,
+      "min": 0.135,
+      "std": 0.28877572035520344
+    },
+    "thirst_mean": {
+      "max": 0.960155,
+      "mean": 0.7753668333333337,
+      "min": 0.5455450000000014,
+      "std": 0.09412801594091004
+    },
+    "workspace_winners": {
+      "need:fatigue": 17.9,
+      "need:hunger": 480.53333333333336,
+      "need:thirst": 446.4,
+      "none": 6.133333333333334
+    }
+  }
+}

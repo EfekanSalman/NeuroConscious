@@ -42,3 +42,23 @@ silence rule sees most captures because a missing detection is itself the eviden
 One environment and one set of parameters, designed by me; no multiple-comparison correction across three gates; a
 success of Stage 1 would show a controller benefit in this task, not that anything is conscious or that this is how
 attention schema theory's mechanism works.
+
+## Result (`experiments/results/ast_radar/`, commit 7a7f33e, dirty=false)
+Selection (30 seeds, hand policies): switch 781, interval 10/20/40 = 929/790/748, silence 4/8/16 = 1293/946/820; chosen interval 40.
+Test (100 seeds, total critical steps; share of steps with attention on the intended channel; orients per 1000 steps):
+none 683 (44%, 0), oracle 971 (95%, 89), oracle_free 772 (95%, 88), chosen hand policy (interval 40) 703 (69%, 60).
+- **G0 failed, in the opposite direction:** oracle_free - none = +89 [+19, +160] (predicted at most -150).
+- **G1 failed, opposite direction:** oracle - none = +288 [+226, +351] (predicted at most -100).
+- **G2 not meaningful:** chosen - oracle = -268 [-324, -211]; the "hand policy worse than oracle" condition is met
+  trivially the wrong way round (the hand policy is better than the oracle), so there is no headroom to read.
+- By the pre-registered rule the problem is closed; no learned schema was built. Chosen vs none: +20 [-6, +47].
+- The radar is a strong lever (683 here against 923-ish without it), so problem 2's failure cause is gone. What
+  failed is my definition of good attention. Reading, not tested: with random captures the agent's attention sits on
+  each channel about half the time, so the radar prospects for both food and water and memory fills up for both needs;
+  an agent that always looks at the channel it needs now sees only that channel's sites and learns the other need's
+  sites late. The oracle optimises "attend to what I intend now", which is not the best use of a limited sensor.
+  Whether another oracle (alternating, or prospecting the channel not currently needed) would have beaten none was
+  not tested: choosing it now would be redefining the target after seeing the result.
+- Tally of my AST attempts: three problems, three closures without a learned schema (cue broadcast with trace;
+  gated attention; gated radar). In each the cheating or near-optimal reference failed to beat a trivial one by a
+  reachable margin, so the comparison the theory needs (a schema against a model-free controller with the same inputs) was never run.
