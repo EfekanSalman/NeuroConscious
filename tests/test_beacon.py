@@ -155,6 +155,16 @@ class CueTraceTest(unittest.TestCase):
             bid = BeaconSpecialist().propose(self.agent(age=10))
         self.assertGreater(bid.salience, 5)
 
+    def test_oracle_policy_bids_only_while_the_trace_is_wrong_or_missing(self):
+        with mock.patch.object(specialists_module, "BEACON_POLICY", "oracle"):
+            agent = self.agent("left")
+            agent.cue_trace = "left"
+            self.assertIsNone(BeaconSpecialist().propose(agent))
+            agent.cue_trace = "right"
+            self.assertIsNotNone(BeaconSpecialist().propose(agent))
+            agent.cue_trace = None
+            self.assertIsNotNone(BeaconSpecialist().propose(agent))
+
     def test_interval_policy_bids_at_once_when_the_cue_was_never_seen(self):
         with mock.patch.object(specialists_module, "BEACON_POLICY", "interval"):
             self.assertIsNotNone(BeaconSpecialist().propose(self.agent()))
