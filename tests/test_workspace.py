@@ -159,6 +159,13 @@ class GlobalWorkspaceTest(unittest.TestCase):
         self.assertEqual(wide.decide(make_agent()), "drink_water")
         self.assertEqual((narrow.opportunistic_actions, wide.opportunistic_actions), (0, 1))
 
+    def test_opportunism_switch_off_keeps_the_winner(self):
+        from core.workspace import workspace as workspace_module
+        bids = [bid("hunger", 0.8, "seek_food", need="hunger", consume_here=False),
+                bid("thirst", 0.4, "drink_water", need="thirst", consume_here=True)]
+        with mock.patch.object(workspace_module, "OPPORTUNISM", False):
+            self.assertEqual(self.workspace(bids, capacity=2).decide(make_agent()), "seek_food")
+
     def test_winner_that_can_consume_here_is_not_displaced(self):
         bids = [bid("hunger", 0.8, "seek_food", need="hunger", consume_here=True),
                 bid("thirst", 0.4, "drink_water", need="thirst", consume_here=True)]

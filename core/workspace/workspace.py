@@ -8,6 +8,8 @@ from core.workspace.specialists import (
 
 # Experimental switch for ablations: names of specialists left out of the default set ('goal', 'habit').
 DISABLED_SPECIALISTS: tuple = ()
+# Experimental switch: whether an admitted need that can be satisfied on the agent's own cell displaces the winner.
+OPPORTUNISM = True
 
 # Which input channel the agent's perception should favour when a given need wins the workspace.
 _ATTENTION_FOR_NEED = {"hunger": "food", "thirst": "water", "fatigue": "rest"}
@@ -110,7 +112,7 @@ class GlobalWorkspace:
 
     def _select_action(self, winner: Proposal) -> str:
         """The winner's action, unless another admitted need can be satisfied right here, right now."""
-        if not winner.content.get("consume_here"):
+        if OPPORTUNISM and not winner.content.get("consume_here"):
             for item in (p for p in self.contents if p is not winner):
                 if item.content.get("consume_here"):
                     self.opportunistic_actions += 1

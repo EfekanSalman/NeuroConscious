@@ -34,3 +34,26 @@ class CriticalOverrideTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OpportunismTest(unittest.TestCase):
+    def agent(self, here, hunger=0.9, thirst=0.8):
+        agent = _agent(hunger, thirst, 0.1)
+        agent.perception = {"local_grid_view": [["x"] * 3, ["x", here, "x"], ["x"] * 3]}
+        return agent
+
+    def decide(self, agent, **patches):
+        with mock.patch.multiple(decision_maker, CRITICAL_OVERRIDE_LEVEL=0.3, CRITICAL_OVERRIDE_ORDER="neediest", **patches):
+            return DecisionMaker().decide_final_action(agent, "reactive")
+
+    def test_off_by_default_seeks_the_neediest(self):
+        self.assertEqual(self.decide(self.agent("water")), "seek_food")
+
+    def test_standing_on_water_while_hungrier_and_thirsty_drinks(self):
+        self.assertEqual(self.decide(self.agent("water"), CRITICAL_OPPORTUNISM=True), "drink_water")
+
+    def test_the_neediest_need_met_here_is_not_displaced(self):
+        self.assertEqual(self.decide(self.agent("food"), CRITICAL_OPPORTUNISM=True), "seek_food")
+
+    def test_nothing_here_keeps_the_neediest(self):
+        self.assertEqual(self.decide(self.agent("empty"), CRITICAL_OPPORTUNISM=True), "seek_food")

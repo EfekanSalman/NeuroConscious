@@ -31,6 +31,10 @@ from typing import Dict, Any, Tuple
 CRITICAL_OVERRIDE_LEVEL = 0.85
 # Which pressing need is served first: 'fixed' (hunger, then thirst, then fatigue) or 'neediest' (the highest level).
 CRITICAL_OVERRIDE_ORDER = "fixed"
+# Experimental switch: when the chosen critical need cannot be satisfied on the agent's own cell but another pressing
+# need can (it stands on food or water), serve that one now. Off by default.
+CRITICAL_OPPORTUNISM = False
+_RESOURCE_HERE = {"seek_food": "food", "drink_water": "water"}
 
 
 class DecisionMaker:
@@ -79,6 +83,14 @@ class DecisionMaker:
         ]
         if CRITICAL_OVERRIDE_ORDER == "neediest":
             critical_checks.sort(key=lambda check: -check[0])  # stable: ties keep the fixed order
+        pressing = [check for check in critical_checks if check[0] > CRITICAL_OVERRIDE_LEVEL]
+        if CRITICAL_OPPORTUNISM and len(pressing) > 1:
+            here = (agent.perception.get("local_grid_view") or [[None] * 3] * 3)[1][1]
+            if _RESOURCE_HERE.get(pressing[0][1]) != here:
+                for _, critical_action, reason in pressing[1:]:
+                    if _RESOURCE_HERE.get(critical_action) == here:
+                        agent.internal_monologue += f"CRITICAL: {reason}, and it can be met right here: '{critical_action}'. "
+                        return critical_action
         for level, critical_action, reason in critical_checks:
             if level > CRITICAL_OVERRIDE_LEVEL:
                 agent.internal_monologue += f"CRITICAL: {reason}, prioritizing '{critical_action}'. "
