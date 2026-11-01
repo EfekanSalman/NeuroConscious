@@ -26,3 +26,19 @@ Attention policies (`BEACON_POLICY`): 'constant' = the beacon bids at a fixed sa
 - Decision rule: if S1 holds there is a control problem worth learning and stage 1 (a learned schema, a model-free controller, a
   random-weight schema and an oracle, all choosing when to attend) is worth building. If S1 fails, attention control has no
   value here and the AST line stops, reported as a negative result.
+
+## Result (`experiments/results/ast_stage0/`, commit 34a72b6, dirty=false; 100 seeds)
+Total critical steps (cue refreshes per 1000; usable-cue steps / of which correct): wired_cap1 1438, none_cap1 1581,
+const_s06_notrace 1763 (34), const_s06_trace 1783 (33; 849 / 508), const_s10_trace 1807 (41; 872 / 544), int10 1573 (87; 996 / 985),
+int25 1492 (37; 996 / 965), int50 1459 (19; 996 / 918), int100 1480 (10; 996 / 825).
+- **S1 held:** best constant (no trace, 1763) - best interval (k=50, 1459) = +304 [+291, +317].
+- **S2 held:** int50 - wired = +21 [+8, +33].
+- **S3 held:** best k is 50; the curve is U-shaped (int10 1573, int25 1492, int50 1459, int100 1480).
+- **S4 failed, in the opposite direction:** `const_s06_notrace - const_s06_trace` = -20 [-35, -4], the trace made the constant policy a little worse.
+  With a constant bid the cue is refreshed rarely (33 times), so the trace is stale for long: of 849 steps with a usable cue only 508 are right
+  (60%), against 918 of 996 at k=50. A remembered cue that is not refreshed at the right time is a liability, not a gain.
+- Decision rule says: S1 held, so stage 1 is worth building. **Caveat I add after seeing the data:** the best hand-written policy is only 21
+  steps from `wired_cap1`, which pays nothing for attention and cannot be beaten. A learned controller (schema or model-free) can therefore gain
+  at most about 21 steps and the stage 1 comparisons (schema vs model-free vs random-weight schema) would be decided by differences of that size.
+  This environment leaves almost no room for a schema to matter; it needs a harder control problem first (for instance irregular redraw times
+  or a refresh that cannot win the slot while a need is critical) or stage 1 is not informative.
