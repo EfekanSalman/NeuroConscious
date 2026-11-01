@@ -32,3 +32,16 @@ Workspace agent = the lean one from earlier runs (needs-only: habit and goal off
   the workspace from direct wiring (minimal implementation: a point-to-point link does the same job); that is the
   expected outcome and the reason for part B. If broadcast is more than 40 steps worse than wiring, competition for slots costs
   something measurable. A5 holding means the benefit is a property of the information, not of the workspace.
+
+## Result (`experiments/results/beacon_performance/`, commit 29d13c1, dirty=false; 100 seeds)
+Total critical steps (cue availability in steps of 1000): ws_none 1584 (0), ws_wired 1422 (1000), ws_broadcast 1424 (858),
+ws_wrong 2006 (763 steps, all wrong), rules_none 1608, rules_wired 1480.
+- **A1 held:** ws_none - ws_wired = +162 [+144, +181].
+- **A2 held:** ws_broadcast - ws_wired = +3 [-10, +16]. Broadcast through the 3-slot workspace is as good as wiring even
+  though the cue is unavailable on 14% of steps (cue absence does not matter for a cue that lasts 150 steps).
+- **A3 held, strongly:** ws_wrong - ws_none = +423 [+406, +439]; a misleading cue is far worse than none (meals 1.0 vs 9.1).
+- **A4 held:** ws_none - ws_broadcast = +159 [+138, +181].
+- **A5 held:** rules_none - rules_wired = +128 [+111, +144]. The cue helps the rule chain as much as the workspace agent.
+- Not predicted: rules_wired is still 56-59 steps behind ws_wired / ws_broadcast [+40, +73], the same ~60 steps as in `need_order`.
+- Reading: the task makes the information necessary (A1, A3), a point-to-point wire does the job as well as the broadcast
+  (A2) and the rule chain benefits equally (A5). Performance does not distinguish the workspace from direct wiring.
