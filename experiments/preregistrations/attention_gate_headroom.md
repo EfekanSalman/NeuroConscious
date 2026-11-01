@@ -25,7 +25,8 @@ switch (orients when the intended channel changes; uses nothing hidden).
 Differences from none: oracle +130 [+92,+169] / +167 [+121,+213] (worse); oracle_free -27 [-70,+16] / -94 [-145,-43];
 switch +100 [+56,+144] / +61 [+18,+104] (worse).
 - Gate 1 failed by a wide margin: even a cheating oracle does worse than never orienting, because an orienting step
-  costs more (about 1.4 critical steps) than the better perception earns (about 0.8 per orient in setting b).
+  costs more than the better perception earns. Setting b: oracle - oracle_free = +261 over about 117 orients, about 2.2
+  critical steps per orient, against a gain of 94 over about 120 orients, about 0.8 per orient.
 - Correct attention is worth something only when orienting is free (setting b: -94), and then no schema is needed:
   orienting to the intended channel every step reaches the oracle without knowing the hidden state.
 - Why perception is a weak lever here (reading, not tested): the view is 3x3 and the agent finds resources by
