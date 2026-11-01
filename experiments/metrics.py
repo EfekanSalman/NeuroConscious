@@ -151,6 +151,12 @@ class AgentTracker:
                 result[f"{band}_cue_steps"] = self.pressure_cue_steps[band]
         if getattr(self.agent, "attention_stats", None) and self.agent.attention_stats["intended_steps"]:
             result.update({f"attention_{k}": v for k, v in self.agent.attention_stats.items()})
+        from agent import base_agent as _agent_module
+        from environment import world as _world_module
+        motor_on = (_agent_module.MOTOR_MODEL != "none" or _agent_module.ACTION_SLIP > 0
+                    or _world_module.ACTION_REMAP_PERIOD > 0)
+        if motor_on and getattr(self.agent, "motor_stats", None) and self.agent.motor_stats["moves"]:
+            result.update({f"motor_{k}": v for k, v in self.agent.motor_stats.items()})
         workspace = getattr(self.agent, "workspace", None)
         if workspace is not None:
             result["opportunistic_actions"] = workspace.opportunistic_actions

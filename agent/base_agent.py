@@ -58,7 +58,8 @@ from config.constants import (
     SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL, USE_PATH_PLANNING,
     USE_FRONTIER_EXPLORATION, EXPLORATION_REVISIT_STEPS, BEACON_ACCESS, CUE_TRACE_TTL,
     ATTENTION_GATE, ATTENTION_HIGH, ATTENTION_LOW, ATTENTION_CAPTURE_RATE, ATTENTION_POLICY, ATTENTION_INTERVAL,
-    ATTENTION_SILENCE, ATTENTION_ORIENT_FREE, ATTENTION_RADAR_RANGE,
+    ATTENTION_SILENCE, ATTENTION_ORIENT_FREE, ATTENTION_RADAR_RANGE, MOTOR_MODEL, MOTOR_WINDOW,
+    ACTION_SLIP,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -161,6 +162,14 @@ class Agent:
         self.attention_last_oriented: Optional[str] = None
         self.attention_last_orient_step: int = 0
         self.attention_silence: int = 0
+        # Motor model: what each move command does, as the agent believes it (identity until it learns otherwise).
+        self.motor_table: Dict[str, str] = {d: d for d in self._MOVE_OFFSETS}
+        self.motor_history: Dict[str, List[str]] = {d: [] for d in self._MOVE_OFFSETS}
+        self.motor_last_seen: Dict[str, int] = {d: -1 for d in self._MOVE_OFFSETS}
+        self.motor_stats = {"moves": 0, "as_intended": 0}
+        if MOTOR_MODEL == "wrong":
+            directions = list(self._MOVE_OFFSETS)
+            self.motor_table = dict(zip(directions, random.sample(directions, len(directions))))
         self.attention_stats = {"orients": 0, "intended_steps": 0, "correct_steps": 0}
         # Optional learned homeostatic controller; when set it replaces the DecisionMaker's rule chain.
         if USE_HOMEOSTATIC_CONTROLLER and USE_GLOBAL_WORKSPACE:
@@ -814,6 +823,46 @@ class Agent:
             self.attention_stats["intended_steps"] += 1
             self.attention_stats["correct_steps"] += int(self.attention_actual == intended)
 
+    _DIRECTION_OF_DELTA = {(-1, 0): "move_up", (1, 0): "move_down", (0, -1): "move_left", (0, 1): "move_right"}
+
+    def _executed_direction(self, command: str) -> str:
+        """The direction the world executes for a move command (remapped and possibly slipped)."""
+        direction = getattr(self.environment, "action_map", {}).get(command, command)
+        if ACTION_SLIP > 0 and random.random() < ACTION_SLIP:
+            direction = random.choice(list(self._MOVE_OFFSETS))
+        return direction
+
+    def _motor_command(self, wanted: str) -> str:
+        """The command to issue so that, by the agent's motor model, the move goes in the wanted direction."""
+        if MOTOR_MODEL == "none":
+            return wanted
+        if MOTOR_MODEL == "oracle":
+            mapping = getattr(self.environment, "action_map", {})
+            return next((c for c, d in mapping.items() if d == wanted), wanted)
+        candidates = [c for c, d in self.motor_table.items() if d == wanted]
+        if not candidates:  # Nothing is believed to go that way: try the command whose effect was checked longest ago.
+            return min(self.motor_table, key=lambda c: self.motor_last_seen[c])
+        return max(candidates, key=lambda c: self.motor_last_seen[c])
+
+    def _observe_motor(self, command: str, wanted: str, delta: Tuple[int, int]) -> None:
+        """Learns what a command did from the displacement it produced (blocked moves carry no information)."""
+        observed = self._DIRECTION_OF_DELTA.get(delta)
+        if observed is None:
+            return
+        self.motor_stats["moves"] += 1
+        self.motor_stats["as_intended"] += int(observed == wanted)
+        if MOTOR_MODEL in ("last", "vote"):
+            history = self.motor_history[command]
+            history.append(observed)
+            del history[:-MOTOR_WINDOW]
+            if MOTOR_MODEL == "last":
+                self.motor_table[command] = observed
+            else:
+                counts = {d: history.count(d) for d in set(history)}
+                top = max(counts.values())
+                self.motor_table[command] = next(d for d in reversed(history) if counts[d] == top)
+            self.motor_last_seen[command] = self.current_time_step
+
     def _radar_scan(self) -> List[Tuple[str, Tuple[int, int]]]:
         """The nearest food and water site within ATTENTION_RADAR_RANGE, each detected with the attention-gated chance."""
         grid, here, found = self.environment.grid, (self.pos_x, self.pos_y), []
@@ -1046,6 +1095,9 @@ class Agent:
         intended_action = action
         if action in ("seek_food", "drink_water"):
             action = self._search_resource_action(action)
+        wanted_direction = action
+        if action in self._MOVE_OFFSETS:
+            action = self._motor_command(wanted_direction)
 
         # Perform the selected action and apply its effects.
         if action == "seek_food":
@@ -1111,13 +1163,14 @@ class Agent:
         # would otherwise be swallowed here as a zero-length move that never reaches its own branch.
         elif action in self._MOVE_OFFSETS:
             new_pos_x, new_pos_y = self.pos_x, self.pos_y
-            if action == "move_up":
+            executed = self._executed_direction(action)
+            if executed == "move_up":
                 new_pos_x -= 1
-            elif action == "move_down":
+            elif executed == "move_down":
                 new_pos_x += 1
-            elif action == "move_left":
+            elif executed == "move_left":
                 new_pos_y -= 1
-            elif action == "move_right":
+            elif executed == "move_right":
                 new_pos_y += 1
 
             # Check if new position is within grid boundaries AND not an obstacle
@@ -1125,6 +1178,7 @@ class Agent:
             if 0 <= new_pos_x < grid_size and 0 <= new_pos_y < grid_size:
                 if self.environment.grid[new_pos_x][new_pos_y] != 'obstacle':
                     self.pos_x, self.pos_y = new_pos_x, new_pos_y
+                    self._observe_motor(action, wanted_direction, (new_pos_x - original_pos_x, new_pos_y - original_pos_y))
                     self.last_action_reward = -0.01  # Small cost for movement
                     print(f"{self.name} moved {action.replace('move_', '')} to ({self.pos_x},{self.pos_y}).")
                     if performed_action_id: self.procedural_memory.update_procedure_outcome(performed_action_id,

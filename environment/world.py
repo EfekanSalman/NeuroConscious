@@ -53,6 +53,11 @@ SITE_REGROW_STEPS = 50
 BEACON_CYCLE = 0
 # Irregular redraws: each cycle lasts BEACON_CYCLE * uniform(1 - jitter, 1 + jitter) steps (0 = every BEACON_CYCLE steps).
 BEACON_CYCLE_JITTER = 0.0
+# Motor remapping (sensorimotor-contingency tests). Every ACTION_REMAP_PERIOD steps the four move commands are
+# reassigned to a random permutation of the four directions. 0 = off (default behaviour unchanged).
+# (The agent-side slip probability is `ACTION_SLIP` in config/constants.py.)
+ACTION_REMAP_PERIOD = 0
+MOVE_DIRECTIONS = ("move_up", "move_down", "move_left", "move_right")
 
 OBSTACLE_SPAWN_CHANCE = 0.01  # Chance for obstacles to appear
 MAX_OBSTACLES = 2  # Maximum number of obstacles
@@ -97,6 +102,7 @@ class World:
         self._empty_since = {}  # Site cell -> time step at which its resource was last found consumed.
         self.active_half: Optional[str] = random.choice(('left', 'right')) if BEACON_CYCLE > 0 else None
         self._next_redraw = 0  # Time step of the next beacon redraw.
+        self.action_map = {d: d for d in MOVE_DIRECTIONS}  # Command -> direction actually executed.
 
         if FOOD_SITES > 0:
             self._place_sites('food', FOOD_SITES)
@@ -265,6 +271,8 @@ class World:
         Updates the environmental conditions for the current time step,
         including food/water regeneration, day/night cycle, and weather.
         """
+        if ACTION_REMAP_PERIOD > 0 and self.time_step > 0 and self.time_step % ACTION_REMAP_PERIOD == 0:
+            self.action_map = dict(zip(MOVE_DIRECTIONS, random.sample(MOVE_DIRECTIONS, len(MOVE_DIRECTIONS))))
         if BEACON_CYCLE > 0 and self.time_step >= self._next_redraw:
             self._redraw_active_half()
             length = BEACON_CYCLE

@@ -50,6 +50,13 @@ ATTENTION_POLICY = "none"
 ATTENTION_INTERVAL = 20
 ATTENTION_SILENCE = 8
 ATTENTION_ORIENT_FREE = False   # True: orienting costs no step (an upper-bound control).
+# Motor model (a forward model of the agent's own commands; for the world's ACTION_REMAP_PERIOD / ACTION_SLIP).
+# 'none' issues the wanted direction as the command; 'oracle' reads the true mapping (cheats); 'last' remembers, for
+# each command, the direction it last produced; 'vote' uses the majority of its last MOTOR_WINDOW outcomes; 'wrong'
+# keeps a fixed random table and never updates it (a model that does not track the world).
+MOTOR_MODEL = "none"
+ACTION_SLIP = 0.0   # Each executed move goes in a random direction with this probability.
+MOTOR_WINDOW = 5
 # Long-range radar (only with ATTENTION_GATE): each step, for each channel, the nearest site of that kind within
 # this Manhattan range is detected with probability ATTENTION_HIGH if attention is on the channel, else ATTENTION_LOW.
 # A detection enters memory like a sighting. 0 = off.
