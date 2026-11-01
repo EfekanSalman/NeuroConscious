@@ -58,7 +58,7 @@ from config.constants import (
     SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL, USE_PATH_PLANNING,
     USE_FRONTIER_EXPLORATION, EXPLORATION_REVISIT_STEPS, BEACON_ACCESS, CUE_TRACE_TTL,
     ATTENTION_GATE, ATTENTION_HIGH, ATTENTION_LOW, ATTENTION_CAPTURE_RATE, ATTENTION_POLICY, ATTENTION_INTERVAL,
-    ATTENTION_SILENCE, ATTENTION_ORIENT_FREE,
+    ATTENTION_SILENCE, ATTENTION_ORIENT_FREE, ATTENTION_RADAR_RANGE,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -433,6 +433,7 @@ class Agent:
             raw_local_grid_view = self._get_local_grid_view(radius=1)
             if ATTENTION_GATE:
                 self._attention_drift()
+                self.perception["radar"] = self._radar_scan() if ATTENTION_RADAR_RANGE > 0 else []
 
             # Apply sensory noise to local grid view with attention modulation
             self.perception["local_grid_view"] = []
@@ -812,6 +813,23 @@ class Agent:
         if intended is not None:
             self.attention_stats["intended_steps"] += 1
             self.attention_stats["correct_steps"] += int(self.attention_actual == intended)
+
+    def _radar_scan(self) -> List[Tuple[str, Tuple[int, int]]]:
+        """The nearest food and water site within ATTENTION_RADAR_RANGE, each detected with the attention-gated chance."""
+        grid, here, found = self.environment.grid, (self.pos_x, self.pos_y), []
+        size = len(grid)
+        for kind in ("food", "water"):
+            best = None
+            for row in range(max(0, here[0] - ATTENTION_RADAR_RANGE), min(size, here[0] + ATTENTION_RADAR_RANGE + 1)):
+                for col in range(max(0, here[1] - ATTENTION_RADAR_RANGE), min(size, here[1] + ATTENTION_RADAR_RANGE + 1)):
+                    distance = abs(row - here[0]) + abs(col - here[1])
+                    if grid[row][col] == kind and distance <= ATTENTION_RADAR_RANGE and (best is None or distance < best[0]):
+                        best = (distance, (row, col))
+            if best is not None:
+                chance = ATTENTION_HIGH if self.attention_actual == kind else ATTENTION_LOW
+                if random.random() < chance:
+                    found.append((kind, best[1]))
+        return found
 
     def _attention_control(self, action: str) -> str:
         """Optionally spends the step re-orienting attention to the channel the agent intends (see ATTENTION_POLICY)."""

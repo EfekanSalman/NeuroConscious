@@ -57,3 +57,25 @@ class AttentionControlTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class RadarScanTest(unittest.TestCase):
+    def agent(self, actual, grid_size=10):
+        grid = [["empty"] * grid_size for _ in range(grid_size)]
+        grid[2][3] = "food"      # distance 3 from (2, 0)
+        grid[2][6] = "food"      # farther
+        grid[0][0] = "water"     # distance 2
+        grid[9][9] = "water"     # out of range
+        return SimpleNamespace(environment=SimpleNamespace(grid=grid), pos_x=2, pos_y=0, attention_actual=actual)
+
+    def scan(self, agent, **patches):
+        with mock.patch.multiple(base_agent, ATTENTION_RADAR_RANGE=4, ATTENTION_HIGH=1.0, ATTENTION_LOW=0.0, **patches):
+            return Agent._radar_scan(agent)
+
+    def test_only_the_attended_channel_is_detected_and_it_is_the_nearest_site(self):
+        self.assertEqual(self.scan(self.agent("food")), [("food", (2, 3))])
+        self.assertEqual(self.scan(self.agent("water")), [("water", (0, 0))])
+
+    def test_range_limits_detection(self):
+        with mock.patch.multiple(base_agent, ATTENTION_RADAR_RANGE=1, ATTENTION_HIGH=1.0, ATTENTION_LOW=0.0):
+            self.assertEqual(Agent._radar_scan(self.agent("food")), [])

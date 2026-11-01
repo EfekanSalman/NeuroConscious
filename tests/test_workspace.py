@@ -159,6 +159,14 @@ class GlobalWorkspaceTest(unittest.TestCase):
         self.assertEqual(wide.decide(make_agent()), "drink_water")
         self.assertEqual((narrow.opportunistic_actions, wide.opportunistic_actions), (0, 1))
 
+    def test_radar_detections_enter_memory_like_sightings(self):
+        from core.workspace.memory import WorkspaceMemory
+        agent = make_agent()
+        agent.perception["radar"] = [("water", (7, 7))]
+        memory = WorkspaceMemory(5, "fifo", "nearest")
+        memory.observe(agent)
+        self.assertEqual(memory.recall("water", agent), (7, 7))
+
     def test_opportunism_switch_off_keeps_the_winner(self):
         from core.workspace import workspace as workspace_module
         bids = [bid("hunger", 0.8, "seek_food", need="hunger", consume_here=False),

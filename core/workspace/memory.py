@@ -96,6 +96,7 @@ class WorkspaceMemory:
                 for col in range(3):
                     if view[row][col] in ("food", "water", "obstacle"):
                         yield view[row][col], (agent.pos_x + row - 1, agent.pos_y + col - 1)
+        yield from agent.perception.get("radar") or []
         for other in agent.perception.get("other_agents_in_sight") or []:
             yield "agent", (other["pos_x"], other["pos_y"])
 

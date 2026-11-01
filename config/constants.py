@@ -50,6 +50,10 @@ ATTENTION_POLICY = "none"
 ATTENTION_INTERVAL = 20
 ATTENTION_SILENCE = 8
 ATTENTION_ORIENT_FREE = False   # True: orienting costs no step (an upper-bound control).
+# Long-range radar (only with ATTENTION_GATE): each step, for each channel, the nearest site of that kind within
+# this Manhattan range is detected with probability ATTENTION_HIGH if attention is on the channel, else ATTENTION_LOW.
+# A detection enters memory like a sighting. 0 = off.
+ATTENTION_RADAR_RANGE = 0
 
 # Number of recent percepts the agent's working-memory buffer (FIFO) retains.
 WORKING_MEMORY_CAPACITY = 5
