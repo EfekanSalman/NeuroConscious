@@ -40,3 +40,23 @@ Reused (same seeds/settings): needs-only 942, rules neediest no-lock 979, rules 
 Same environment and reused seeds (tuned on); four predictions, no multiple-comparison correction; the rule version of the
 shortcut is my own implementation, so a null there could be my implementation, not the idea; with only ~5 events per
 agent the effect is small by construction and may not clear the stated margins. Report either way, commit and dirty=false.
+
+## Result (`experiments/results/opportunism/`, commit 6af00fa, dirty=false; references from `act_threshold`, `need_order`, `focus_lock`)
+Total critical steps (mean over agents, 100 seeds): needs-only 942 -> without opportunism 1004; rules neediest no-lock 979
+-> with opportunism 923; rules neediest with lock 1003 -> with opportunism 1018.
+- **E1 held:** needs-only without opportunism - with = +61.2 [+38.6, +83.9].
+- **E2 held:** rules no-lock with opportunism - without = -55.5 [-72.6, -38.5].
+- **E3 held:** rules no-lock with opportunism - needs-only = -19.3 [-44.1, +5.6]: the rule agent matches the workspace
+  (nominally beats it; the interval includes zero).
+- **E4 held:** drinks 17.1 -> 19.4, thirst-critical steps 471 -> 416 (-55).
+- R4 (descriptive): with the lock still on, opportunism does nothing (+14 [-5, +33]); rules stay at 1018, +75 [+48, +102]
+  over needs-only. The focus lock cancels the shortcut: it rewrites the decision after it.
+- Reading: without opportunism the needs-only workspace (1004) is no better than the rule agent with the same threshold,
+  order and lock (1003, no-lock 979). All four predictions held, which is more than I expected at 40-55%; I treat the
+  size as real (the intervals exclude zero) but the exact amounts as tuned to these seeds. Chain of the rule agent on
+  this task: 1135 (original) -> 1003 (level order and early threshold) -> 979 (no lock) -> 923 (one-cell opportunism);
+  needs-only workspace 942 (994 with all specialists).
+- Caveats: the rule version of the shortcut is my own six-line implementation; the shortcut is exactly what extra
+  capacity (several admitted contents) buys, so this does not show the workspace is unnecessary in general, only that on
+  this task its measured lead is carried by mechanisms a rule chain can have. Four predictions, no multiple-comparison
+  correction, seeds reused, one environment, and the earlier interventions were chosen on these same seeds.
