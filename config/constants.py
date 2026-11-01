@@ -35,6 +35,22 @@ DEFAULT_THIRST_INCREASE = 0.01
 # Probability that each cell in the agent's 3x3 view is perceived correctly (otherwise it reads 'unknown').
 PERCEPTION_ACCURACY = 0.95
 
+# Gated attention (an experimental problem for attention-schema tests). Off by default. When on, food and water cells
+# are perceived at ATTENTION_HIGH only if the agent's hidden `attention_actual` is on that channel, else at
+# ATTENTION_LOW. `attention_actual` moves only when the agent orients (ATTENTION_POLICY) and is flipped to the other
+# channel at random with probability ATTENTION_CAPTURE_RATE per step. The agent cannot read it.
+ATTENTION_GATE = False
+ATTENTION_HIGH = 0.95
+ATTENTION_LOW = 0.15
+ATTENTION_CAPTURE_RATE = 0.0
+# 'none' never orients; 'oracle' orients when actual != intended (it cheats: reads the hidden state); 'switch' orients
+# when the intended channel changes; 'interval' = switch plus every ATTENTION_INTERVAL steps; 'silence' = switch plus
+# when the intended channel has not been seen for ATTENTION_SILENCE steps.
+ATTENTION_POLICY = "none"
+ATTENTION_INTERVAL = 20
+ATTENTION_SILENCE = 8
+ATTENTION_ORIENT_FREE = False   # True: orienting costs no step (an upper-bound control).
+
 # Number of recent percepts the agent's working-memory buffer (FIFO) retains.
 WORKING_MEMORY_CAPACITY = 5
 

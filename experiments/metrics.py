@@ -149,6 +149,8 @@ class AgentTracker:
             for band in ("calm", "urgent"):
                 result[f"{band}_steps"] = self.pressure_steps[band]
                 result[f"{band}_cue_steps"] = self.pressure_cue_steps[band]
+        if getattr(self.agent, "attention_stats", None) and self.agent.attention_stats["intended_steps"]:
+            result.update({f"attention_{k}": v for k, v in self.agent.attention_stats.items()})
         workspace = getattr(self.agent, "workspace", None)
         if workspace is not None:
             result["opportunistic_actions"] = workspace.opportunistic_actions

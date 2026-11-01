@@ -57,6 +57,8 @@ from config.constants import (
     WORKING_MEMORY_CAPACITY, WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL,
     SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL, USE_PATH_PLANNING,
     USE_FRONTIER_EXPLORATION, EXPLORATION_REVISIT_STEPS, BEACON_ACCESS, CUE_TRACE_TTL,
+    ATTENTION_GATE, ATTENTION_HIGH, ATTENTION_LOW, ATTENTION_CAPTURE_RATE, ATTENTION_POLICY, ATTENTION_INTERVAL,
+    ATTENTION_SILENCE, ATTENTION_ORIENT_FREE,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -154,6 +156,12 @@ class Agent:
         self.regime_cue: Optional[str] = None
         self.cue_trace: Optional[str] = None  # The last cue that was broadcast, kept for CUE_TRACE_TTL steps.
         self.cue_age: int = NEVER  # Steps since that cue.
+        # Gated attention: where attention really is (hidden from the agent) and the agent's own bookkeeping.
+        self.attention_actual: str = "food"
+        self.attention_last_oriented: Optional[str] = None
+        self.attention_last_orient_step: int = 0
+        self.attention_silence: int = 0
+        self.attention_stats = {"orients": 0, "intended_steps": 0, "correct_steps": 0}
         # Optional learned homeostatic controller; when set it replaces the DecisionMaker's rule chain.
         if USE_HOMEOSTATIC_CONTROLLER and USE_GLOBAL_WORKSPACE:
             raise ValueError("The homeostatic controller and the global workspace each replace the decision rules; enable one.")
@@ -423,6 +431,8 @@ class Agent:
 
             # Local grid perception (e.g., 1-cell radius around the agent)
             raw_local_grid_view = self._get_local_grid_view(radius=1)
+            if ATTENTION_GATE:
+                self._attention_drift()
 
             # Apply sensory noise to local grid view with attention modulation
             self.perception["local_grid_view"] = []
@@ -445,6 +455,8 @@ class Agent:
                         current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)
                     elif self.attention_focus == 'obstacle' and cell_content == 'obstacle':
                         current_perception_accuracy = min(1.0, self.perception_accuracy + 0.2)
+                    if ATTENTION_GATE and cell_content in ('food', 'water'):
+                        current_perception_accuracy = ATTENTION_HIGH if self.attention_actual == cell_content else ATTENTION_LOW
 
                     if random.random() < current_perception_accuracy:
                         processed_row.append(cell_content)  # Perceive correctly
@@ -689,6 +701,9 @@ class Agent:
         else:
             final_action = self.decision_maker.decide_final_action(self, decision_mode)
 
+        if ATTENTION_GATE and self.workspace is not None:
+            final_action = self._attention_control(final_action)
+
         self.internal_monologue += f"Therefore, I have decided to {final_action}. "
         self._last_performed_action = final_action
         return final_action
@@ -788,6 +803,42 @@ class Agent:
         if self.workspace is not None and self.workspace.memory is not None:
             return self.workspace.memory
         return self.sighting_memory
+
+    def _attention_drift(self) -> None:
+        """Captures may pull attention to the other channel; the agent is not told."""
+        if ATTENTION_CAPTURE_RATE > 0 and random.random() < ATTENTION_CAPTURE_RATE:
+            self.attention_actual = "water" if self.attention_actual == "food" else "food"
+        intended = self.attention_focus if self.attention_focus in ("food", "water") else None
+        if intended is not None:
+            self.attention_stats["intended_steps"] += 1
+            self.attention_stats["correct_steps"] += int(self.attention_actual == intended)
+
+    def _attention_control(self, action: str) -> str:
+        """Optionally spends the step re-orienting attention to the channel the agent intends (see ATTENTION_POLICY)."""
+        intended = self.attention_focus if self.attention_focus in ("food", "water") else None
+        seen = self.perception.get("food_in_sight" if intended == "food" else "water_in_sight")
+        self.attention_silence = 0 if seen else self.attention_silence + 1
+        if intended is None or ATTENTION_POLICY == "none":
+            return action
+        switched = intended != self.attention_last_oriented
+        if ATTENTION_POLICY == "oracle":
+            need = self.attention_actual != intended
+        elif ATTENTION_POLICY == "switch":
+            need = switched
+        elif ATTENTION_POLICY == "interval":
+            need = switched or self.current_time_step - self.attention_last_orient_step >= ATTENTION_INTERVAL
+        elif ATTENTION_POLICY == "silence":
+            need = switched or self.attention_silence >= ATTENTION_SILENCE
+        else:
+            raise ValueError(f"unknown ATTENTION_POLICY {ATTENTION_POLICY!r}")
+        if not need:
+            return action
+        self.attention_actual = intended
+        self.attention_last_oriented = intended
+        self.attention_last_orient_step = self.current_time_step
+        self.attention_silence = 0
+        self.attention_stats["orients"] += 1
+        return action if ATTENTION_ORIENT_FREE else "explore"
 
     def effective_cue(self) -> Optional[str]:
         """The cue in the workspace now, else the remembered one while its trace is still fresh."""
