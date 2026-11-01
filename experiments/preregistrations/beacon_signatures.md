@@ -34,3 +34,20 @@ Broadcast (`BEACON_ACCESS` 'broadcast'): `bc_cap3` (salience 0.6), `bc_cap2` (0.
 - Reading: B1 and B2 holding show the cue's availability is governed by competition with need pressure, as specified
   (expected, by construction). B3 holding gives the cost of the limit that a wire does not pay; if B3 fails the limit is
   free in this world. Neither tests the theory; the finding is the size of the cost.
+
+## Result (`experiments/results/beacon_signatures/`, commit 9b82cc1, dirty=false; 100 seeds)
+Total critical steps (cue steps of 1000; share of calm / urgent steps with a cue): wired_cap3 1415 (1000; 1.00/1.00),
+wired_cap1 1449, bc_cap3 1424 (855; 0.93/0.83), bc_cap2 1544 (290; 0.92/0.16), bc_cap1_s03 1659 (15; 0.38/0.00),
+bc_cap1_s06 1771 (35; 0.47/0.00), bc_cap1_s10 1804 (43; 0.47/0.01).
+- **B1 held:** cue steps 855 > 290 > 35 for capacity 3 > 2 > 1.
+- **B2 held, on a thin base:** share with a cue is 0.47 in calm steps and 0.00 in urgent ones (difference 0.47). But the agent is
+  calm in only 18 of 1000 steps and urgent in 930 at capacity 1 (the beacon world is harsh), so the calm share rests on few steps.
+- **B3 held, strongly:** bc_cap1_s06 - wired_cap1 = +322 [+306, +337].
+- **B4 failed on size:** bc_cap1_s10 - bc_cap1_s06 = +33 [+20, +46] (predicted at least 100; direction right).
+- **B5 held:** bc_cap3 - wired_cap3 = +9 [-4, +22].
+- Not predicted: capacity 2 already loses the cue in urgent steps (0.16) and costs +129 over wired_cap3 [no interval computed;
+  different capacities, same seeds]. With two needs critical at once they outrank the cue. And wired_cap1 - wired_cap3 = +34 [+21, +47]:
+  capacity 1 costs something by itself (no opportunistic action).
+- Reading: the cue is available exactly when needs are calm and lost when they press, as specified (by construction); the cost of
+  that limit is large (up to 322 steps) when capacity is smaller than the number of concurrent contenders and zero at capacity 3.
+  In this world a wire is never worse than the workspace and a workspace of capacity below 3 is clearly worse.
