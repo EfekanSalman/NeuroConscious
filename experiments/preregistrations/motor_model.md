@@ -52,3 +52,26 @@ about how cheaply it is met. H1 failing would mean the agent does not depend on 
 One environment designed by me; the table and its fallback rule are my own engineering, so a null for `last`/`vote` would
 be about my implementation; seven predictions, no multiple-comparison correction; no learned-network control (a DQN that
 relearns after remaps) was built, so "model-free would do worse" is not tested here.
+
+## Result (`experiments/results/motor_model/`, commit 6285e93, dirty=false)
+Total critical steps (mean over agents, 100 seeds; share of moves that went where the planner wanted):
+P=150, slip 0.15: none 1758 (50%), wrong 1893 (34%), last 1204 (71%), vote 1099 (83%), oracle 1028 (90%).
+P=30: none 1791, vote 1311, oracle 1013. P=600: none 1369, vote 1040, oracle 1010.
+Slip 0 (P=150): none 1805, last 1054 (99%), vote 1229 (94%). Slip 0.3: none 1744, last 1403, vote 1203.
+- **H1 held:** oracle - none = -730 [-754, -707].
+- **H2 held:** vote - none = -659 [-687, -631].
+- **H3 held, and more:** wrong - none = +135 [+110, +160]. A model that does not track the world is not merely useless; it is worse than none.
+- **H4 held:** vote - oracle = +72 [+53, +90]. The 4-entry table recovers almost all of the oracle's gain (659 of 731).
+- **H5 failed, and my framing was wrong:** vote's gain over none is larger at P=30 (-479) than at P=600 (-330), difference -150 [-185, -115]
+  (predicted +200 or more the other way). The baseline without a model gets worse faster than the model does. What does grow
+  with volatility is the model's gap to the oracle: vote - oracle = +298 at P=30, +72 at P=150, +29 at P=600. I should have
+  predicted the gap to the oracle, not the gain over none.
+- **H6a held:** at slip 0.3, vote - last = -200 [-225, -174]. **H6b held:** at slip 0, last - vote = -175 [-213, -136]
+  (last: 1054, 99% as intended, within about 25 of the oracle at slip 0 level; voting costs speed without noise).
+- Reading: the contingency model is causally what lets the agent use its body here (H1-H3), and the capacity-matched dummy
+  is worse than nothing. The implementation is a 4-entry table with a try-the-longest-unchecked fallback, so AE-2 in this
+  weak form is cheap to meet; the noise result adds that the best update rule depends on how noisy the body is
+  (a tuned trade between speed and robustness), which is a property of the mechanism, not of any consciousness theory.
+- Not tested: a model-free learner (e.g. a DQN that relearns after remaps) as a competing way to cope, so "a model is
+  needed" is not shown, only "a model works and a non-tracking model hurts". Seven predictions, no multiple-comparison
+  correction, one environment, informed by a smoke run on other seeds as disclosed above.
