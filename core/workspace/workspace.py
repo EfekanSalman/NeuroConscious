@@ -80,10 +80,12 @@ class GlobalWorkspace:
             return proposal.salience + bonus
 
         self.contents = sorted(proposals, key=effective_salience, reverse=True)[:self.capacity]
-        if not any("cue" not in p.content for p in self.contents):  # A cue never wins the action by itself.
-            self.contents = [max(acting, key=effective_salience)]
-        winner = next(p for p in self.contents if "cue" not in p.content)
         self._broadcast_cue(agent)
+        winner = next((p for p in self.contents if "cue" not in p.content), None)
+        if winner is None:  # The cue took every slot: it is broadcast, but no action content is, so the agent idles.
+            self.winner_counts["cue"] += 1
+            agent.internal_monologue += "Global workspace: only the beacon cue was broadcast, idling. "
+            return "explore"
         self._last_winner_key = winner.key
         self.winner_counts[winner.source] += 1
 

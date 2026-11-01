@@ -94,6 +94,14 @@ class BeaconWorkspaceTest(unittest.TestCase):
         self.assertEqual(workspace.decide(agent), "drink_water")
         self.assertIsNone(agent.regime_cue)
 
+    def test_a_cue_that_takes_the_only_slot_is_broadcast_and_the_agent_idles(self):
+        with mock.patch.object(specialists_module, "BEACON_SALIENCE", 2.0):
+            workspace = GlobalWorkspace([NeedSpecialist("thirst"), BeaconSpecialist()], capacity=1)
+            agent = self.agent("left", thirst=0.9)
+            self.assertEqual(workspace.decide(agent), "explore")
+        self.assertEqual(agent.regime_cue, "left")
+        self.assertEqual(workspace.winner_counts["cue"], 1)
+
     def test_a_cue_alone_does_not_make_the_agent_act(self):
         workspace = GlobalWorkspace([NeedSpecialist("thirst"), BeaconSpecialist()], capacity=2)
         agent = self.agent("left", thirst=0.1)

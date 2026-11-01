@@ -66,6 +66,8 @@ class AgentTracker:
         self.steps = 0
         self.cue_steps = 0
         self.cue_correct_steps = 0
+        self.pressure_steps = {"calm": 0, "urgent": 0}  # Steps by the highest need level: below 0.6 / above 0.85.
+        self.pressure_cue_steps = {"calm": 0, "urgent": 0}
 
     def observe(self, step: int) -> None:
         agent = self.agent
@@ -94,6 +96,12 @@ class AgentTracker:
         if half is not None and agent.regime_cue is not None:
             self.cue_steps += 1
             self.cue_correct_steps += agent.regime_cue == half
+        if half is not None:
+            top = max(agent.internal_state.hunger, agent.internal_state.thirst, agent.internal_state.fatigue)
+            band = "calm" if top < 0.6 else "urgent" if top > CRITICAL_LEVEL else None
+            if band:
+                self.pressure_steps[band] += 1
+                self.pressure_cue_steps[band] += agent.regime_cue is not None
         self.actions[agent._last_performed_action] += 1
         self.states[agent.current_consciousness_state.get_state_name()] += 1
 
@@ -130,6 +138,9 @@ class AgentTracker:
         if getattr(self.agent.environment, "active_half", None) is not None:
             result["cue_steps"] = self.cue_steps
             result["cue_correct_steps"] = self.cue_correct_steps
+            for band in ("calm", "urgent"):
+                result[f"{band}_steps"] = self.pressure_steps[band]
+                result[f"{band}_cue_steps"] = self.pressure_cue_steps[band]
         workspace = getattr(self.agent, "workspace", None)
         if workspace is not None:
             result["opportunistic_actions"] = workspace.opportunistic_actions
