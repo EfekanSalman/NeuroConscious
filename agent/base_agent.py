@@ -51,12 +51,12 @@ from core.decision.decision_maker import DecisionMaker
 from core.homeostasis import HomeostaticController
 from core.navigation.regions import half_of
 from core.workspace import GlobalWorkspace, WorkspaceMemory
-from core.workspace.specialists import read_regime
+from core.workspace.specialists import NEVER, read_regime
 from config.constants import (
     USE_GLOBAL_WORKSPACE, WORKSPACE_CAPACITY, WORKSPACE_PERSISTENCE, WORKSPACE_FEEDBACK, PERCEPTION_ACCURACY,
     WORKING_MEMORY_CAPACITY, WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL,
     SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL, USE_PATH_PLANNING,
-    USE_FRONTIER_EXPLORATION, EXPLORATION_REVISIT_STEPS, BEACON_ACCESS,
+    USE_FRONTIER_EXPLORATION, EXPLORATION_REVISIT_STEPS, BEACON_ACCESS, CUE_TRACE_TTL,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -152,6 +152,8 @@ class Agent:
             if USE_GLOBAL_WORKSPACE else None)
         # Which half of the grid holds resources, as far as this agent's consumers (recall, exploration) know.
         self.regime_cue: Optional[str] = None
+        self.cue_trace: Optional[str] = None  # The last cue that was broadcast, kept for CUE_TRACE_TTL steps.
+        self.cue_age: int = NEVER  # Steps since that cue.
         # Optional learned homeostatic controller; when set it replaces the DecisionMaker's rule chain.
         if USE_HOMEOSTATIC_CONTROLLER and USE_GLOBAL_WORKSPACE:
             raise ValueError("The homeostatic controller and the global workspace each replace the decision rules; enable one.")
@@ -787,9 +789,16 @@ class Agent:
             return self.workspace.memory
         return self.sighting_memory
 
+    def effective_cue(self) -> Optional[str]:
+        """The cue in the workspace now, else the remembered one while its trace is still fresh."""
+        if self.regime_cue is not None:
+            return self.regime_cue
+        return self.cue_trace if 0 < CUE_TRACE_TTL and self.cue_age <= CUE_TRACE_TTL else None
+
     def cue_allows(self, cell: Tuple[int, int]) -> bool:
-        """False for a cell the regime cue says is dormant; True when there is no cue."""
-        return self.regime_cue is None or half_of(cell[1], len(self.environment.grid)) == self.regime_cue
+        """False for a cell the cue (current or remembered) says is dormant; True when there is none."""
+        cue = self.effective_cue()
+        return cue is None or half_of(cell[1], len(self.environment.grid)) == cue
 
     def _recall_resource_location(self, resource: str) -> Optional[Tuple[int, int]]:
         """

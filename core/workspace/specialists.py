@@ -21,6 +21,12 @@ HABIT_SALIENCE = 0.3
 BEACON_SALIENCE = 0.6
 # Experimental control: report the wrong half. The cue then carries content, but misleading content.
 BEACON_INVERT = False
+# How the beacon bids: 'constant' (every step at BEACON_SALIENCE) or 'interval' (silent until the cue has been out
+# of the workspace for BEACON_INTERVAL steps, then a bid of BEACON_FORCE, high enough to win the slot).
+BEACON_POLICY = "constant"
+BEACON_INTERVAL = 25
+BEACON_FORCE = 10.0
+NEVER = 10 ** 9
 
 # need -> (resource it is satisfied by, action that consumes/searches for it)
 _NEEDS = {
@@ -67,6 +73,10 @@ class BeaconSpecialist(Specialist):
         cue = read_regime(agent)
         if cue is None:
             return None
+        if BEACON_POLICY == "interval":
+            if getattr(agent, "cue_age", NEVER) < BEACON_INTERVAL:
+                return None
+            return Proposal(self.name, "none", BEACON_FORCE, {"cue": cue})
         return Proposal(self.name, "none", BEACON_SALIENCE, {"cue": cue})
 
 

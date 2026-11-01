@@ -4,7 +4,7 @@ from typing import List, Optional, Sequence
 from core.workspace.memory import WorkspaceMemory
 from core.workspace.proposal import Proposal
 from core.workspace.specialists import (
-    BeaconSpecialist, GoalSpecialist, HabitSpecialist, NeedSpecialist, Specialist)
+    NEVER, BeaconSpecialist, GoalSpecialist, HabitSpecialist, NeedSpecialist, Specialist)
 
 # Experimental switch for ablations: names of specialists left out of the default set ('goal', 'habit').
 DISABLED_SPECIALISTS: tuple = ()
@@ -103,6 +103,10 @@ class GlobalWorkspace:
         if any(s.name == "beacon" for s in self.specialists):
             cues = [p.content["cue"] for p in self.contents if "cue" in p.content]
             agent.regime_cue = cues[0] if cues else None
+            if cues:
+                agent.cue_trace, agent.cue_age = cues[0], 0
+            else:
+                agent.cue_age = getattr(agent, "cue_age", NEVER) + 1
 
     def _select_action(self, winner: Proposal) -> str:
         """The winner's action, unless another admitted need can be satisfied right here, right now."""

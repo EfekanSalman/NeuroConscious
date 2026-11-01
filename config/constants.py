@@ -83,3 +83,6 @@ EXPLORATION_REVISIT_STEPS = 100
 # recall, exploration): 'none' (it never does), 'wired' (every consumer reads the sensor directly) or 'broadcast'
 # (only through the global workspace, when the cue wins a slot). Has an effect only when World's BEACON_CYCLE > 0.
 BEACON_ACCESS = "none"
+# Steps a remembered cue (the trace of the last cue that was broadcast) keeps steering recall and exploration after
+# the cue has left the workspace. 0 (default) = no trace: the cue counts only on steps when it is in the workspace.
+CUE_TRACE_TTL = 0

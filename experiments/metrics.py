@@ -66,6 +66,8 @@ class AgentTracker:
         self.steps = 0
         self.cue_steps = 0
         self.cue_correct_steps = 0
+        self.held_cue_steps = 0  # Steps with a usable cue: in the workspace or remembered.
+        self.held_cue_correct_steps = 0
         self.pressure_steps = {"calm": 0, "urgent": 0}  # Steps by the highest need level: below 0.6 / above 0.85.
         self.pressure_cue_steps = {"calm": 0, "urgent": 0}
 
@@ -96,6 +98,10 @@ class AgentTracker:
         if half is not None and agent.regime_cue is not None:
             self.cue_steps += 1
             self.cue_correct_steps += agent.regime_cue == half
+        held = agent.effective_cue() if half is not None else None
+        if held is not None:
+            self.held_cue_steps += 1
+            self.held_cue_correct_steps += held == half
         if half is not None:
             top = max(agent.internal_state.hunger, agent.internal_state.thirst, agent.internal_state.fatigue)
             band = "calm" if top < 0.6 else "urgent" if top > CRITICAL_LEVEL else None
@@ -138,6 +144,8 @@ class AgentTracker:
         if getattr(self.agent.environment, "active_half", None) is not None:
             result["cue_steps"] = self.cue_steps
             result["cue_correct_steps"] = self.cue_correct_steps
+            result["held_cue_steps"] = self.held_cue_steps
+            result["held_cue_correct_steps"] = self.held_cue_correct_steps
             for band in ("calm", "urgent"):
                 result[f"{band}_steps"] = self.pressure_steps[band]
                 result[f"{band}_cue_steps"] = self.pressure_cue_steps[band]

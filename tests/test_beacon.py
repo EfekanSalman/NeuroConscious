@@ -118,3 +118,52 @@ class BeaconWorkspaceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CueTraceTest(unittest.TestCase):
+    def agent(self, half="left", age=None, **levels):
+        agent = make_agent(**levels)
+        agent.environment = SimpleNamespace(active_half=half)
+        agent.regime_cue = None
+        if age is not None:
+            agent.cue_age = age
+        return agent
+
+    def test_interval_policy_is_silent_until_the_cue_is_old_enough(self):
+        with mock.patch.object(specialists_module, "BEACON_POLICY", "interval"), \
+                mock.patch.object(specialists_module, "BEACON_INTERVAL", 10):
+            self.assertIsNone(BeaconSpecialist().propose(self.agent(age=9)))
+            bid = BeaconSpecialist().propose(self.agent(age=10))
+        self.assertGreater(bid.salience, 5)
+
+    def test_interval_policy_bids_at_once_when_the_cue_was_never_seen(self):
+        with mock.patch.object(specialists_module, "BEACON_POLICY", "interval"):
+            self.assertIsNotNone(BeaconSpecialist().propose(self.agent()))
+
+    def test_a_broadcast_cue_resets_the_age_and_a_missed_step_ages_it(self):
+        workspace = GlobalWorkspace([NeedSpecialist("thirst"), BeaconSpecialist()], capacity=2)
+        agent = self.agent("right", thirst=0.9, age=7)
+        workspace.decide(agent)
+        self.assertEqual((agent.cue_trace, agent.cue_age), ("right", 0))
+        with mock.patch.object(specialists_module, "BEACON_POLICY", "interval"):
+            workspace.decide(agent)  # age 0 < interval: silent
+        self.assertEqual(agent.cue_age, 1)
+
+    def test_a_forced_cue_wins_the_only_slot_and_idles_the_agent_once(self):
+        with mock.patch.object(specialists_module, "BEACON_POLICY", "interval"):
+            workspace = GlobalWorkspace([NeedSpecialist("thirst"), BeaconSpecialist()], capacity=1)
+            agent = self.agent("left", thirst=0.95)
+            self.assertEqual(workspace.decide(agent), "explore")
+            self.assertEqual(workspace.decide(agent), "drink_water")
+
+    def test_the_trace_steers_only_while_fresh(self):
+        from agent.base_agent import Agent
+        from agent import base_agent
+        stub = SimpleNamespace(regime_cue=None, cue_trace="left", cue_age=5)
+        with mock.patch.object(base_agent, "CUE_TRACE_TTL", 10):
+            self.assertEqual(Agent.effective_cue(stub), "left")
+            stub.cue_age = 11
+            self.assertIsNone(Agent.effective_cue(stub))
+            stub.regime_cue = "right"
+            self.assertEqual(Agent.effective_cue(stub), "right")
+        self.assertIsNone(Agent.effective_cue(SimpleNamespace(regime_cue=None, cue_trace="left", cue_age=0)))
