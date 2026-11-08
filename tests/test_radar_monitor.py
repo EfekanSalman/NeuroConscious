@@ -189,3 +189,50 @@ class LearnedPerceptTest(unittest.TestCase):
                 mock.patch.object(base_agent, "RADAR_PROBE", 0.0):
             Agent.admit_radar(agent, ("food", (1, 1), 2.0, True))
         self.assertEqual(agent.radar_labels, [(2.0, True)])
+
+
+class AuditTest(unittest.TestCase):
+    def stub(self, pending):
+        agent = SimpleNamespace(radar_stats={"hits": 0, "ghosts": 0, "audits": 0}, radar_labels=[], radar_tau=float("-inf"),
+                                radar_admitted=[0, 0], radar_pending=list(pending))
+        agent._radar_label = lambda strength, hit: Agent._radar_label(agent, strength, hit)
+        return agent
+
+    def audit(self, agent, probability, free=False):
+        with mock.patch.object(base_agent, "RADAR_AUDIT_P", probability), mock.patch.object(base_agent, "RADAR_AUDIT_FREE", free):
+            return Agent._radar_audit(agent, "move_up")
+
+    def test_an_audit_costs_the_step_and_labels_one_rejected_report(self):
+        agent = self.stub([(0.5, True)])
+        self.assertEqual(self.audit(agent, 1.0), "explore")
+        self.assertEqual(agent.radar_labels, [(0.5, True)])
+        self.assertEqual(agent.radar_stats["audits"], 1)
+        self.assertEqual(agent.radar_pending, [])
+
+    def test_a_free_audit_keeps_the_action(self):
+        self.assertEqual(self.audit(self.stub([(0.5, False)]), 1.0, free=True), "move_up")
+
+    def test_no_audit_without_a_pending_report_or_at_zero_probability(self):
+        self.assertEqual(self.audit(self.stub([]), 1.0), "move_up")
+        agent = self.stub([(0.5, True)])
+        self.assertEqual(self.audit(agent, 0.0), "move_up")
+        self.assertEqual(agent.radar_stats["audits"], 0)
+
+    def test_rejected_reports_become_pending_only_in_audit_mode(self):
+        for labels, expected in (("audit", 1), ("verified", 0)):
+            agent = self.stub([])
+            agent.radar_tau = 5.0
+            with mock.patch.object(base_agent, "RADAR_MONITOR", "percept_learned"), mock.patch.object(base_agent, "RADAR_LABELS", labels), \
+                    mock.patch.object(base_agent, "RADAR_PROBE", 0.0):
+                Agent.admit_radar(agent, ("food", (1, 1), 0.5, True))
+            self.assertEqual(len(agent.radar_pending), expected)
+
+
+class AuditKeepsVerifiedLabelsTest(unittest.TestCase):
+    def test_verified_outcomes_still_label_in_audit_mode_but_not_in_free_mode(self):
+        for labels, expected in (("audit", 1), ("verified", 1), ("free", 0)):
+            agent = SimpleNamespace(radar_stats={"hits": 0, "ghosts": 0}, radar_labels=[], radar_tau=float("-inf"), radar_reliability=0.5)
+            agent._radar_label = lambda strength, hit, a=agent: Agent._radar_label(a, strength, hit)
+            with mock.patch.object(base_agent, "RADAR_LABELS", labels):
+                Agent.radar_verified(agent, True, 1.5)
+            self.assertEqual(len(agent.radar_labels), expected, labels)

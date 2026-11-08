@@ -92,6 +92,12 @@ RADAR_RANDOM_P = 0.3
 # own view; 'free': every offered report is labelled with the truth at once, which is a cheat used as a diagnostic) and how
 # much a ghost counts against a hit when choosing the threshold.
 RADAR_LABELS = "verified"
+# RADAR_LABELS = 'audit': besides the labels from reports it admitted and checked, the learned monitor can spend a step (like
+# an orienting step: the action is replaced by a stationary one) to be told whether a recently *rejected* report was real.
+# Each step, with probability RADAR_AUDIT_P and if a rejected report is pending, it does so (RADAR_AUDIT_FREE: no step is
+# lost, an upper bound on what the label source is worth).
+RADAR_AUDIT_P = 0.05
+RADAR_AUDIT_FREE = False
 RADAR_GHOST_WEIGHT = 1.0
 RADAR_LABEL_WINDOW = 60
 RADAR_MIN_LABELS = 10

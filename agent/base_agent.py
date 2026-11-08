@@ -62,7 +62,7 @@ from config.constants import (
     ACTION_SLIP, MOTOR_LR, MOTOR_EPSILON,
     GHOST_RADAR_RANGE, GHOST_DETECT, GHOST_RATE_LOW, GHOST_RATE_HIGH, GHOST_PERIOD, RADAR_MONITOR,
     RADAR_MONITOR_RATE, RADAR_TRUST, RADAR_PROBE, GHOST_STRENGTH_SEP, RADAR_STRENGTH_MIN, GHOST_STICKY,
-    RADAR_RANDOM_P, RADAR_LABEL_WINDOW, RADAR_MIN_LABELS, RADAR_LABELS, RADAR_GHOST_WEIGHT,
+    RADAR_RANDOM_P, RADAR_LABEL_WINDOW, RADAR_MIN_LABELS, RADAR_LABELS, RADAR_GHOST_WEIGHT, RADAR_AUDIT_P, RADAR_AUDIT_FREE,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -180,7 +180,8 @@ class Agent:
         self.radar_admitted = [0, 0]  # reports admitted, reports offered
         self.radar_monitor = RADAR_MONITOR
         self.radar_sticky = GHOST_STICKY
-        self.radar_stats = {"hits": 0, "ghosts": 0, "trust_steps": 0, "trust_agrees": 0, "steps": 0}
+        self.radar_stats = {"hits": 0, "ghosts": 0, "trust_steps": 0, "trust_agrees": 0, "steps": 0, "audits": 0}
+        self.radar_pending: List[Tuple[float, bool]] = []   # rejected reports an audit could still label
         # Model-free control: value of issuing each command (second key) when a direction is wanted (first key);
         # starts out favouring the identity command, like the other models start from identity.
         self.motor_q: Dict[str, Dict[str, float]] = {
@@ -733,6 +734,8 @@ class Agent:
 
         if ATTENTION_GATE and self.workspace is not None:
             final_action = self._attention_control(final_action)
+        if GHOST_RADAR_RANGE > 0 and RADAR_LABELS == "audit":
+            final_action = self._radar_audit(final_action)
 
         self.internal_monologue += f"Therefore, I have decided to {final_action}. "
         self._last_performed_action = final_action
@@ -935,6 +938,9 @@ class Agent:
             if RADAR_LABELS == "free" and len(report) > 3:
                 self._radar_label(report[2], bool(report[3]))
             admit = report[2] >= self.radar_tau or random.random() < RADAR_PROBE
+            if not admit and RADAR_LABELS == "audit" and len(report) > 3:
+                self.radar_pending.append((report[2], bool(report[3])))   # the truth is revealed only if audited
+                del self.radar_pending[:-5]
             self.radar_admitted[0] += int(admit)
             self.radar_admitted[1] += 1
             return admit
@@ -943,7 +949,7 @@ class Agent:
     def radar_verified(self, hit: bool, strength: Optional[float] = None) -> None:
         """A radar sighting was confirmed (hit) or contradicted (ghost) by the agent's own view: updates its estimate."""
         self.radar_stats["hits" if hit else "ghosts"] += 1
-        if strength is not None and RADAR_LABELS == "verified":
+        if strength is not None and RADAR_LABELS in ("verified", "audit"):
             self._radar_label(strength, hit)
         self.radar_reliability += RADAR_MONITOR_RATE * (float(hit) - self.radar_reliability)
 
@@ -962,6 +968,15 @@ class Agent:
             if score(tau) >= best_score:
                 best, best_score = tau, score(tau)
         self.radar_tau = best
+
+    def _radar_audit(self, action: str) -> str:
+        """Maybe spends the step learning whether a recently rejected radar report was real (see RADAR_LABELS)."""
+        if not self.radar_pending or random.random() >= RADAR_AUDIT_P:
+            return action
+        strength, real = self.radar_pending.pop(random.randrange(len(self.radar_pending)))
+        self._radar_label(strength, real)
+        self.radar_stats["audits"] += 1
+        return action if RADAR_AUDIT_FREE else "explore"
 
     def trust_radar(self) -> bool:
         """Whether recall may use radar sightings now, by the agent's monitor (see RADAR_MONITOR)."""
