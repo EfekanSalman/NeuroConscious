@@ -63,3 +63,5 @@ learned-audit-all-free 844 (22 / 13; 16%; 19 audits).
   explanations (label bias, truncation) were not confirmed. The learned branch of HOT-2 is closed here, with one unexplained
   discrepancy left as is. Five predictions, no multiple-comparison correction, one environment; this is the fifth experiment
   on the same radar, shaped by what I saw earlier.
+
+**Correction (later):** results here that use `RADAR_LABELS='free'` are inflated by a leak (the truth of the report being judged was used to judge it); see `radar_percept_leak.md`.

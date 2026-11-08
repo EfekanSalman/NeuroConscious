@@ -34,3 +34,5 @@ learned-free 603 (9; 1017), audit_only pool 5 **807** (21; 778), pool 50 778 (20
   report eligible, the audit learner is still ~200 worse than the free-label learner and 70 worse than no monitor. What
   remains different is when and in what order a label arrives (free: at the offer, in order; audit: later, random pick), or an
   error in my audit path that tests did not catch. I did not look further; this line stops here.
+
+**Correction (later):** results here that use `RADAR_LABELS='free'` are inflated by a leak (the truth of the report being judged was used to judge it); see `radar_percept_leak.md`.

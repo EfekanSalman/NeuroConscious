@@ -67,3 +67,5 @@ none 736 (49 / 170), never 963, oracle 585 (42 / 8), hand threshold 2.5 610 (36 
   costs"; and the free-label learner cheats by construction. Not tested: a label source that is unbiased without being a
   cheat (e.g. spending steps to check some unadmitted reports at a cost), learning the weight, other signal strengths.
   Five predictions, no multiple-comparison correction, one environment, settings found after disclosed looks.
+
+**Correction (later):** results here that use `RADAR_LABELS='free'` are inflated by a leak (the truth of the report being judged was used to judge it); see `radar_percept_leak.md`.

@@ -46,3 +46,5 @@ audit_only 0.2, free 804 (36 / 23; 193), audit_only 0.02, paid 997 (39 / 56; 20)
   Untested differences between the two label sources: free labels cover every offered report at once, the audit labels a
   random one of the five most recent per step (older ones are discarded) and arrive later; I did not count the free labels.
 - Not tested further; the learned branch of HOT-2 stays closed.
+
+**Correction (later):** results here that use `RADAR_LABELS='free'` are inflated by a leak (the truth of the report being judged was used to judge it); see `radar_percept_leak.md`.

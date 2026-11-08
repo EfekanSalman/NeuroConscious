@@ -67,3 +67,5 @@ learned-verified 846 (29 / 21; 23%), **learned-audit 883** (23 / 14; 17%; 17.6 a
   per-percept form remains met only with a label source that covers what the agent admits (the free-label control), which is
   a cheat as built. Not tested: auditing a random sample of all offered reports (admitted ones included), which the
   diagnostic points to; learning the ghost weight. Four predictions, no multiple-comparison correction, one environment.
+
+**Correction (later):** results here that use `RADAR_LABELS='free'` are inflated by a leak (the truth of the report being judged was used to judge it); see `radar_percept_leak.md`.
