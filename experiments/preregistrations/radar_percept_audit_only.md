@@ -33,3 +33,16 @@ way the result is about this learner and this world.
 ## Limits stated in advance
 Sixth experiment on the same radar; world and learner shaped by earlier looks; four predictions, no correction; free audits
 are an upper bound; one environment.
+
+## Result (`experiments/results/radar_percept_audit_only/`, commit 1e74f24)
+Seeds 5000-5099, total critical steps (hits / ghosts verified; audits per run): none 726 (49 / 170), learned-free 617 (39 / 9),
+audit mixed labels, probability 1.0, free 772 (33 / 18; 785 audits), **audit_only probability 1.0, free 790** (35 / 22; 787),
+audit_only 0.2, free 804 (36 / 23; 193), audit_only 0.02, paid 997 (39 / 56; 20).
+- **C1 failed:** audit_only - mixed = +17 [-6, +41] (predicted at least 100 better). **C2 failed:** audit_only - learned-free =
+  +173 [+142, +203]. **C3 failed:** audit_only - none = +64 [+40, +88] (worse than no monitor). **C4 failed:** paid audit_only
+  0.02 - none = +271 [+245, +297] (the pool-of-five audit at that setting is much worse than the earlier selected one, 867 vs 748).
+- **The candidate cause is refuted.** Removing the agent's own checked labels changed nothing; with ~790 free, unbiased audit
+  labels the learner is still 64 worse than no monitor and 173 worse than the free-label learner. The cause stays unknown.
+  Untested differences between the two label sources: free labels cover every offered report at once, the audit labels a
+  random one of the five most recent per step (older ones are discarded) and arrive later; I did not count the free labels.
+- Not tested further; the learned branch of HOT-2 stays closed.
