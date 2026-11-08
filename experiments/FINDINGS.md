@@ -24,7 +24,7 @@ mean over the agents of a seed, 100 seeds unless stated.
 | Attention schema (AST), three problems | No reachable gain over trivial references in any; learned schema never built | closed negative |
 | AE-2: a model of one's own output-input contingencies | A 4-entry command table recovers ~90% of the oracle's gain; a non-tracking table is worse than none (+135); a tabular model-free learner is 230 steps worse than the model | model needed in the weak sense; cheap to meet |
 | HOT-2: monitoring how reliable one's perception is (regime level) | Trusting the radar on every step (742) beats the oracle monitor (849) and a learned monitor (1010); no job for a monitor | closed negative |
-| HOT-2, per-percept form (each radar report carries a noisy reliability signal) | An oracle gains 122 over trusting everything; a hand-set threshold reaches it (605 vs 600); an outcome-trained monitor does not (923, no better than no radar) | met when the designer sets the threshold; learned form: yes with free (cheating) labels (593), no with labels from checked reports only (851) or with paid audits of rejected or of all reports (883, 892); all worse than no monitor (723-748). Cause unexplained (mixing in the agent's own checked labels is not it: 790 free audit-only labels still 790 vs 726 for no monitor) |
+| HOT-2, per-percept form (each radar report carries a noisy reliability signal) | An oracle gains 122 over trusting everything; a hand-set threshold reaches it (605 vs 600); no learned monitor has worked: outcome-trained 923, verified-only labels 851, paid audits 883/892, and the earlier "works with free labels" (593) was a leak (the label of the report being judged was used to judge it); without the leak, free labels give 823 vs 813 for no monitor | met when the designer sets the threshold; learned form not shown to work with any label source |
 
 ## Findings that held up
 - The homeostatic controller, bounded memory admission and frontier exploration effects above replicate across the
@@ -51,6 +51,8 @@ could behave differently; neither was tested. This is a statement about this tes
 - "Persistence reduces movement" was wrong; it cost ~130 critical steps, ~60% of it explained by a threshold artefact of my own choices.
 - Two explanations for the workspace's lead failed (fixed-order arbitration, forced rest in storms); path planning had no effect.
 - My early "learned prediction" claim lacked a random control; "70% explained" for the workspace lead was overstated.
+- "The learned per-percept monitor works with free labels" (593-635, then HOT-2d-g chased why audits differed): the free labels
+  were applied before the monitor judged the same report, a leak in my code, found later (`radar_percept_leak.md`).
 - AE-2 H5 failed because I framed it against the no-model baseline; the quantity that grows with volatility is the gap to the oracle.
 
 ## Method, and its limits
@@ -63,7 +65,7 @@ could behave differently; neither was tested. This is a statement about this tes
   disclosed small looks at other seeds; the model-free learner is tabular and its exploration rate sat at the tuning grid's edge.
 
 ## Open
-- HOT-2: why the audit learner stays near the level of trusting everything even with free audits of all report kinds and hundreds of labels, while the free-label learner reaches the oracle (biased self-checked labels, label count and the pool of five recent reports were tested and are not the cause; untested: label timing/order, or a flaw in my audit path); learning the ghost weight; other signal strengths.
+- HOT-2: why even a learner given correct labels for every report does not beat always trusting (the label-source and leak questions are settled; see radar_percept_leak.md). Old text: why the audit learner stays near the level of trusting everything even with free audits of all report kinds and hundreds of labels, while the free-label learner reaches the oracle (biased self-checked labels, label count and the pool of five recent reports were tested and are not the cause; untested: label timing/order, or a flaw in my audit path); learning the ghost weight; other signal strengths.
 - A neural model-free learner for AE-2, and a manipulation that isolates why the model beats the tabular learner.
 - Indicators not touched: recurrent processing (RPT), predictive processing (PP).
 - Known weak spots in the code: `explore` is a stationary no-op (left as is: every measurement here was taken with it);
