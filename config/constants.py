@@ -96,6 +96,7 @@ RADAR_LABELS = "verified"
 # an orienting step: the action is replaced by a stationary one) to be told whether a recently *rejected* report was real.
 # Each step, with probability RADAR_AUDIT_P and if a rejected report is pending, it does so (RADAR_AUDIT_FREE: no step is
 # lost, an upper bound on what the label source is worth).
+# RADAR_LABELS = 'audit_only': as 'audit' but the labels from reports the agent checked itself are not used, only audits.
 RADAR_AUDIT_P = 0.05
 RADAR_AUDIT_FREE = False
 # Which offered reports an audit can pick: 'rejected' (only reports the monitor turned away) or 'all' (any recent report,

@@ -734,7 +734,7 @@ class Agent:
 
         if ATTENTION_GATE and self.workspace is not None:
             final_action = self._attention_control(final_action)
-        if GHOST_RADAR_RANGE > 0 and RADAR_LABELS == "audit":
+        if GHOST_RADAR_RANGE > 0 and RADAR_LABELS in ("audit", "audit_only"):
             final_action = self._radar_audit(final_action)
 
         self.internal_monologue += f"Therefore, I have decided to {final_action}. "
@@ -938,7 +938,7 @@ class Agent:
             if RADAR_LABELS == "free" and len(report) > 3:
                 self._radar_label(report[2], bool(report[3]))
             admit = report[2] >= self.radar_tau or random.random() < RADAR_PROBE
-            if RADAR_LABELS == "audit" and len(report) > 3 and (not admit or RADAR_AUDIT_SCOPE == "all"):
+            if RADAR_LABELS in ("audit", "audit_only") and len(report) > 3 and (not admit or RADAR_AUDIT_SCOPE == "all"):
                 self.radar_pending.append((report[2], bool(report[3])))   # the truth is revealed only if audited
                 del self.radar_pending[:-5]
             self.radar_admitted[0] += int(admit)

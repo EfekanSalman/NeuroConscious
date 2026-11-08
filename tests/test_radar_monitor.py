@@ -219,7 +219,7 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(agent.radar_stats["audits"], 0)
 
     def test_rejected_reports_become_pending_only_in_audit_mode(self):
-        for labels, expected in (("audit", 1), ("verified", 0)):
+        for labels, expected in (("audit", 1), ("audit_only", 1), ("verified", 0)):
             agent = self.stub([])
             agent.radar_tau = 5.0
             with mock.patch.object(base_agent, "RADAR_MONITOR", "percept_learned"), mock.patch.object(base_agent, "RADAR_LABELS", labels), \
@@ -230,7 +230,7 @@ class AuditTest(unittest.TestCase):
 
 class AuditKeepsVerifiedLabelsTest(unittest.TestCase):
     def test_verified_outcomes_still_label_in_audit_mode_but_not_in_free_mode(self):
-        for labels, expected in (("audit", 1), ("verified", 1), ("free", 0)):
+        for labels, expected in (("audit", 1), ("verified", 1), ("free", 0), ("audit_only", 0)):
             agent = SimpleNamespace(radar_stats={"hits": 0, "ghosts": 0}, radar_labels=[], radar_tau=float("-inf"), radar_reliability=0.5)
             agent._radar_label = lambda strength, hit, a=agent: Agent._radar_label(a, strength, hit)
             with mock.patch.object(base_agent, "RADAR_LABELS", labels):
