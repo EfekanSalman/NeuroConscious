@@ -60,6 +60,8 @@ from config.constants import (
     ATTENTION_GATE, ATTENTION_HIGH, ATTENTION_LOW, ATTENTION_CAPTURE_RATE, ATTENTION_POLICY, ATTENTION_INTERVAL,
     ATTENTION_SILENCE, ATTENTION_ORIENT_FREE, ATTENTION_RADAR_RANGE, MOTOR_MODEL, MOTOR_WINDOW,
     ACTION_SLIP, MOTOR_LR, MOTOR_EPSILON,
+    GHOST_RADAR_RANGE, GHOST_DETECT, GHOST_RATE_LOW, GHOST_RATE_HIGH, GHOST_PERIOD, RADAR_MONITOR,
+    RADAR_MONITOR_RATE, RADAR_TRUST, RADAR_PROBE,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -167,6 +169,13 @@ class Agent:
         self.motor_history: Dict[str, List[str]] = {d: [] for d in self._MOVE_OFFSETS}
         self.motor_last_seen: Dict[str, int] = {d: -1 for d in self._MOVE_OFFSETS}
         self.motor_stats = {"moves": 0, "as_intended": 0}
+        # Ghost radar: hidden regime phase, the agent's own reliability estimate and bookkeeping.
+        self.radar_phase = random.randrange(2 * GHOST_PERIOD) if GHOST_RADAR_RANGE > 0 else 0
+        self.radar_reliability = 0.5
+        self.radar_coin: Tuple[int, bool] = (-1, True)
+        self.radar_trust_now = True
+        self.radar_monitor = RADAR_MONITOR
+        self.radar_stats = {"hits": 0, "ghosts": 0, "trust_steps": 0, "trust_agrees": 0, "steps": 0}
         # Model-free control: value of issuing each command (second key) when a direction is wanted (first key);
         # starts out favouring the identity command, like the other models start from identity.
         self.motor_q: Dict[str, Dict[str, float]] = {
@@ -444,6 +453,8 @@ class Agent:
 
             # Local grid perception (e.g., 1-cell radius around the agent)
             raw_local_grid_view = self._get_local_grid_view(radius=1)
+            if GHOST_RADAR_RANGE > 0:
+                self.perception["ghost_radar"] = self._ghost_radar_scan()
             if ATTENTION_GATE:
                 self._attention_drift()
                 self.perception["radar"] = self._radar_scan() if ATTENTION_RADAR_RANGE > 0 else []
@@ -874,6 +885,53 @@ class Agent:
                 top = max(counts.values())
                 self.motor_table[command] = next(d for d in reversed(history) if counts[d] == top)
             self.motor_last_seen[command] = self.current_time_step
+
+    def radar_high_ghost_regime(self) -> bool:
+        """True while the radar is in its high-ghost regime (hidden from the agent; used by the oracle and the metrics)."""
+        return ((self.current_time_step + self.radar_phase) // GHOST_PERIOD) % 2 == 1
+
+    def _ghost_radar_scan(self) -> List[Tuple[str, Tuple[int, int]]]:
+        """Real sites (nearest per channel, detected with GHOST_DETECT) plus ghosts at the regime's rate."""
+        grid, here, found = self.environment.grid, (self.pos_x, self.pos_y), []
+        size, rate = len(grid), (GHOST_RATE_HIGH if self.radar_high_ghost_regime() else GHOST_RATE_LOW)
+        rows = range(max(0, here[0] - GHOST_RADAR_RANGE), min(size, here[0] + GHOST_RADAR_RANGE + 1))
+        cols = range(max(0, here[1] - GHOST_RADAR_RANGE), min(size, here[1] + GHOST_RADAR_RANGE + 1))
+        cells = [(r, c) for r in rows for c in cols if abs(r - here[0]) + abs(c - here[1]) <= GHOST_RADAR_RANGE]
+        self.radar_trust_now = self.trust_radar()
+        self.radar_stats["steps"] += 1
+        self.radar_stats["trust_steps"] += int(self.radar_trust_now)
+        self.radar_stats["trust_agrees"] += int(self.radar_trust_now == (not self.radar_high_ghost_regime()))
+        for kind in ("food", "water"):
+            sites = [(abs(r - here[0]) + abs(c - here[1]), (r, c)) for r, c in cells if grid[r][c] == kind]
+            if sites and random.random() < GHOST_DETECT:
+                found.append((kind, min(sites)[1]))
+            if random.random() < rate:
+                empty = [cell for cell in cells if grid[cell[0]][cell[1]] != kind and cell != here]
+                if empty:
+                    found.append((kind, random.choice(empty)))
+        return found
+
+    def radar_verified(self, hit: bool) -> None:
+        """A radar sighting was confirmed (hit) or contradicted (ghost) by the agent's own view: updates its estimate."""
+        self.radar_stats["hits" if hit else "ghosts"] += 1
+        self.radar_reliability += RADAR_MONITOR_RATE * (float(hit) - self.radar_reliability)
+
+    def trust_radar(self) -> bool:
+        """Whether recall may use radar sightings now, by the agent's monitor (see RADAR_MONITOR)."""
+        if RADAR_MONITOR == "none":
+            trust = True
+        elif RADAR_MONITOR == "never":
+            trust = False
+        elif RADAR_MONITOR == "oracle":
+            trust = not self.radar_high_ghost_regime()
+        elif RADAR_MONITOR == "wrong":
+            block = (self.current_time_step + self.radar_phase) // GHOST_PERIOD
+            if self.radar_coin[0] != block:
+                self.radar_coin = (block, random.random() < 0.5)
+            trust = self.radar_coin[1]
+        else:  # learned
+            trust = self.radar_reliability >= RADAR_TRUST or random.random() < RADAR_PROBE
+        return trust
 
     def _radar_scan(self) -> List[Tuple[str, Tuple[int, int]]]:
         """The nearest food and water site within ATTENTION_RADAR_RANGE, each detected with the attention-gated chance."""

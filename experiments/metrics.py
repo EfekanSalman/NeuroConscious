@@ -157,6 +157,8 @@ class AgentTracker:
                     or _world_module.ACTION_REMAP_PERIOD > 0)
         if motor_on and getattr(self.agent, "motor_stats", None) and self.agent.motor_stats["moves"]:
             result.update({f"motor_{k}": v for k, v in self.agent.motor_stats.items()})
+        if _agent_module.GHOST_RADAR_RANGE > 0:
+            result.update({f"radar_{k}": v for k, v in self.agent.radar_stats.items()})
         workspace = getattr(self.agent, "workspace", None)
         if workspace is not None:
             result["opportunistic_actions"] = workspace.opportunistic_actions

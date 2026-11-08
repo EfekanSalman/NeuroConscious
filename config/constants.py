@@ -66,6 +66,25 @@ MOTOR_WINDOW = 5
 # A detection enters memory like a sighting. 0 = off.
 ATTENTION_RADAR_RANGE = 0
 
+# Ghost radar (metacognitive-monitoring test, not tied to attention): a long-range sensor that reports, for each channel,
+# the nearest real site within GHOST_RADAR_RANGE with probability GHOST_DETECT, and, in alternating regimes of
+# GHOST_PERIOD steps (random phase per agent, hidden), also a ghost (a site that is not there, at a random cell in range)
+# with probability GHOST_RATE_LOW or GHOST_RATE_HIGH per channel per step. Detections enter memory as 'radar'
+# sightings; a sighting seen in the 3x3 view is confirmed (a hit), one the view contradicts is a ghost (a miss).
+# RADAR_MONITOR decides whether recall may use radar sightings: 'none' always; 'never' (radar sightings are not stored);
+# 'oracle' only in the low-ghost regime (cheats); 'wrong' follows a coin flipped each GHOST_PERIOD, unrelated to the
+# regime; 'learned' while a running average (RADAR_MONITOR_RATE) of hits vs misses stays at or above RADAR_TRUST, with a
+# RADAR_PROBE chance of trusting anyway. 0 range = off.
+GHOST_RADAR_RANGE = 0
+GHOST_DETECT = 0.5
+GHOST_RATE_LOW = 0.01
+GHOST_RATE_HIGH = 0.15
+GHOST_PERIOD = 100
+RADAR_MONITOR = "none"
+RADAR_MONITOR_RATE = 0.2
+RADAR_TRUST = 0.6
+RADAR_PROBE = 0.1
+
 # Number of recent percepts the agent's working-memory buffer (FIFO) retains.
 WORKING_MEMORY_CAPACITY = 5
 
