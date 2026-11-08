@@ -40,3 +40,33 @@ F3 failing while F2 holds: the model is better but not because of faster relearn
 One environment designed by me; the competitor is the simplest model-free learner, so a loss for it would not exclude
 a cleverer one; five predictions, no multiple-comparison correction; the explanation "16 cells vs 4" is a reading, not
 tested by a separate manipulation.
+
+## Result (`experiments/results/motor_model_free/`, commit 4179ff1, dirty=false)
+Selection (seeds 3600-3629, P=150): lowest total critical steps was LR 0.8, EPSILON 0.2 (1322.3), a tie in practice with
+LR 0.5, EPSILON 0.2 (1323.3); EPSILON 0.2 was the largest value in the grid, so the optimum lies at the edge and the
+tuning is not exhausted (not extended afterwards). Test seeds 3700-3799, total critical steps (share of moves that went
+where wanted):
+
+| P | none | modelfree | vote | oracle |
+|---|---|---|---|---|
+| 30 | 1767 (36%) | 1524 (45%) | 1301 (62%) | 1001 (90%) |
+| 150 | 1762 (49%) | 1316 (62%) | 1086 (83%) | 1014 (89%) |
+| 600 | 1365 (77%) | 1150 (74%) | 1031 (88%) | 999 (90%) |
+
+none, vote and oracle at P=150 reproduce the first test (1758, 1099, 1028) on new seeds.
+- **F1 held:** modelfree - none = -446 [-474, -418]. The model-free learner copes, and recovers about 60% of the oracle's gain
+  (446 of 748).
+- **F2 held:** modelfree - vote = +230 [+200, +259] at P=150. The model is clearly better than the model-free learner.
+- **F3 held on the point estimate, narrowly:** A(30) - A(600) = +104 [+66, +142] against a threshold of 100. A(P) = +223, +230,
+  +119 at P=30, 150, 600: the model's advantage does not grow from 150 to 30, only shrinks toward 600. The prediction was
+  right by a hair and the picture behind it (steadily growing advantage with volatility) is not what the data show.
+- **F4 failed, narrowly:** A(600) = +119 [+91, +147] against a bound of 100.
+- **F5 held:** at P=150 modelfree 62% vs vote 83% of moves as wanted.
+- Reading: in this task a model of what the commands do is worth about 230 critical steps over a tabular model-free
+  learner at P=150, and the model-free learner closes only part of the gap to the oracle even at P=600 (+152). So "a model
+  is needed" is supported against this competitor, in the weak sense that the model is better, not that the learner fails
+  to cope. The reason (one observation fixes four directions at once vs one cell of sixteen) is the design rationale; it
+  was not isolated by a separate manipulation. The model-free learner is also hurt by its own exploration (ε = 0.2 at the
+  tuning edge: a fifth of its commands are random). Not tested: a neural DQN, a larger ε, a model-free learner with a
+  structured (permutation-sharing) table, which would be a model by another name. Five predictions, no multiple-comparison
+  correction, one environment.
