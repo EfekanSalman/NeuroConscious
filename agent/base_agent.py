@@ -59,7 +59,7 @@ from config.constants import (
     USE_FRONTIER_EXPLORATION, EXPLORATION_REVISIT_STEPS, BEACON_ACCESS, CUE_TRACE_TTL,
     ATTENTION_GATE, ATTENTION_HIGH, ATTENTION_LOW, ATTENTION_CAPTURE_RATE, ATTENTION_POLICY, ATTENTION_INTERVAL,
     ATTENTION_SILENCE, ATTENTION_ORIENT_FREE, ATTENTION_RADAR_RANGE, MOTOR_MODEL, MOTOR_WINDOW,
-    ACTION_SLIP,
+    ACTION_SLIP, MOTOR_LR, MOTOR_EPSILON,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -167,6 +167,10 @@ class Agent:
         self.motor_history: Dict[str, List[str]] = {d: [] for d in self._MOVE_OFFSETS}
         self.motor_last_seen: Dict[str, int] = {d: -1 for d in self._MOVE_OFFSETS}
         self.motor_stats = {"moves": 0, "as_intended": 0}
+        # Model-free control: value of issuing each command (second key) when a direction is wanted (first key);
+        # starts out favouring the identity command, like the other models start from identity.
+        self.motor_q: Dict[str, Dict[str, float]] = {
+            w: {c: (0.5 if c == w else 0.0) for c in self._MOVE_OFFSETS} for w in self._MOVE_OFFSETS}
         if MOTOR_MODEL == "wrong":
             directions = list(self._MOVE_OFFSETS)
             self.motor_table = dict(zip(directions, random.sample(directions, len(directions))))
@@ -839,6 +843,11 @@ class Agent:
         if MOTOR_MODEL == "oracle":
             mapping = getattr(self.environment, "action_map", {})
             return next((c for c, d in mapping.items() if d == wanted), wanted)
+        if MOTOR_MODEL == "modelfree":
+            if random.random() < MOTOR_EPSILON:
+                return random.choice(list(self._MOVE_OFFSETS))
+            values = self.motor_q[wanted]
+            return max(values, key=lambda c: (values[c], c == wanted))
         candidates = [c for c, d in self.motor_table.items() if d == wanted]
         if not candidates:  # Nothing is believed to go that way: try the command whose effect was checked longest ago.
             return min(self.motor_table, key=lambda c: self.motor_last_seen[c])
@@ -851,6 +860,9 @@ class Agent:
             return
         self.motor_stats["moves"] += 1
         self.motor_stats["as_intended"] += int(observed == wanted)
+        if MOTOR_MODEL == "modelfree":
+            value = self.motor_q[wanted]
+            value[command] += MOTOR_LR * (float(observed == wanted) - value[command])
         if MOTOR_MODEL in ("last", "vote"):
             history = self.motor_history[command]
             history.append(observed)

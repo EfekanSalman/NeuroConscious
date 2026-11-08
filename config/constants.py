@@ -53,8 +53,12 @@ ATTENTION_ORIENT_FREE = False   # True: orienting costs no step (an upper-bound 
 # Motor model (a forward model of the agent's own commands; for the world's ACTION_REMAP_PERIOD / ACTION_SLIP).
 # 'none' issues the wanted direction as the command; 'oracle' reads the true mapping (cheats); 'last' remembers, for
 # each command, the direction it last produced; 'vote' uses the majority of its last MOTOR_WINDOW outcomes; 'wrong'
-# keeps a fixed random table and never updates it (a model that does not track the world).
+# keeps a fixed random table and never updates it (a model that does not track the world); 'modelfree' keeps no model
+# of the commands at all: a 4x4 table of the value of issuing each command when each direction is wanted, learned by
+# a running average of success and an epsilon-greedy choice (a model-free control).
 MOTOR_MODEL = "none"
+MOTOR_LR = 0.5        # modelfree: step size of the running average of success.
+MOTOR_EPSILON = 0.1   # modelfree: chance of issuing a random command.
 ACTION_SLIP = 0.0   # Each executed move goes in a random direction with this probability.
 MOTOR_WINDOW = 5
 # Long-range radar (only with ATTENTION_GATE): each step, for each channel, the nearest site of that kind within
