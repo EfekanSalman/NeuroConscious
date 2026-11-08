@@ -938,6 +938,8 @@ class Agent:
             if RADAR_LABELS == "free" and len(report) > 3:
                 self._radar_label(report[2], bool(report[3]))
             admit = report[2] >= self.radar_tau or random.random() < RADAR_PROBE
+            if RADAR_LABELS == "free_after" and len(report) > 3:
+                self._radar_label(report[2], bool(report[3]))   # learns the truth only after deciding on this report
             if RADAR_LABELS in ("audit", "audit_only") and len(report) > 3 and (not admit or RADAR_AUDIT_SCOPE == "all"):
                 self.radar_pending.append((report[2], bool(report[3])))   # the truth is revealed only if audited
                 del self.radar_pending[:-RADAR_AUDIT_POOL]

@@ -254,3 +254,17 @@ class AuditScopeTest(unittest.TestCase):
     def test_all_scope_also_remembers_admitted_reports(self):
         self.assertEqual(self.offer("all", 0.2), (False, 1))
         self.assertEqual(self.offer("all", 3.0), (True, 1))
+
+
+class FreeLabelLeakTest(unittest.TestCase):
+    def decide(self, labels):
+        agent = SimpleNamespace(radar_stats={"hits": 0, "ghosts": 0}, radar_labels=[(2.0, True)] * 10, radar_tau=1.0,
+                                radar_admitted=[0, 0], radar_pending=[])
+        agent._radar_label = lambda strength, hit: Agent._radar_label(agent, strength, hit)
+        with mock.patch.object(base_agent, "RADAR_MONITOR", "percept_learned"), mock.patch.object(base_agent, "RADAR_LABELS", labels), \
+                mock.patch.object(base_agent, "RADAR_PROBE", 0.0), mock.patch.object(base_agent, "RADAR_GHOST_WEIGHT", 30):
+            return Agent.admit_radar(agent, ("food", (1, 1), 1.5, False))
+
+    def test_free_labels_use_the_truth_of_the_report_being_judged_free_after_does_not(self):
+        self.assertFalse(self.decide("free"))        # the ghost's own label raised the threshold above it
+        self.assertTrue(self.decide("free_after"))   # judged with the old threshold
