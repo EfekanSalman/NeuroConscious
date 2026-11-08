@@ -236,3 +236,21 @@ class AuditKeepsVerifiedLabelsTest(unittest.TestCase):
             with mock.patch.object(base_agent, "RADAR_LABELS", labels):
                 Agent.radar_verified(agent, True, 1.5)
             self.assertEqual(len(agent.radar_labels), expected, labels)
+
+
+class AuditScopeTest(unittest.TestCase):
+    def offer(self, scope, strength):
+        agent = SimpleNamespace(radar_stats={"hits": 0, "ghosts": 0, "audits": 0}, radar_labels=[], radar_tau=1.0,
+                                radar_admitted=[0, 0], radar_pending=[])
+        with mock.patch.object(base_agent, "RADAR_MONITOR", "percept_learned"), mock.patch.object(base_agent, "RADAR_LABELS", "audit"), \
+                mock.patch.object(base_agent, "RADAR_AUDIT_SCOPE", scope), mock.patch.object(base_agent, "RADAR_PROBE", 0.0):
+            admitted = Agent.admit_radar(agent, ("food", (1, 1), strength, False))
+        return admitted, len(agent.radar_pending)
+
+    def test_rejected_scope_remembers_only_what_was_turned_away(self):
+        self.assertEqual(self.offer("rejected", 0.2), (False, 1))
+        self.assertEqual(self.offer("rejected", 3.0), (True, 0))
+
+    def test_all_scope_also_remembers_admitted_reports(self):
+        self.assertEqual(self.offer("all", 0.2), (False, 1))
+        self.assertEqual(self.offer("all", 3.0), (True, 1))

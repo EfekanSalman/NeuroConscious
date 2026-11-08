@@ -62,7 +62,7 @@ from config.constants import (
     ACTION_SLIP, MOTOR_LR, MOTOR_EPSILON,
     GHOST_RADAR_RANGE, GHOST_DETECT, GHOST_RATE_LOW, GHOST_RATE_HIGH, GHOST_PERIOD, RADAR_MONITOR,
     RADAR_MONITOR_RATE, RADAR_TRUST, RADAR_PROBE, GHOST_STRENGTH_SEP, RADAR_STRENGTH_MIN, GHOST_STICKY,
-    RADAR_RANDOM_P, RADAR_LABEL_WINDOW, RADAR_MIN_LABELS, RADAR_LABELS, RADAR_GHOST_WEIGHT, RADAR_AUDIT_P, RADAR_AUDIT_FREE,
+    RADAR_RANDOM_P, RADAR_LABEL_WINDOW, RADAR_MIN_LABELS, RADAR_LABELS, RADAR_GHOST_WEIGHT, RADAR_AUDIT_P, RADAR_AUDIT_FREE, RADAR_AUDIT_SCOPE,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -938,7 +938,7 @@ class Agent:
             if RADAR_LABELS == "free" and len(report) > 3:
                 self._radar_label(report[2], bool(report[3]))
             admit = report[2] >= self.radar_tau or random.random() < RADAR_PROBE
-            if not admit and RADAR_LABELS == "audit" and len(report) > 3:
+            if RADAR_LABELS == "audit" and len(report) > 3 and (not admit or RADAR_AUDIT_SCOPE == "all"):
                 self.radar_pending.append((report[2], bool(report[3])))   # the truth is revealed only if audited
                 del self.radar_pending[:-5]
             self.radar_admitted[0] += int(admit)

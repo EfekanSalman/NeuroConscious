@@ -98,6 +98,9 @@ RADAR_LABELS = "verified"
 # lost, an upper bound on what the label source is worth).
 RADAR_AUDIT_P = 0.05
 RADAR_AUDIT_FREE = False
+# Which offered reports an audit can pick: 'rejected' (only reports the monitor turned away) or 'all' (any recent report,
+# admitted ones included, so the labelled set also covers what the agent lets into memory).
+RADAR_AUDIT_SCOPE = "rejected"
 RADAR_GHOST_WEIGHT = 1.0
 RADAR_LABEL_WINDOW = 60
 RADAR_MIN_LABELS = 10
