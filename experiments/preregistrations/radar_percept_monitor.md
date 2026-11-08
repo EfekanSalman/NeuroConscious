@@ -54,7 +54,7 @@ total critical steps (verified hits / ghosts per run):
 none 722 (49 / 171), never 936, percept_oracle 600 (41 / 7), percept_threshold (tau 2.5) 605 (35 / 7),
 percept_random 1002 (31 / 47), percept_learned 923 (35 / 37; admitted 40% of reports).
 - **G0 held:** oracle - none = -122 [-170, -74]. **G1 held:** best threshold - none = -117 [-148, -86]; the threshold is
-  indistinguishable from the oracle (+5 [-43, +52] for oracle - threshold... i.e. 605 vs 600).
+  indistinguishable from the oracle (oracle - threshold = -5 [-52, +43]; 600 vs 605).
 - **H1 failed to occur, as predicted (10%):** learned - none = +201 [+171, +232]; learned - never = -13 [-42, +17]: the
   learned monitor is no better than having no radar. **H2 held:** threshold - learned = -318 [-348, -289].
   **H3 held:** learned - random = -79 [-108, -51]: its use of the signal is better than chance admission, but far from enough.
