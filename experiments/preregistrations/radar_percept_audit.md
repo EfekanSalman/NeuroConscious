@@ -42,3 +42,28 @@ the previous failure has another cause. A4 failing: the information, not the los
 One environment designed by me; the audit reveals the truth of a report for one step of cost (a designer-given oracle query,
 not something the agent builds); the ghost weight is a number I set and take from a small grid; four predictions, no
 multiple-comparison correction.
+
+## Result (`experiments/results/radar_percept_audit/`, commit 5dc613e, dirty=false)
+Selection (seeds 4400-4429, ghost weight_probe_audit probability): 12_0_0.02 **842**, 30_0_0.02 858, 30_0.02_0.02 896,
+12_0.02_0.02 898, 12_0_0.05 954, 30_0_0.05 965, 12_0.02_0.05 976, 30_0.02_0.05 986, 12_0_0.1 1047, 30_0_0.1 1059,
+12_0.02_0.1 1093, 30_0.02_0.1 1095. Used w=12, probe 0, audit probability 0.02 (the smallest in the grid: each added audit
+cost more than it taught). Test (seeds 4300-4399), total critical steps (hits / ghosts verified; share admitted; audits):
+none 723 (49 / 170), never 967, oracle 589 (42 / 7), hand threshold 620 (36 / 7), learned-free 599 (39 / 8; 29%),
+learned-verified 846 (29 / 21; 23%), **learned-audit 883** (23 / 14; 17%; 17.6 audits), learned-audit-free 842 (23 / 14; 17%).
+- **A1 failed:** learned-audit - learned-verified = +37 [+5, +70] (predicted at least 100 better). **A2 failed:**
+  learned-audit - none = +160 [+125, +195]. **A3 failed:** learned-audit - threshold = +263 [+227, +299].
+  **A4 held:** audit-free - audit = -41 [-73, -9]: the audit steps themselves cost about 40.
+- The learned-free control reproduces (599 vs 593 in the previous test, 124 better than none), as do none (723 vs 736) and
+  verified (846 vs 851).
+- **Post-hoc diagnostic (not pre-registered; 20 seeds 9500-9519, always trusting 813, oracle 605; w=12, probe 0):** the
+  audit with free steps at audit probability 1.0 (584 labels of rejected reports per run) gives 843, at 0.2 (172 labels)
+  832; paid at 0.2 1231 and at 1.0 1748. So the amount of audit labels is not what limits the monitor; even 584 free
+  labels per run leave it at the level of trusting everything. My reading, untested: the labelled set is truncated on
+  both sides. Audits label only rejected reports (all below the threshold), and admitted reports get a label only if the
+  agent later checks them with its own view; admitted ghosts it never walks to are never counted against the threshold,
+  so the fitted threshold cannot rise to where the ghosts are. The free-label control (599), which labels every offered
+  report including the admitted ones, escapes this. The audit I built samples the wrong side.
+- Reading: a paid audit of rejected reports does not make the learned monitor worth having here. HOT-2 in its learned
+  per-percept form remains met only with a label source that covers what the agent admits (the free-label control), which is
+  a cheat as built. Not tested: auditing a random sample of all offered reports (admitted ones included), which the
+  diagnostic points to; learning the ghost weight. Four predictions, no multiple-comparison correction, one environment.
