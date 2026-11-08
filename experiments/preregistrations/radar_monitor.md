@@ -45,3 +45,24 @@ the claim is only that using the radar less helps.
 One environment designed by me and tuned in its ghost cost only by a disclosed 10-seed look; the monitor is a running
 average, the simplest possible, and a tracking failure of `learned` would be about this implementation; four predictions,
 no multiple-comparison correction.
+
+## Result (`experiments/results/radar_monitor/`, commit 12e40d4, dirty=false)
+Total critical steps (mean over agents, 100 seeds 3800-3899); share of steps the radar was trusted; trust agreement with the
+oracle's; verified hits and ghosts per run:
+none 742 (100%, 50%, 47 / 169), never 960 (0%, 50%), oracle 849 (50%, 100%, 44 / 101), wrong 911 (50%, 51%, 43 / 125),
+learned 1010 (17%, 54%, 40 / 90).
+- **G0a failed, in the opposite direction:** oracle - none = +107 [+75, +139]. Using the radar on every step, ghosts and all, is
+  better than trusting it only in the clean regime. **G0b held:** oracle - never = -111 [-141, -82] (threshold 100). The radar
+  is valuable; distrusting it costs more than the ghosts do. The monitor has no job in this world.
+- **H1 held** (none is 107 better than the oracle, not 50 worse). **H2 held:** learned - none = +268 [+236, +300].
+  **H3 held:** learned's trust agrees with the oracle's on 54% of steps (chance is 50%).
+- Not predicted: wrong - none = +169 [+136, +202] (cutting the radar off half the time at random hurts); learned - wrong = +99
+  [+69, +128] and learned - never = +50 [+21, +79]: the running-average monitor trusted the radar on only 17% of steps and
+  ended up worse than having no radar. Its threshold (0.6) is my choice and far too high given that one hit is worth many
+  ghosts (break-even reliability here is low); I did not retune it, since with no headroom there is nothing to rescue.
+- Reading: the problem is closed for the same kind of reason as the AST problems: the reference that the idea needs to beat
+  (trust everything) is already the best simple policy, because verification by the agent's own view makes a ghost cheap
+  (it is removed on sight) while a real detection is worth a lot. HOT-2 in this regime-level form cannot be tested here.
+  Not tested: a per-detection reliability signal (each report carries a noisy strength that predicts whether it is real),
+  a world where acting on a ghost is expensive. Four predictions, no multiple-comparison correction, one environment, set
+  after a disclosed 10-seed look.
