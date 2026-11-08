@@ -38,3 +38,28 @@ world, not about HOT-2.
 The audit is a designer-given oracle query at the cost of a step, and the ghost weight and the pool size (five) are numbers I
 set; one environment; five predictions, no multiple-comparison correction; this is the fifth experiment on the same radar,
 so the world and the learner have been shaped by what I saw earlier (all looks disclosed in the preceding files).
+
+## Result (`experiments/results/radar_percept_audit_all/`, commit 1b0f1b6, dirty=false)
+Selection (seeds 4600-4629, ghost weight_audit probability, scope 'all', paid): 12_0.02 **874**, 30_0.02 885, 12_0.05 931,
+30_0.05 952, 12_0.1 1020, 30_0.1 1044, 12_0.2 1212, 30_0.2 1224 (again the smallest audit probability). Test (seeds
+4500-4599), total critical steps (hits / ghosts verified; share admitted; audits per run):
+none 748 (48 / 169), never 939, oracle 612 (42 / 7), hand threshold 614 (35 / 7), learned-free 635 (39 / 9; 30%),
+learned-audit-rejected 867 (24 / 14; 17%; 18 audits), **learned-audit-all 892** (24 / 13; 16%; 19 audits),
+learned-audit-all-free 844 (22 / 13; 16%; 19 audits).
+- **B1 failed:** audit-all - audit-rejected = +25 [-10, +59] (predicted at least 100 better). **B2 failed:** audit-all - none =
+  +144 [+108, +180]. **B3 failed:** audit-all - threshold = +278 [+242, +314]. **B4 held:** free - paid = -48 [-82, -14].
+  **B5 failed:** audit-all-free - none = +96 [+60, +132] (predicted at least 50 better).
+- The earlier test reproduces: learned-free 635 (vs 593, 599), audit-rejected 867 (vs 883), none 748 (vs 723, 736).
+- **The truncation reading is not supported.** Covering the admitted reports in the audit pool did not help. But B5 is
+  confounded with label count: the selected audit probability (0.02) gives only about 19 labels per run, so it does not test
+  coverage at a large label budget. A post-hoc diagnostic (not pre-registered; 20 seeds 9500-9519, always trusting 813,
+  free-label learner 647 with the same weight and probe) with scope 'all' and free audits: audit probability 1.0 (781 labels
+  per run) 851, 0.2 (189 labels) 810, 0.05 (49 labels) 798. So even with free audits of every kind of report and hundreds of
+  labels, the audit learner stays at or near the level of trusting everything, while the free-label learner, which gets
+  similar numbers of labels, reaches 647. I do not know why. A candidate I did not test: in audit mode the labels from
+  reports the agent checked itself are mixed in with the audit labels, and they are biased; in free mode they are not used.
+- Reading: the learned per-percept monitor works in this world only with the free-label control (a cheat), and neither
+  checked-only labels, paid audits of rejected reports, nor paid or free audits of all recent reports reproduce it. My two
+  explanations (label bias, truncation) were not confirmed. The learned branch of HOT-2 is closed here, with one unexplained
+  discrepancy left as is. Five predictions, no multiple-comparison correction, one environment; this is the fifth experiment
+  on the same radar, shaped by what I saw earlier.
