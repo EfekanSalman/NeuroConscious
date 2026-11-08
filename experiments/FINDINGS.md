@@ -63,7 +63,7 @@ could behave differently; neither was tested. This is a statement about this tes
   disclosed small looks at other seeds; the model-free learner is tabular and its exploration rate sat at the tuning grid's edge.
 
 ## Open
-- HOT-2: why the audit learner stays near the level of trusting everything even with free audits of all report kinds and hundreds of labels, while the free-label learner reaches the oracle (biased self-checked labels were tested and are not the cause; untested: the pool of five recent reports and label timing); learning the ghost weight; other signal strengths.
+- HOT-2: why the audit learner stays near the level of trusting everything even with free audits of all report kinds and hundreds of labels, while the free-label learner reaches the oracle (biased self-checked labels, label count and the pool of five recent reports were tested and are not the cause; untested: label timing/order, or a flaw in my audit path); learning the ghost weight; other signal strengths.
 - A neural model-free learner for AE-2, and a manipulation that isolates why the model beats the tabular learner.
 - Indicators not touched: recurrent processing (RPT), predictive processing (PP).
 - Known weak spots in the code: `explore` is a stationary no-op (left as is: every measurement here was taken with it);
