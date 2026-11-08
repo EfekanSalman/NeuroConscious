@@ -159,6 +159,8 @@ class AgentTracker:
             result.update({f"motor_{k}": v for k, v in self.agent.motor_stats.items()})
         if _agent_module.GHOST_RADAR_RANGE > 0:
             result.update({f"radar_{k}": v for k, v in self.agent.radar_stats.items()})
+            if self.agent.radar_admitted[1]:
+                result["radar_reports_admitted"], result["radar_reports_offered"] = self.agent.radar_admitted
         workspace = getattr(self.agent, "workspace", None)
         if workspace is not None:
             result["opportunistic_actions"] = workspace.opportunistic_actions

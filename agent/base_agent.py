@@ -61,7 +61,8 @@ from config.constants import (
     ATTENTION_SILENCE, ATTENTION_ORIENT_FREE, ATTENTION_RADAR_RANGE, MOTOR_MODEL, MOTOR_WINDOW,
     ACTION_SLIP, MOTOR_LR, MOTOR_EPSILON,
     GHOST_RADAR_RANGE, GHOST_DETECT, GHOST_RATE_LOW, GHOST_RATE_HIGH, GHOST_PERIOD, RADAR_MONITOR,
-    RADAR_MONITOR_RATE, RADAR_TRUST, RADAR_PROBE,
+    RADAR_MONITOR_RATE, RADAR_TRUST, RADAR_PROBE, GHOST_STRENGTH_SEP, RADAR_STRENGTH_MIN, GHOST_STICKY,
+    RADAR_RANDOM_P, RADAR_LABEL_WINDOW, RADAR_MIN_LABELS,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -174,7 +175,11 @@ class Agent:
         self.radar_reliability = 0.5
         self.radar_coin: Tuple[int, bool] = (-1, True)
         self.radar_trust_now = True
+        self.radar_labels: List[Tuple[float, bool]] = []
+        self.radar_tau = float('-inf')
+        self.radar_admitted = [0, 0]  # reports admitted, reports offered
         self.radar_monitor = RADAR_MONITOR
+        self.radar_sticky = GHOST_STICKY
         self.radar_stats = {"hits": 0, "ghosts": 0, "trust_steps": 0, "trust_agrees": 0, "steps": 0}
         # Model-free control: value of issuing each command (second key) when a direction is wanted (first key);
         # starts out favouring the identity command, like the other models start from identity.
@@ -904,16 +909,48 @@ class Agent:
         for kind in ("food", "water"):
             sites = [(abs(r - here[0]) + abs(c - here[1]), (r, c)) for r, c in cells if grid[r][c] == kind]
             if sites and random.random() < GHOST_DETECT:
-                found.append((kind, min(sites)[1]))
+                found.append(self._radar_report(kind, min(sites)[1], True))
             if random.random() < rate:
                 empty = [cell for cell in cells if grid[cell[0]][cell[1]] != kind and cell != here]
                 if empty:
-                    found.append((kind, random.choice(empty)))
+                    found.append(self._radar_report(kind, random.choice(empty), False))
         return found
 
-    def radar_verified(self, hit: bool) -> None:
+    @staticmethod
+    def _radar_report(kind: str, cell: Tuple[int, int], real: bool):
+        """(kind, cell) or, with a reliability signal, (kind, cell, strength, real); `real` is hidden from the agent."""
+        if GHOST_STRENGTH_SEP > 0:
+            return (kind, cell, random.gauss(GHOST_STRENGTH_SEP if real else 0.0, 1.0), real)
+        return (kind, cell)
+
+    def admit_radar(self, report) -> bool:
+        """Per-report monitor: whether a radar report may enter memory (see GHOST_STRENGTH_SEP)."""
+        if RADAR_MONITOR == "percept_oracle" and len(report) > 3:
+            return bool(report[3])
+        if RADAR_MONITOR == "percept_threshold" and len(report) > 2:
+            return report[2] >= RADAR_STRENGTH_MIN
+        if RADAR_MONITOR == "percept_random":
+            return random.random() < RADAR_RANDOM_P
+        if RADAR_MONITOR == "percept_learned" and len(report) > 2:
+            admit = report[2] >= self.radar_tau or random.random() < RADAR_PROBE
+            self.radar_admitted[0] += int(admit)
+            self.radar_admitted[1] += 1
+            return admit
+        return True
+
+    def radar_verified(self, hit: bool, strength: Optional[float] = None) -> None:
         """A radar sighting was confirmed (hit) or contradicted (ghost) by the agent's own view: updates its estimate."""
         self.radar_stats["hits" if hit else "ghosts"] += 1
+        if strength is not None:
+            self.radar_labels.append((strength, hit))
+            del self.radar_labels[:-RADAR_LABEL_WINDOW]
+            if len(self.radar_labels) >= RADAR_MIN_LABELS:
+                best, best_score = float('-inf'), sum(1 if h else -1 for _, h in self.radar_labels)
+                for tau, _ in sorted(self.radar_labels):
+                    score = sum(1 if h else -1 for s, h in self.radar_labels if s >= tau)
+                    if score >= best_score:
+                        best, best_score = tau, score
+                self.radar_tau = best
         self.radar_reliability += RADAR_MONITOR_RATE * (float(hit) - self.radar_reliability)
 
     def trust_radar(self) -> bool:

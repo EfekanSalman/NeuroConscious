@@ -75,6 +75,21 @@ ATTENTION_RADAR_RANGE = 0
 # 'oracle' only in the low-ghost regime (cheats); 'wrong' follows a coin flipped each GHOST_PERIOD, unrelated to the
 # regime; 'learned' while a running average (RADAR_MONITOR_RATE) of hits vs misses stays at or above RADAR_TRUST, with a
 # RADAR_PROBE chance of trusting anyway. 0 range = off.
+# Per-report reliability signal (GHOST_STRENGTH_SEP > 0): every report carries a strength drawn from N(SEP, 1) if it is a
+# real site and N(0, 1) if it is a ghost; the agent sees the strength, not the truth. Monitors 'percept_oracle' (admits
+# exactly the real reports: cheats) and 'percept_threshold' (admits a report whose strength is at least
+# RADAR_STRENGTH_MIN) act per report, not per regime. GHOST_STICKY: a radar sighting the 3x3 view contradicts is dropped
+# only once the agent stands on its cell (so a ghost costs a walk), instead of on sight.
+GHOST_STRENGTH_SEP = 0.0
+RADAR_STRENGTH_MIN = 1.0
+GHOST_STICKY = False
+# 'percept_random' admits each report with probability RADAR_RANDOM_P (strength ignored: the capacity-matched control).
+# 'percept_learned' keeps the last RADAR_LABEL_WINDOW verified (strength, hit?) pairs and admits a report whose strength is
+# at least the threshold that maximises hits minus ghosts among them (admit everything until RADAR_MIN_LABELS pairs), or
+# with probability RADAR_PROBE anyway so that low-strength reports still get verified.
+RADAR_RANDOM_P = 0.3
+RADAR_LABEL_WINDOW = 60
+RADAR_MIN_LABELS = 10
 GHOST_RADAR_RANGE = 0
 GHOST_DETECT = 0.5
 GHOST_RATE_LOW = 0.01

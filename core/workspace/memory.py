@@ -16,6 +16,7 @@ class Sighting:
     location: Tuple[int, int]
     seen: int
     source: str = "view"   # 'radar' until the agent's own view has confirmed it
+    strength: Optional[float] = None   # the radar report's reliability signal, if it had one
 
 
 class WorkspaceMemory:
@@ -66,11 +67,14 @@ class WorkspaceMemory:
             for stored in self.sightings:
                 if stored.kind == kind and stored.location == location and stored.source == "radar":
                     stored.source = "view"  # confirmed by the agent's own view
-                    agent.radar_verified(True)
+                    agent.radar_verified(True, stored.strength)
             self._offer(Sighting(kind, location, now), agent.internal_state, now)
         if getattr(agent, "radar_monitor", "none") != "never":
-            for kind, location in agent.perception.get("ghost_radar") or []:
-                self._offer(Sighting(kind, location, now, "radar"), agent.internal_state, now)
+            for report in agent.perception.get("ghost_radar") or []:
+                admit = getattr(agent, "admit_radar", None)
+                if admit is None or admit(report):
+                    self._offer(Sighting(report[0], report[1], now, "radar", report[2] if len(report) > 2 else None),
+                                agent.internal_state, now)
 
     def recall(self, kind: str, agent) -> Optional[Tuple[int, int]]:
         """The nearest remembered location of a resource, forgetting any the current view contradicts."""
@@ -83,10 +87,11 @@ class WorkspaceMemory:
                 continue
             d_row, d_col = sighting.location[0] - here[0], sighting.location[1] - here[1]
             in_view = abs(d_row) <= 1 and abs(d_col) <= 1 and len(view) == 3 and len(view[1 + d_row]) == 3
-            if in_view and view[1 + d_row][1 + d_col] not in (kind, "unknown"):
+            sticky = sighting.source == "radar" and getattr(agent, "radar_sticky", False) and (d_row, d_col) != (0, 0)
+            if in_view and not sticky and view[1 + d_row][1 + d_col] not in (kind, "unknown"):
                 self.sightings.remove(sighting)  # visible and gone
                 if sighting.source == "radar":
-                    agent.radar_verified(False)  # a ghost: the radar reported a site that is not there
+                    agent.radar_verified(False, sighting.strength)  # a ghost: the radar reported a site that is not there
                 continue
             if sighting.source == "radar" and not getattr(agent, "radar_trust_now", True):
                 continue  # the agent's monitor says the radar cannot be trusted now

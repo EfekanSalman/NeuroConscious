@@ -17,7 +17,7 @@ def view_agent(center_kind=None, right=None):
     return SimpleNamespace(
         pos_x=5, pos_y=5, current_time_step=10, perception={"local_grid_view": grid, "ghost_radar": []},
         internal_state=SimpleNamespace(hunger=0.5, thirst=0.5, fatigue=0.5), radar_trust_now=True, radar_monitor="none",
-        radar_verified=lambda hit: log.append(hit), log=log, cue_allows=lambda cell: True)
+        radar_verified=lambda hit, strength=None: log.append(hit), log=log, cue_allows=lambda cell: True)
 
 
 class RadarSightingTest(unittest.TestCase):
@@ -105,3 +105,67 @@ class MonitorTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PerceptMonitorTest(unittest.TestCase):
+    def admit(self, mode, report, minimum=1.0):
+        with mock.patch.object(base_agent, "RADAR_MONITOR", mode), mock.patch.object(base_agent, "RADAR_STRENGTH_MIN", minimum):
+            return Agent.admit_radar(None, report)
+
+    def test_reports_carry_a_strength_only_with_the_signal_on(self):
+        with mock.patch.object(base_agent, "GHOST_STRENGTH_SEP", 0.0):
+            self.assertEqual(Agent._radar_report("food", (1, 2), True), ("food", (1, 2)))
+        with mock.patch.object(base_agent, "GHOST_STRENGTH_SEP", 2.0):
+            report = Agent._radar_report("food", (1, 2), False)
+        self.assertEqual(len(report), 4)
+        self.assertFalse(report[3])
+
+    def test_oracle_admits_exactly_the_real_reports(self):
+        self.assertTrue(self.admit("percept_oracle", ("food", (1, 1), -3.0, True)))
+        self.assertFalse(self.admit("percept_oracle", ("food", (1, 1), 5.0, False)))
+
+    def test_threshold_admits_strong_reports_only(self):
+        self.assertTrue(self.admit("percept_threshold", ("food", (1, 1), 1.2, False)))
+        self.assertFalse(self.admit("percept_threshold", ("food", (1, 1), 0.2, True)))
+
+    def test_other_modes_and_plain_reports_are_admitted(self):
+        self.assertTrue(self.admit("none", ("food", (1, 1), -9.0, False)))
+        self.assertTrue(self.admit("percept_threshold", ("food", (1, 1))))
+
+    def test_a_sticky_ghost_survives_a_glance_but_not_a_visit(self):
+        agent, memory = view_agent(), WorkspaceMemory(5)
+        agent.radar_sticky = True
+        memory.sightings.append(Sighting("food", (5, 6), 5, "radar"))
+        self.assertEqual(memory.recall("food", agent), (5, 6))
+        self.assertEqual(agent.log, [])
+        memory.sightings = [Sighting("food", (5, 5), 5, "radar")]  # standing on it, and nothing is there
+        self.assertIsNone(memory.recall("food", agent))
+        self.assertEqual(agent.log, [False])
+
+
+class LearnedPerceptTest(unittest.TestCase):
+    def stub(self):
+        return SimpleNamespace(radar_stats={"hits": 0, "ghosts": 0}, radar_labels=[], radar_tau=float("-inf"),
+                               radar_reliability=0.5, radar_admitted=[0, 0])
+
+    def test_the_threshold_separates_hits_from_ghosts_once_there_are_enough_labels(self):
+        agent = self.stub()
+        with mock.patch.object(base_agent, "RADAR_MIN_LABELS", 6), mock.patch.object(base_agent, "RADAR_LABEL_WINDOW", 60):
+            for strength, hit in [(2.5, True), (-0.5, False), (3.0, True), (0.2, False), (2.0, True), (0.8, False)]:
+                Agent.radar_verified(agent, hit, strength)
+        self.assertGreater(agent.radar_tau, 0.8)
+        self.assertLessEqual(agent.radar_tau, 2.0)
+
+    def test_admits_everything_before_enough_labels_and_counts_offers(self):
+        agent = self.stub()
+        with mock.patch.object(base_agent, "RADAR_MONITOR", "percept_learned"), mock.patch.object(base_agent, "RADAR_PROBE", 0.0):
+            self.assertTrue(Agent.admit_radar(agent, ("food", (1, 1), -5.0, False)))
+            agent.radar_tau = 1.0
+            self.assertFalse(Agent.admit_radar(agent, ("food", (1, 1), 0.5, True)))
+        self.assertEqual(agent.radar_admitted, [1, 2])
+
+    def test_random_admission_ignores_the_strength(self):
+        with mock.patch.object(base_agent, "RADAR_MONITOR", "percept_random"), mock.patch.object(base_agent, "RADAR_RANDOM_P", 1.0):
+            self.assertTrue(Agent.admit_radar(None, ("food", (1, 1), -9.0, True)))
+        with mock.patch.object(base_agent, "RADAR_MONITOR", "percept_random"), mock.patch.object(base_agent, "RADAR_RANDOM_P", 0.0):
+            self.assertFalse(Agent.admit_radar(None, ("food", (1, 1), 9.0, True)))
