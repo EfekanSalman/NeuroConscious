@@ -62,7 +62,7 @@ from config.constants import (
     ACTION_SLIP, MOTOR_LR, MOTOR_EPSILON,
     GHOST_RADAR_RANGE, GHOST_DETECT, GHOST_RATE_LOW, GHOST_RATE_HIGH, GHOST_PERIOD, RADAR_MONITOR,
     RADAR_MONITOR_RATE, RADAR_TRUST, RADAR_PROBE, GHOST_STRENGTH_SEP, RADAR_STRENGTH_MIN, GHOST_STICKY,
-    RADAR_RANDOM_P, RADAR_LABEL_WINDOW, RADAR_MIN_LABELS,
+    RADAR_RANDOM_P, RADAR_LABEL_WINDOW, RADAR_MIN_LABELS, RADAR_LABELS, RADAR_GHOST_WEIGHT,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -932,6 +932,8 @@ class Agent:
         if RADAR_MONITOR == "percept_random":
             return random.random() < RADAR_RANDOM_P
         if RADAR_MONITOR == "percept_learned" and len(report) > 2:
+            if RADAR_LABELS == "free" and len(report) > 3:
+                self._radar_label(report[2], bool(report[3]))
             admit = report[2] >= self.radar_tau or random.random() < RADAR_PROBE
             self.radar_admitted[0] += int(admit)
             self.radar_admitted[1] += 1
@@ -941,17 +943,25 @@ class Agent:
     def radar_verified(self, hit: bool, strength: Optional[float] = None) -> None:
         """A radar sighting was confirmed (hit) or contradicted (ghost) by the agent's own view: updates its estimate."""
         self.radar_stats["hits" if hit else "ghosts"] += 1
-        if strength is not None:
-            self.radar_labels.append((strength, hit))
-            del self.radar_labels[:-RADAR_LABEL_WINDOW]
-            if len(self.radar_labels) >= RADAR_MIN_LABELS:
-                best, best_score = float('-inf'), sum(1 if h else -1 for _, h in self.radar_labels)
-                for tau, _ in sorted(self.radar_labels):
-                    score = sum(1 if h else -1 for s, h in self.radar_labels if s >= tau)
-                    if score >= best_score:
-                        best, best_score = tau, score
-                self.radar_tau = best
+        if strength is not None and RADAR_LABELS == "verified":
+            self._radar_label(strength, hit)
         self.radar_reliability += RADAR_MONITOR_RATE * (float(hit) - self.radar_reliability)
+
+    def _radar_label(self, strength: float, hit: bool) -> None:
+        """Adds a (strength, hit?) pair and refits the admission threshold: the one maximising hits - weight * ghosts."""
+        self.radar_labels.append((strength, hit))
+        del self.radar_labels[:-RADAR_LABEL_WINDOW]
+        if len(self.radar_labels) < RADAR_MIN_LABELS:
+            return
+
+        def score(tau):
+            return sum(1.0 if h else -RADAR_GHOST_WEIGHT for s, h in self.radar_labels if s >= tau)
+
+        best, best_score = float('-inf'), score(float('-inf'))
+        for tau, _ in sorted(self.radar_labels):
+            if score(tau) >= best_score:
+                best, best_score = tau, score(tau)
+        self.radar_tau = best
 
     def trust_radar(self) -> bool:
         """Whether recall may use radar sightings now, by the agent's monitor (see RADAR_MONITOR)."""

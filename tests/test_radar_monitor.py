@@ -145,8 +145,10 @@ class PerceptMonitorTest(unittest.TestCase):
 
 class LearnedPerceptTest(unittest.TestCase):
     def stub(self):
-        return SimpleNamespace(radar_stats={"hits": 0, "ghosts": 0}, radar_labels=[], radar_tau=float("-inf"),
-                               radar_reliability=0.5, radar_admitted=[0, 0])
+        agent = SimpleNamespace(radar_stats={"hits": 0, "ghosts": 0}, radar_labels=[], radar_tau=float("-inf"),
+                                radar_reliability=0.5, radar_admitted=[0, 0])
+        agent._radar_label = lambda strength, hit: Agent._radar_label(agent, strength, hit)
+        return agent
 
     def test_the_threshold_separates_hits_from_ghosts_once_there_are_enough_labels(self):
         agent = self.stub()
@@ -169,3 +171,21 @@ class LearnedPerceptTest(unittest.TestCase):
             self.assertTrue(Agent.admit_radar(None, ("food", (1, 1), -9.0, True)))
         with mock.patch.object(base_agent, "RADAR_MONITOR", "percept_random"), mock.patch.object(base_agent, "RADAR_RANDOM_P", 0.0):
             self.assertFalse(Agent.admit_radar(None, ("food", (1, 1), 9.0, True)))
+
+    def test_a_cheaper_ghost_lowers_the_fitted_threshold(self):
+        pairs = [(2.5, True), (1.2, True), (1.0, False), (0.4, False), (3.0, True), (0.0, False), (2.0, True), (1.4, False)]
+        taus = []
+        for weight in (1.0, 0.1):
+            agent = self.stub()
+            with mock.patch.object(base_agent, "RADAR_MIN_LABELS", 8), mock.patch.object(base_agent, "RADAR_GHOST_WEIGHT", weight):
+                for strength, hit in pairs:
+                    Agent._radar_label(agent, strength, hit)
+            taus.append(agent.radar_tau)
+        self.assertLess(taus[1], taus[0])
+
+    def test_free_labels_come_from_the_offered_report_itself(self):
+        agent = self.stub()
+        with mock.patch.object(base_agent, "RADAR_MONITOR", "percept_learned"), mock.patch.object(base_agent, "RADAR_LABELS", "free"), \
+                mock.patch.object(base_agent, "RADAR_PROBE", 0.0):
+            Agent.admit_radar(agent, ("food", (1, 1), 2.0, True))
+        self.assertEqual(agent.radar_labels, [(2.0, True)])

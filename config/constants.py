@@ -88,6 +88,11 @@ GHOST_STICKY = False
 # at least the threshold that maximises hits minus ghosts among them (admit everything until RADAR_MIN_LABELS pairs), or
 # with probability RADAR_PROBE anyway so that low-strength reports still get verified.
 RADAR_RANDOM_P = 0.3
+# percept_learned details: where the labels come from ('verified': only reports the agent admitted and then checked with its
+# own view; 'free': every offered report is labelled with the truth at once, which is a cheat used as a diagnostic) and how
+# much a ghost counts against a hit when choosing the threshold.
+RADAR_LABELS = "verified"
+RADAR_GHOST_WEIGHT = 1.0
 RADAR_LABEL_WINDOW = 60
 RADAR_MIN_LABELS = 10
 GHOST_RADAR_RANGE = 0
