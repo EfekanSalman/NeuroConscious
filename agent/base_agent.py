@@ -62,7 +62,7 @@ from config.constants import (
     ACTION_SLIP, MOTOR_LR, MOTOR_EPSILON,
     GHOST_RADAR_RANGE, GHOST_DETECT, GHOST_RATE_LOW, GHOST_RATE_HIGH, GHOST_PERIOD, RADAR_MONITOR,
     RADAR_MONITOR_RATE, RADAR_TRUST, RADAR_PROBE, GHOST_STRENGTH_SEP, RADAR_STRENGTH_MIN, GHOST_STICKY,
-    RADAR_RANDOM_P, RADAR_LABEL_WINDOW, RADAR_MIN_LABELS, RADAR_LABELS, RADAR_GHOST_WEIGHT, RADAR_AUDIT_P, RADAR_AUDIT_FREE, RADAR_AUDIT_SCOPE,
+    RADAR_RANDOM_P, RADAR_LABEL_WINDOW, RADAR_MIN_LABELS, RADAR_LABELS, RADAR_GHOST_WEIGHT, RADAR_AUDIT_P, RADAR_AUDIT_FREE, RADAR_AUDIT_SCOPE, RADAR_AUDIT_POOL,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -940,7 +940,7 @@ class Agent:
             admit = report[2] >= self.radar_tau or random.random() < RADAR_PROBE
             if RADAR_LABELS in ("audit", "audit_only") and len(report) > 3 and (not admit or RADAR_AUDIT_SCOPE == "all"):
                 self.radar_pending.append((report[2], bool(report[3])))   # the truth is revealed only if audited
-                del self.radar_pending[:-5]
+                del self.radar_pending[:-RADAR_AUDIT_POOL]
             self.radar_admitted[0] += int(admit)
             self.radar_admitted[1] += 1
             return admit
@@ -956,6 +956,7 @@ class Agent:
     def _radar_label(self, strength: float, hit: bool) -> None:
         """Adds a (strength, hit?) pair and refits the admission threshold: the one maximising hits - weight * ghosts."""
         self.radar_labels.append((strength, hit))
+        self.radar_stats["labels"] = self.radar_stats.get("labels", 0) + 1
         del self.radar_labels[:-RADAR_LABEL_WINDOW]
         if len(self.radar_labels) < RADAR_MIN_LABELS:
             return

@@ -97,6 +97,7 @@ RADAR_LABELS = "verified"
 # Each step, with probability RADAR_AUDIT_P and if a rejected report is pending, it does so (RADAR_AUDIT_FREE: no step is
 # lost, an upper bound on what the label source is worth).
 # RADAR_LABELS = 'audit_only': as 'audit' but the labels from reports the agent checked itself are not used, only audits.
+RADAR_AUDIT_POOL = 5   # how many of the most recent offered reports an audit can pick from
 RADAR_AUDIT_P = 0.05
 RADAR_AUDIT_FREE = False
 # Which offered reports an audit can pick: 'rejected' (only reports the monitor turned away) or 'all' (any recent report,
