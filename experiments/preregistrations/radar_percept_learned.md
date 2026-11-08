@@ -47,3 +47,23 @@ the 20-seed look was noise.
 One environment designed by me; settings found after disclosed looks on the seeds above; the free-label learner cheats by
 construction and is a control, not a candidate; the ghost weight is chosen from three values on 30 seeds; five predictions,
 no multiple-comparison correction.
+
+## Result (`experiments/results/radar_percept_learned/`, commit 8fc27d5, dirty=false)
+Selection (seeds 4100-4129): free labels, probe 0, ghost weight 3 / 12 / 30 = 797 / 667 / **633**; verified labels, weight x
+probe: 3: 827 / **818** / 890, 12: 838 / 834 / 916, 30: 847 / 837 / 914 (probe 0 / 0.02 / 0.05). Used: free w=30; verified
+w=3, probe 0.02. Test (seeds 4200-4299), total critical steps (hits / ghosts verified per run; share of reports admitted):
+none 736 (49 / 170), never 963, oracle 585 (42 / 8), hand threshold 2.5 610 (36 / 8), **learned-free 593** (40 / 9; 29%),
+**learned-verified 851** (29 / 22; 23%).
+- **L1 held:** learned-free - none = -144 [-177, -111]. **L2 held:** learned-free - threshold = -17 [-49, +15]: the learner
+  that is given unbiased labels matches the hand rule (and the oracle: 593 vs 585).
+- **L3 failed to occur, as predicted (20%):** learned-verified - none = +114 [+82, +147]. **L4 held:** free - verified =
+  -258 [-290, -227]. **L5 held:** learned-verified - never = -113 [-143, -83]: it keeps part of the radar's value but ends
+  worse than trusting the radar on every step.
+- Reading: the first failure (923) was mostly my specification. With the probe removed and the ghost weight high, the
+  threshold is found as soon as the labels are unbiased and plentiful. What stays out of reach is a realistic label
+  source: an agent that learns about a report only if it admitted and then checked it ends worse than no monitor at all
+  (851 vs 736). The ghost weight is still a number I set (selection chose the largest value in the grid for the free
+  learner, so it may be higher still), so "learned" means "the threshold is fitted", not "the agent works out what a ghost
+  costs"; and the free-label learner cheats by construction. Not tested: a label source that is unbiased without being a
+  cheat (e.g. spending steps to check some unadmitted reports at a cost), learning the weight, other signal strengths.
+  Five predictions, no multiple-comparison correction, one environment, settings found after disclosed looks.
