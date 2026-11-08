@@ -47,3 +47,25 @@ learning the reliability from outcomes is enough here. G0 failing: the headroom 
 One environment designed by me and set after disclosed looks on other seeds; the signal is synthetic (Gaussian,
 d' = 2) and the learned monitor is the simplest one I could write, so a failure is about this implementation; five
 predictions, no multiple-comparison correction.
+
+## Result (`experiments/results/radar_percept_monitor/`, commit 7cc3eec, dirty=false)
+Selection (seeds 3900-3929, tau): 1: 924, 1.5: 821, 2: 652, **2.5: 594**, 3: 647, 3.5: 801; tau 2.5 used. Test (seeds 4000-4099),
+total critical steps (verified hits / ghosts per run):
+none 722 (49 / 171), never 936, percept_oracle 600 (41 / 7), percept_threshold (tau 2.5) 605 (35 / 7),
+percept_random 1002 (31 / 47), percept_learned 923 (35 / 37; admitted 40% of reports).
+- **G0 held:** oracle - none = -122 [-170, -74]. **G1 held:** best threshold - none = -117 [-148, -86]; the threshold is
+  indistinguishable from the oracle (+5 [-43, +52] for oracle - threshold... i.e. 605 vs 600).
+- **H1 failed to occur, as predicted (10%):** learned - none = +201 [+171, +232]; learned - never = -13 [-42, +17]: the
+  learned monitor is no better than having no radar. **H2 held:** threshold - learned = -318 [-348, -289].
+  **H3 held:** learned - random = -79 [-108, -51]: its use of the signal is better than chance admission, but far from enough.
+- Not predicted but visible: with the right threshold ghosts fall from 171 to 7 verified per run while hits drop only
+  from 49 to 35; the best threshold (2.5) sits well above the naive midpoint of the two means (1), because ghosts are many
+  distinct cells while a real site is reported again and again (distinct sightings, not reports, fill the 10 memory slots).
+- Reading: a per-report reliability signal gives a monitor a real job here (causal dependence: the oracle gains 122), and a
+  one-parameter rule reaches the oracle, so HOT-2 in this per-percept form is easy to meet *when the designer sets the
+  threshold*. The outcome-trained monitor did not find it: it learns from verified sightings only (sparse, and biased
+  toward what it already admitted), weighs a ghost and a hit equally (a ghost costs far less in the 10-slot memory than
+  its raw count suggests, and the best threshold is not the 1:1 optimum), and was written once. So the learned form of the
+  indicator is not shown, and this is about my learner more than about the idea. Not tested: a learner with an unbiased
+  label source, a different cost weighting, a different signal strength (d'), or a signal that is not Gaussian. Five
+  predictions, no multiple-comparison correction, one environment, set after disclosed looks.
