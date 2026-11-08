@@ -24,7 +24,7 @@ mean over the agents of a seed, 100 seeds unless stated.
 | Attention schema (AST), three problems | No reachable gain over trivial references in any; learned schema never built | closed negative |
 | AE-2: a model of one's own output-input contingencies | A 4-entry command table recovers ~90% of the oracle's gain; a non-tracking table is worse than none (+135); a tabular model-free learner is 230 steps worse than the model | model needed in the weak sense; cheap to meet |
 | HOT-2: monitoring how reliable one's perception is (regime level) | Trusting the radar on every step (742) beats the oracle monitor (849) and a learned monitor (1010); no job for a monitor | closed negative |
-| HOT-2, per-percept form (each radar report carries a noisy reliability signal) | An oracle gains 122 over trusting everything; a hand-set threshold reaches it (605 vs 600); no learned monitor has worked: outcome-trained 923, verified-only labels 851, paid audits 883/892, and the earlier "works with free labels" (593) was a leak (the label of the report being judged was used to judge it); without the leak, free labels give 823 vs 813 for no monitor | met when the designer sets the threshold; learned form not shown to work with any label source |
+| HOT-2, per-percept form (each radar report carries a noisy reliability signal) | An oracle gains 122 over trusting everything; a hand-set threshold reaches it (605 vs 600); no learned monitor has worked (a longer label window removes some threshold noise, 785 -> 719, still no better than no monitor, 712): outcome-trained 923, verified-only labels 851, paid audits 883/892, and the earlier "works with free labels" (593) was a leak (the label of the report being judged was used to judge it); without the leak, free labels give 823 vs 813 for no monitor | met when the designer sets the threshold; learned form not shown to work with any label source |
 
 ## Findings that held up
 - The homeostatic controller, bounded memory admission and frontier exploration effects above replicate across the
@@ -65,7 +65,7 @@ could behave differently; neither was tested. This is a statement about this tes
   disclosed small looks at other seeds; the model-free learner is tabular and its exploration rate sat at the tuning grid's edge.
 
 ## Open
-- HOT-2: why a threshold fitted to correct labels for every report does not beat always trusting (the label-source and leak questions are settled; see `radar_percept_leak.md`); learning the ghost weight; other signal strengths.
+- HOT-2: why a threshold fitted to correct labels for every report does not beat always trusting (the label-source and leak questions are settled, see `radar_percept_leak.md`; threshold noise explains ~65 steps, see `radar_percept_window.md`, not the rest); learning the ghost weight; other signal strengths.
 - A neural model-free learner for AE-2, and a manipulation that isolates why the model beats the tabular learner.
 - Indicators not touched: recurrent processing (RPT), predictive processing (PP).
 - Known weak spots in the code: `explore` is a stationary no-op (left as is: every measurement here was taken with it);

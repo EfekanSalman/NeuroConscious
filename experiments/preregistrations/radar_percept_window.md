@@ -24,3 +24,13 @@ threshold. E1 failing: noise in the threshold is not the cause (admission qualit
 ## Limits stated in advance
 Eighth test on one radar, shaped by what I saw; labels are free and correct (an upper bound); one environment; three
 predictions, no correction.
+
+## Result (`experiments/results/radar_percept_window/`, commit 37763ba, dirty=false; seeds 6000-6049, total critical steps)
+none 712 (170 ghosts verified), hand threshold 611 (7), learned `free_after` window 60 **785** (19; 314 of 1046 offered reports
+admitted), window 200 722 (13; 217/1032), window 1000 **719** (12; 203/1036).
+- **E1 failed:** window 1000 - window 60 = -66 [-102, -29] (right direction, predicted at least 100 better). **E2 failed:**
+  window 1000 - hand threshold = +108 [+72, +145]. **E3 held:** 785 > 722 > 719.
+- Window 1000 - none = +7 [-37, +52]: even with a stable threshold the learner is no better than trusting everything.
+- So noise in the threshold costs about 65 steps (window 60 is worse than no monitor), but removing it does not make the
+  learned monitor useful. The learned threshold admits ~20% of reports and lets ~12 ghosts through, the hand threshold lets 7
+  through; I do not know why that gap costs ~100 steps, and I stop here (eighth test on this radar).
