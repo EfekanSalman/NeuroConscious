@@ -64,5 +64,6 @@ could behave differently; neither was tested. This is a statement about this tes
 - HOT-2 with a per-percept reliability signal, or a world where acting on a false percept is expensive.
 - A neural model-free learner for AE-2, and a manipulation that isolates why the model beats the tabular learner.
 - Indicators not touched: recurrent processing (RPT), predictive processing (PP).
-- Known weak spots in the code: `explore` is a stationary no-op; emotions barely influence behaviour; several orphan
-  modules (`AgentInitializer`, `ActionExecutor`, `PerceptionManager`, `ThoughtProcessor`); `tests/test_motivation.py` is empty.
+- Known weak spots in the code: `explore` is a stationary no-op (left as is: every measurement here was taken with it);
+  emotions barely influence behaviour. The unused `AgentInitializer` cluster (with `ActionExecutor`, `PerceptionManager`,
+  `ThoughtProcessor` and their base classes) and the empty `tests/test_motivation.py` were removed; they stay in git history.
