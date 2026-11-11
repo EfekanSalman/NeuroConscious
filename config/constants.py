@@ -168,7 +168,8 @@ EXPLORATION_REVISIT_STEPS = 100
 BEACON_ACCESS = "none"
 # BEACON_ACCESS = 'inferred': no sensor; the agent infers the active half from what it sees (core/navigation/regime_filter.py).
 # BEACON_INFER: 'last' (the half of the latest resource sighting), 'filter' (log-odds belief updated by sightings and by
-# empty cells, with a learned resource rate) or 'filter_sightings' (the same without evidence from empty cells).
+# empty cells, with a learned resource rate), 'filter_sightings' (the same without evidence from empty cells) or
+# 'last_ttl' ('last', but the cue lapses REGIME_TTL steps after the latest sighting).
 BEACON_INFER = "filter"
 BEACON_INFER_INVERT = False   # content control: acts on the opposite half
 REGIME_THETA = 1.0            # |log-odds| needed before the filter commits to a half
@@ -176,6 +177,7 @@ REGIME_CAP = 2.0
 REGIME_HAZARD = 1 / 150       # per-step decay of belief toward "unknown" (the regime may have been redrawn)
 REGIME_RATE_INIT = 0.1        # initial guess of P(resource in a cell of the active half)
 REGIME_RATE_LR = 0.02
+REGIME_TTL = 60               # 'last_ttl': steps the latest sighting's half is held before the cue lapses
 # Steps a remembered cue (the trace of the last cue that was broadcast) keeps steering recall and exploration after
 # the cue has left the workspace. 0 (default) = no trace: the cue counts only on steps when it is in the workspace.
 CUE_TRACE_TTL = 0

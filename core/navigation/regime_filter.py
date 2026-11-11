@@ -15,9 +15,10 @@ RESOURCES = ("food", "water")
 
 
 class RegimeFilter:
-    def __init__(self, mode: str, theta: float, cap: float, hazard: float, rate: float, rate_lr: float, invert: bool = False):
+    def __init__(self, mode: str, theta: float, cap: float, hazard: float, rate: float, rate_lr: float, invert: bool = False, ttl: int = 0):
         self.mode, self.theta, self.cap, self.hazard = mode, theta, cap, hazard
-        self.rate, self.rate_lr, self.invert = rate, rate_lr, invert
+        self.rate, self.rate_lr, self.invert, self.ttl = rate, rate_lr, invert, ttl
+        self.age = 0                  # 'last_ttl': steps since the latest sighting
         self.log_odds = 0.0           # 'filter' modes
         self.last: Optional[str] = None   # 'last' mode: the half of the latest sighting
         self.errors = 0.0             # running sum of |prediction error|, for inspection
@@ -43,9 +44,12 @@ class RegimeFilter:
         return cue
 
     def _infer(self, seen, empty) -> Optional[str]:
-        if self.mode == "last":
+        if self.mode in ("last", "last_ttl"):
+            self.age += 1
             if seen[LEFT] != seen[RIGHT]:
-                self.last = LEFT if seen[LEFT] > seen[RIGHT] else RIGHT
+                self.last, self.age = (LEFT if seen[LEFT] > seen[RIGHT] else RIGHT), 0
+            if self.mode == "last_ttl" and self.age > self.ttl:
+                return None
             return self.last
         self.log_odds *= 1.0 - self.hazard
         believed = LEFT if self.log_odds > 0 else RIGHT

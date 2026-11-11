@@ -58,7 +58,7 @@ from config.constants import (
     WORKING_MEMORY_CAPACITY, WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL,
     SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL, USE_PATH_PLANNING,
     USE_FRONTIER_EXPLORATION, EXPLORATION_REVISIT_STEPS, BEACON_ACCESS, CUE_TRACE_TTL,
-    BEACON_INFER, BEACON_INFER_INVERT, REGIME_THETA, REGIME_CAP, REGIME_HAZARD, REGIME_RATE_INIT, REGIME_RATE_LR,
+    BEACON_INFER, BEACON_INFER_INVERT, REGIME_THETA, REGIME_CAP, REGIME_HAZARD, REGIME_RATE_INIT, REGIME_RATE_LR, REGIME_TTL,
     ATTENTION_GATE, ATTENTION_HIGH, ATTENTION_LOW, ATTENTION_CAPTURE_RATE, ATTENTION_POLICY, ATTENTION_INTERVAL,
     ATTENTION_SILENCE, ATTENTION_ORIENT_FREE, ATTENTION_RADAR_RANGE, MOTOR_MODEL, MOTOR_WINDOW,
     ACTION_SLIP, MOTOR_LR, MOTOR_EPSILON,
@@ -161,7 +161,7 @@ class Agent:
         # Which half of the grid holds resources, as far as this agent's consumers (recall, exploration) know.
         self.regime_cue: Optional[str] = None
         self.regime_filter = (RegimeFilter(BEACON_INFER, REGIME_THETA, REGIME_CAP, REGIME_HAZARD, REGIME_RATE_INIT,
-                                           REGIME_RATE_LR, BEACON_INFER_INVERT) if BEACON_ACCESS == "inferred" else None)
+                                           REGIME_RATE_LR, BEACON_INFER_INVERT, REGIME_TTL) if BEACON_ACCESS == "inferred" else None)
         self.cue_trace: Optional[str] = None  # The last cue that was broadcast, kept for CUE_TRACE_TTL steps.
         self.cue_age: int = NEVER  # Steps since that cue.
         # Gated attention: where attention really is (hidden from the agent) and the agent's own bookkeeping.

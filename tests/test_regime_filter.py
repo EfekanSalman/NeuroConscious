@@ -12,7 +12,7 @@ def view(left=(), right=(), center="empty"):
 
 
 def make(mode="filter", **kw):
-    args = dict(theta=1.0, cap=2.0, hazard=0.0, rate=0.1, rate_lr=0.0, invert=False)
+    args = dict(theta=1.0, cap=2.0, hazard=0.0, rate=0.1, rate_lr=0.0, invert=False, ttl=0)
     args.update(kw)
     return RegimeFilter(mode, **args)
 
@@ -54,3 +54,9 @@ class RegimeFilterTest(unittest.TestCase):
 
     def test_invert_flips_the_cue(self):
         self.assertEqual(self.step(make("last", invert=True), view(left=("food",))), "right")
+
+    def test_last_ttl_lapses_after_the_ttl(self):
+        f = make("last_ttl", ttl=3)
+        self.assertEqual(self.step(f, view(left=("food",))), "left")
+        self.assertEqual([self.step(f, view()) for _ in range(4)], ["left", "left", "left", None])
+        self.assertEqual(self.step(f, view(right=("water",))), "right")

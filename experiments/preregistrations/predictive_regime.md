@@ -46,3 +46,25 @@ sees too little of a 20x20 world to know the regime fast.
 One world I designed; the belief model's structure (two hypotheses, decisive sightings) is mine and nearly identical to the
 `last` reference; five predictions, no multiple-comparison correction; defaults looked at on 10 other seeds; a 3x3 view
 and a 150-step regime.
+
+## Result (`experiments/results/predictive_regime/`, commit 3acc3de, dirty=false; seeds 7100-7199, total critical steps)
+none 1586, wired 1414, last 1604 (cue on 939 steps, 534 correct), **filter 1512** (746; 558; selected cap 4, hazard 1/150, theta 0.5),
+filter_sightings 1464 (751; 611; selected cap 2, hazard 1/50, theta 0.5), filter_inverted 2021 (993; 211).
+- **P1 held:** filter - none = -75 [-92, -58]. **P2 held:** filter - last = -92 [-121, -64]. **P3 failed:** filter - wired =
+  +98 [+81, +116]. **P4 held:** inverted - none = +434 [+419, +449]. **P5 failed, in the opposite direction:** filter -
+  filter_sightings = +48 [+33, +63]: the empty-cell prediction errors made the belief worse.
+- Not predicted: `last` is no better than no cue (+18 [-11, +46]); filter_sightings is the best inferred form (-123 vs none,
+  +50 from wired). What separates it from `last` is that its belief decays and the cue lapses when unsure, so it stops
+  steering toward a half it has not seen resources in for a while; a wrong cue is expensive. The cue is correct on
+  only 60-80% of the steps it exists, against 100% for the sensor.
+- So the working ingredient looks like abstention, not the prediction-error learning of the resource rate. This is the
+  explanation I will test next, below.
+
+## Addendum (written before running it): is a cue that lapses enough?
+Post hoc, motivated by the result above. A cheap reference with the abstention but no belief model and no error signal:
+`last_ttl` (the half of the latest sighting, held for REGIME_TTL steps, then no cue). Selection seeds 7000-7029, TTL in
+{20, 40, 80, 160}; test seeds 7200-7299 (new, 100): none, wired, filter_sightings (the selection above), last_ttl.
+- **Q1 (60%):** last_ttl beats none by at least 60.
+- **Q2 (50%):** last_ttl is within 40 of filter_sightings.
+- Reading: Q1 and Q2 holding: the lapse is what helps, and a timer does what the filter does (predictive processing is not
+  needed in this weak sense). Q2 failing with Q1 holding: the graded belief beats a timer. Q1 failing: the lapse is not enough.
