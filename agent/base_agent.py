@@ -50,6 +50,7 @@ from core.memory.procedural_memory import ProceduralMemory
 from core.decision.decision_maker import DecisionMaker
 from core.homeostasis import HomeostaticController
 from core.navigation.regions import half_of
+from core.navigation.regime_filter import RegimeFilter
 from core.workspace import GlobalWorkspace, WorkspaceMemory
 from core.workspace.specialists import NEVER, read_regime
 from config.constants import (
@@ -57,6 +58,7 @@ from config.constants import (
     WORKING_MEMORY_CAPACITY, WORKSPACE_MEMORY_SLOTS, WORKSPACE_MEMORY_POLICY, WORKSPACE_MEMORY_RECALL,
     SIGHTING_MEMORY_SLOTS, SIGHTING_MEMORY_POLICY, SIGHTING_MEMORY_RECALL, USE_PATH_PLANNING,
     USE_FRONTIER_EXPLORATION, EXPLORATION_REVISIT_STEPS, BEACON_ACCESS, CUE_TRACE_TTL,
+    BEACON_INFER, BEACON_INFER_INVERT, REGIME_THETA, REGIME_CAP, REGIME_HAZARD, REGIME_RATE_INIT, REGIME_RATE_LR,
     ATTENTION_GATE, ATTENTION_HIGH, ATTENTION_LOW, ATTENTION_CAPTURE_RATE, ATTENTION_POLICY, ATTENTION_INTERVAL,
     ATTENTION_SILENCE, ATTENTION_ORIENT_FREE, ATTENTION_RADAR_RANGE, MOTOR_MODEL, MOTOR_WINDOW,
     ACTION_SLIP, MOTOR_LR, MOTOR_EPSILON,
@@ -158,6 +160,8 @@ class Agent:
             if USE_GLOBAL_WORKSPACE else None)
         # Which half of the grid holds resources, as far as this agent's consumers (recall, exploration) know.
         self.regime_cue: Optional[str] = None
+        self.regime_filter = (RegimeFilter(BEACON_INFER, REGIME_THETA, REGIME_CAP, REGIME_HAZARD, REGIME_RATE_INIT,
+                                           REGIME_RATE_LR, BEACON_INFER_INVERT) if BEACON_ACCESS == "inferred" else None)
         self.cue_trace: Optional[str] = None  # The last cue that was broadcast, kept for CUE_TRACE_TTL steps.
         self.cue_age: int = NEVER  # Steps since that cue.
         # Gated attention: where attention really is (hidden from the agent) and the agent's own bookkeeping.
@@ -723,6 +727,9 @@ class Agent:
 
         if BEACON_ACCESS == "wired":
             self.regime_cue = read_regime(self)
+        elif self.regime_filter is not None:
+            self.regime_cue = self.regime_filter.update(self.perception.get("local_grid_view") or [], self.pos_x, self.pos_y,
+                                                        len(self.environment.grid), half_of)
 
         # --- Decision Maker determines the final action based on the mode ---
         if self.workspace is not None:
