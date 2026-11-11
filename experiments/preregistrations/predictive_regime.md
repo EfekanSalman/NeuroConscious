@@ -68,3 +68,11 @@ Post hoc, motivated by the result above. A cheap reference with the abstention b
 - **Q2 (50%):** last_ttl is within 40 of filter_sightings.
 - Reading: Q1 and Q2 holding: the lapse is what helps, and a timer does what the filter does (predictive processing is not
   needed in this weak sense). Q2 failing with Q1 holding: the graded belief beats a timer. Q1 failing: the lapse is not enough.
+
+### Addendum result (`experiments/results/predictive_regime_ttl/`, commit 7ff4277, dirty=false; seeds 7200-7299)
+Selection (seeds 7000-7029): TTL 20 1517, 40 1480, **80 1477**, 160 1551. Test: none 1573, wired 1419, filter_sightings 1459 (cue
+on 759 steps, 619 correct), last_ttl 1471 (791; 616).
+- **Q1 held:** last_ttl - none = -102 [-122, -83]. **Q2 held:** last_ttl - filter_sightings = +12 [-2, +26].
+- A held-for-80-steps timer does what the belief filter does, and the learned resource rate (empty-cell prediction errors)
+  made the filter worse (+48). Predictive processing in this weak sense (a belief about the regime updated by sensory
+  evidence and used top-down by recall and exploration) is met, but a timer meets it equally. Still 50 steps from the sensor.

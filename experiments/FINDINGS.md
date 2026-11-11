@@ -25,6 +25,7 @@ mean over the agents of a seed, 100 seeds unless stated.
 | AE-2: a model of one's own output-input contingencies | A 4-entry command table recovers ~90% of the oracle's gain; a non-tracking table is worse than none (+135); a tabular model-free learner is 230 steps worse than the model | model needed in the weak sense; cheap to meet |
 | HOT-2: monitoring how reliable one's perception is (regime level) | Trusting the radar on every step (742) beats the oracle monitor (849) and a learned monitor (1010); no job for a monitor | closed negative |
 | HOT-2, per-percept form (each radar report carries a noisy reliability signal) | An oracle gains 122 over trusting everything; a hand-set threshold reaches it (605 vs 600); no learned monitor has worked (a longer label window removes some threshold noise, 785 -> 719, still no better than no monitor, 712): outcome-trained 923, verified-only labels 851, paid audits 883/892, and the earlier "works with free labels" (593) was a leak (the label of the report being judged was used to judge it); without the leak, free labels give 823 vs 813 for no monitor | met when the designer sets the threshold; learned form not shown to work with any label source |
+| PP-1: infer the regime from sensory prediction errors, no cue (beacon world) | A belief filter with decay beats no cue by 75-123 (cue 1512/1464 vs 1586) and an inverted belief is 434 worse (the content is used); but a held-80-steps timer matches it (1471 vs 1459, +12 [-2, +26]); a hard last-sighting cue is no better than none (1604); the learned empty-cell prediction errors made the filter worse (+48); the sensor stays 50-100 steps ahead | met in the weak sense; a timer meets it too |
 
 ## Findings that held up
 - The homeostatic controller, bounded memory admission and frontier exploration effects above replicate across the
@@ -67,7 +68,7 @@ could behave differently; neither was tested. This is a statement about this tes
 ## Open
 - HOT-2: why a threshold fitted to correct labels for every report does not beat always trusting (the label-source and leak questions are settled, see `radar_percept_leak.md`; threshold noise explains ~65 steps, see `radar_percept_window.md`, not the rest); learning the ghost weight; other signal strengths.
 - A neural model-free learner for AE-2, and a manipulation that isolates why the model beats the tabular learner.
-- Indicators not touched: recurrent processing (RPT), predictive processing (PP).
+- Indicators not touched: recurrent processing (RPT). Predictive processing (PP) touched once (PP-1, above); a world where the generative model has more to learn than a two-hypothesis regime (e.g. empty-cell errors that matter) was not tried.
 - Known weak spots in the code: `explore` is a stationary no-op (left as is: every measurement here was taken with it);
   emotions barely influence behaviour. The unused `AgentInitializer` cluster (with `ActionExecutor`, `PerceptionManager`,
   `ThoughtProcessor` and their base classes) and the empty `tests/test_motivation.py` were removed; they stay in git history.
