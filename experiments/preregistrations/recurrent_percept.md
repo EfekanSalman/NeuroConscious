@@ -49,3 +49,21 @@ single report and the headroom was not reachable. All of this concerns this simu
 One world I designed; the repetition of real sites and the randomness of ghosts are my construction and make accumulation
 useful by design; six predictions, no multiple-comparison correction; parameters picked on separate seeds with grids I chose;
 no spatial recurrence or feedback hierarchy was tried.
+
+## Result (`experiments/results/recurrent_percept/`, commit 15739bd, dirty=false; seeds 8100-8199, total critical steps)
+Selection (seeds 8000-8029): threshold tau 2.0; recurrent decay 0.8, tau 2.5 (632-690 across the grid, the best at the lowest
+decay, an edge of the grid); window W 10, tau 2.5 (an edge); repeat n 3, W 10 (an edge). Test (ghosts / hits verified):
+none 769 (170 / 48), oracle 599 (7 / 40), single-report threshold 794 (11 / 25), **recurrent 684** (6 / 30), window 663 (7 / 33),
+repeat 653 (5 / 34), recurrent-pooled 997 (40 / 31).
+- **R1 held:** recurrent - none = -85 [-110, -60]. **R2 held:** recurrent - threshold = -110 [-134, -86]. **R3 failed:**
+  recurrent - oracle = +84 [+48, +121]. **R4 held (point estimate):** window - recurrent = -21 [-49, +8]. **R5 failed, narrowly,
+  in the other direction:** repeat - recurrent = -31 [-61, -2] (repeat is better, predicted within 30). **R6 held:** pooled -
+  none = +228 [+207, +248].
+- Reading: accumulating evidence across steps clearly helps (-85 vs none, -110 vs the single report, which is no better than
+  none, +25 [0, +50]) and the evidence has to belong to its cell (pooled is far worse). But recurrence as such is not what does
+  it: a raw window of the same history is as good, and counting repeats while ignoring the strength, which is the cheapest
+  reference, is the best (653), 31 steps better than the integrator. In this world real sites repeat and ghosts do not, so
+  repetition alone separates them; the task rewards history access, not recurrence, and not the strength signal. The best
+  selected settings sit at grid edges (forgetting fast, short windows), so better settings may exist for all three forms.
+- RPT-1 is met only in the weakest algorithmic sense and the minimal implementation (a repeat counter) meets it better. Nothing
+  here says anything about recurrent processing theory beyond this simulator.
