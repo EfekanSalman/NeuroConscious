@@ -99,6 +99,16 @@ RADAR_LABELS = "verified"
 # RADAR_LABELS = 'audit_only': as 'audit' but the labels from reports the agent checked itself are not used, only audits.
 # RADAR_LABELS = 'free': every offered report is labelled with its truth BEFORE it is judged, so the monitor sees the truth of the
 # very report it decides on (a leak, found late: results with 'free' overstate the learned monitor). 'free_after' labels it after.
+# RPT-1 forms of the per-report monitor (RADAR_MONITOR): the agent accumulates evidence about each reported cell across steps.
+# 'percept_recurrent': a leaky integrator per (kind, cell): s = s * DECAY**(steps since last report) + strength, admit if
+#   s >= TAU (a state carried across processing cycles). 'percept_window': the same sum over the reports of the last WINDOW
+#   steps, from a raw log (no recurrent state: history access only). 'percept_repeat': admit once the cell was reported COUNT
+#   times in the last WINDOW steps (ignores strength). RADAR_RECUR_POOLED: one state per kind for all cells (content control).
+RADAR_RECUR_DECAY = 0.9
+RADAR_RECUR_TAU = 2.5
+RADAR_RECUR_WINDOW = 20
+RADAR_RECUR_COUNT = 2
+RADAR_RECUR_POOLED = False
 RADAR_AUDIT_POOL = 5   # how many of the most recent offered reports an audit can pick from
 RADAR_AUDIT_P = 0.05
 RADAR_AUDIT_FREE = False

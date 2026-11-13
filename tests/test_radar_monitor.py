@@ -268,3 +268,45 @@ class FreeLabelLeakTest(unittest.TestCase):
     def test_free_labels_use_the_truth_of_the_report_being_judged_free_after_does_not(self):
         self.assertFalse(self.decide("free"))        # the ghost's own label raised the threshold above it
         self.assertTrue(self.decide("free_after"))   # judged with the old threshold
+
+
+class AccumulatedMonitorTest(unittest.TestCase):
+    def judge(self, monitor, reports, pooled=False, **consts):
+        agent = SimpleNamespace(radar_recur={}, radar_admitted=[0, 0], current_time_step=0)
+        agent._admit_accumulated = lambda report: Agent._admit_accumulated(agent, report)
+        out = []
+        patches = [mock.patch.object(base_agent, "RADAR_MONITOR", monitor), mock.patch.object(base_agent, "RADAR_RECUR_POOLED", pooled)]
+        patches += [mock.patch.object(base_agent, name, value) for name, value in consts.items()]
+        for patch in patches:
+            patch.start()
+        try:
+            for step, cell, strength in reports:
+                agent.current_time_step = step
+                out.append(Agent.admit_radar(agent, ("food", cell, strength, True)))
+        finally:
+            for patch in patches:
+                patch.stop()
+        return out
+
+    def test_recurrent_state_accumulates_over_repeated_reports_of_one_cell(self):
+        got = self.judge("percept_recurrent", [(0, (1, 1), 1.5), (1, (1, 1), 1.5)], RADAR_RECUR_DECAY=1.0, RADAR_RECUR_TAU=2.5)
+        self.assertEqual(got, [False, True])
+
+    def test_state_leaks_with_time_and_is_per_cell(self):
+        got = self.judge("percept_recurrent", [(0, (1, 1), 1.5), (30, (1, 1), 1.5), (31, (2, 2), 1.5)],
+                         RADAR_RECUR_DECAY=0.5, RADAR_RECUR_TAU=2.5)
+        self.assertEqual(got, [False, False, False])
+
+    def test_pooled_state_mixes_cells(self):
+        got = self.judge("percept_recurrent", [(0, (1, 1), 1.5), (1, (2, 2), 1.5)], pooled=True,
+                         RADAR_RECUR_DECAY=1.0, RADAR_RECUR_TAU=2.5)
+        self.assertEqual(got, [False, True])
+
+    def test_window_sums_recent_reports_and_forgets_old_ones(self):
+        got = self.judge("percept_window", [(0, (1, 1), 1.5), (5, (1, 1), 1.5), (40, (1, 1), 1.5)],
+                         RADAR_RECUR_WINDOW=10, RADAR_RECUR_TAU=2.5)
+        self.assertEqual(got, [False, True, False])
+
+    def test_repeat_counts_reports_and_ignores_strength(self):
+        got = self.judge("percept_repeat", [(0, (1, 1), -3.0), (2, (1, 1), -3.0)], RADAR_RECUR_WINDOW=10, RADAR_RECUR_COUNT=2)
+        self.assertEqual(got, [False, True])

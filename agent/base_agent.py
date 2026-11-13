@@ -65,6 +65,7 @@ from config.constants import (
     GHOST_RADAR_RANGE, GHOST_DETECT, GHOST_RATE_LOW, GHOST_RATE_HIGH, GHOST_PERIOD, RADAR_MONITOR,
     RADAR_MONITOR_RATE, RADAR_TRUST, RADAR_PROBE, GHOST_STRENGTH_SEP, RADAR_STRENGTH_MIN, GHOST_STICKY,
     RADAR_RANDOM_P, RADAR_LABEL_WINDOW, RADAR_MIN_LABELS, RADAR_LABELS, RADAR_GHOST_WEIGHT, RADAR_AUDIT_P, RADAR_AUDIT_FREE, RADAR_AUDIT_SCOPE, RADAR_AUDIT_POOL,
+    RADAR_RECUR_DECAY, RADAR_RECUR_TAU, RADAR_RECUR_WINDOW, RADAR_RECUR_COUNT, RADAR_RECUR_POOLED,
     USE_HOMEOSTATIC_CONTROLLER, CONTROLLER_GAMMA, CONTROLLER_LEARNING_RATE, CONTROLLER_EPSILON_DECAY,
     CONTROLLER_EPSILON_MIN, CONTROLLER_REWARD_N, CONTROLLER_REWARD_M)
 
@@ -184,6 +185,7 @@ class Agent:
         self.radar_admitted = [0, 0]  # reports admitted, reports offered
         self.radar_monitor = RADAR_MONITOR
         self.radar_sticky = GHOST_STICKY
+        self.radar_recur: dict = {}   # evidence accumulated per reported cell (RPT-1 forms of the radar monitor)
         self.radar_stats = {"hits": 0, "ghosts": 0, "trust_steps": 0, "trust_agrees": 0, "steps": 0, "audits": 0}
         self.radar_pending: List[Tuple[float, bool]] = []   # rejected reports an audit could still label
         # Model-free control: value of issuing each command (second key) when a direction is wanted (first key);
@@ -941,6 +943,11 @@ class Agent:
             return report[2] >= RADAR_STRENGTH_MIN
         if RADAR_MONITOR == "percept_random":
             return random.random() < RADAR_RANDOM_P
+        if RADAR_MONITOR in ("percept_recurrent", "percept_window", "percept_repeat") and len(report) > 2:
+            admit = self._admit_accumulated(report)
+            self.radar_admitted[0] += int(admit)
+            self.radar_admitted[1] += 1
+            return admit
         if RADAR_MONITOR == "percept_learned" and len(report) > 2:
             if RADAR_LABELS == "free" and len(report) > 3:
                 self._radar_label(report[2], bool(report[3]))
@@ -954,6 +961,21 @@ class Agent:
             self.radar_admitted[1] += 1
             return admit
         return True
+
+    def _admit_accumulated(self, report) -> bool:
+        """RPT-1 forms: judge a report by the evidence accumulated for its cell over earlier steps (see RADAR_RECUR_*)."""
+        key, now, strength = (report[0], None if RADAR_RECUR_POOLED else report[1]), self.current_time_step, report[2]
+        if RADAR_MONITOR == "percept_recurrent":
+            last, state = self.radar_recur.get(key, (now, 0.0))
+            state = state * RADAR_RECUR_DECAY ** (now - last) + strength
+            self.radar_recur[key] = (now, state)
+            return state >= RADAR_RECUR_TAU
+        log = [(t, x) for t, x in self.radar_recur.get(key, []) if now - t <= RADAR_RECUR_WINDOW]
+        log.append((now, strength))
+        self.radar_recur[key] = log
+        if RADAR_MONITOR == "percept_window":
+            return sum(x for _, x in log) >= RADAR_RECUR_TAU
+        return len(log) >= RADAR_RECUR_COUNT
 
     def radar_verified(self, hit: bool, strength: Optional[float] = None) -> None:
         """A radar sighting was confirmed (hit) or contradicted (ghost) by the agent's own view: updates its estimate."""
