@@ -19,7 +19,7 @@ Inspired by cognitive architectures, biological models, and agent-based systems,
 
 ### 🔬 Experiments
 
-The project is used as a computational test bed for consciousness theories (indicator properties and ablations), not as a claim that the agent is conscious. Pre-registered experiments are in `experiments/preregistrations/`, their data in `experiments/results/`, and a summary of what held up and what did not is in [`experiments/FINDINGS.md`](experiments/FINDINGS.md).
+The project is used as a computational test bed for consciousness theories (indicator properties and ablations), not as a claim that the agent is conscious. Pre-registered experiments are in `experiments/preregistrations/`, their data in `experiments/results/`, and a summary of what held up and what did not is in [`experiments/FINDINGS.md`](experiments/FINDINGS.md), and a short readable account in [`experiments/WRITEUP.md`](experiments/WRITEUP.md).
 
 ---
 
